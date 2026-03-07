@@ -26,6 +26,7 @@ export interface TokenAlert {
   address: string;
   holders: number;
   liquidity: string;
+  imageUrl?: string;
 }
 
 export async function getLiveAlerts(): Promise<TokenAlert[]> {
@@ -52,6 +53,7 @@ export async function getLiveAlerts(): Promise<TokenAlert[]> {
           address: item.tokenAddress,
           holders: item.amount || 0,
           liquidity: item.liquidity?.usd ? `$${(item.liquidity.usd / 1000).toFixed(0)}K` : "Live",
+          imageUrl: item.baseToken?.logoURI || item.baseToken?.image || "",
         }));
       }
     }
@@ -74,6 +76,7 @@ export async function getLiveAlerts(): Promise<TokenAlert[]> {
         address: pair.baseToken.address,
         holders: 0,
         liquidity: pair.liquidity?.usd ? `$${(pair.liquidity.usd / 1000).toFixed(0)}K` : "N/A",
+        imageUrl: pair.info?.imageUrl || pair.baseToken?.logoURI || "",
       }));
       return [...boostAlerts, ...volumeAlerts].slice(0, 20);
     }

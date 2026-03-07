@@ -13,7 +13,8 @@ export async function GET() {
       type: a.type.replace('_', ' '), // Handle consistent naming
       trend: a.trend || (parseFloat(a.change) > 0 ? "up" : "down"),
       mc: a.mc || "Live",
-      liquidity: a.liquidity || "Live"
+      liquidity: a.liquidity || "Live",
+      imageUrl: a.imageUrl || ""
     }));
 
     return NextResponse.json(formattedAlerts);

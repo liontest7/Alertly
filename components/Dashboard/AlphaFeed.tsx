@@ -85,8 +85,12 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
             const name = token.name || token.token
             return (
             <div key={i} className="group p-6 hover:bg-white/[0.02] transition-all flex items-center gap-8">
-              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-inner">
-                {name?.[0] || 'T'}
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-inner overflow-hidden">
+                {token.imageUrl ? (
+                  <img src={token.imageUrl} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  name?.[0] || 'T'
+                )}
               </div>
               
               <div className="flex-1 min-w-0">

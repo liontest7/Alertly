@@ -240,6 +240,12 @@ export default function OnboardingPage() {
                       </div>
                     )}
                   </div>
+                  <div className="space-y-4">
+                    <MonitorToggle 
+                      label="New Listings" 
+                      active={settings.dexListingEnabled} 
+                      onToggle={() => setSettings({...settings, dexListingEnabled: !settings.dexListingEnabled})} 
+                    />
                     {settings.dexListingEnabled && (
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
                         <Label className="text-[10px] font-black text-white uppercase tracking-wider">Listing Options:</Label>
