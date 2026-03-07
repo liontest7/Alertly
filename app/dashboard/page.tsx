@@ -162,19 +162,12 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-8">
           {/* Main Content Area */}
           <div className="flex-1 space-y-8">
+            <h1 className="text-2xl font-bold text-white">Alertly Terminal</h1>
             {/* Top Bar Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard label="Total Balance" value="Live" subValue="Connected trading wallet" />
-                <StatCard label="24h Profit" value="Live" subValue="Calculated from executed trades" />
-                <StatCard label="Active Alerts" value={alerts.length.toString()} subValue="Monitoring real-time DEX" />
-              </div>
-              <div className="flex flex-col justify-between">
-                <Button className="w-full bg-[#5100fd] hover:bg-[#6610ff] rounded-2xl h-full py-4 font-bold flex flex-col items-center justify-center gap-1">
-                  <Wallet className="w-5 h-5" />
-                  <span>Withdraw</span>
-                </Button>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <StatCard label="Total Balance" value="Live" subValue="Connected trading wallet" />
+              <StatCard label="24h Profit" value="Live" subValue="Calculated from executed trades" />
+              <StatCard label="Active Alerts" value={alerts.length.toString()} subValue="Monitoring real-time DEX" />
             </div>
 
             {/* Terminal Main Layout */}
@@ -218,10 +211,12 @@ export default function DashboardPage() {
                             <span className="text-base font-bold text-white truncate">{name}</span>
                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest ${
                               token.type === 'DEX_BOOST' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                              token.type === 'NEW_LISTING' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                              token.type === 'DEX_LISTING' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                              token.type === 'VOLUME_SPIKE' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                              token.type === 'WHALE_ALERT' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                               'bg-zinc-800 text-zinc-400'
                             }`}>
-                              {token.type === 'NEW_LISTING' ? 'New' : token.type.replace('_', ' ')}
+                              {token.type === 'DEX_LISTING' ? 'Listing' : token.type.replace('_', ' ')}
                             </span>
                             <span className="text-[10px] text-zinc-600 font-mono ml-auto">2s ago</span>
                           </div>
@@ -257,9 +252,9 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap gap-2">
                   <FilterChip label="All" active />
                   <FilterChip label="Boost" />
-                  <FilterChip label="New Token" />
                   <FilterChip label="Volume Spike" />
-                  <FilterChip label="Price Alert" />
+                  <FilterChip label="Whale Alert" />
+                  <FilterChip label="Dex Listing" />
                 </div>
               </div>
 
@@ -303,9 +298,9 @@ function QuickSettingsCard({ settings, onToggle }: { settings: any, onToggle: ()
         </h3>
         <button 
           onClick={onToggle}
-          className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all ${settings.autoTrade ? 'bg-green-500' : 'bg-zinc-800'}`}
+          className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all shadow-inner ${settings.autoTrade ? 'bg-green-500' : 'bg-zinc-800'}`}
         >
-          <div className={`w-4 h-4 rounded-full bg-white transition-all ${settings.autoTrade ? 'translate-x-5' : 'translate-x-0'}`} />
+          <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-sm ${settings.autoTrade ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
       </div>
       
@@ -338,8 +333,8 @@ function WalletMiniCard() {
       </h3>
       <div className="space-y-4">
         <div>
-          <p className="text-2xl font-bold">Trading Wallet</p>
-          <p className="text-xs text-zinc-600 truncate">{walletAddress}</p>
+          <p className="text-2xl font-bold text-white">Trading Wallet</p>
+          <p className="text-xs text-zinc-400 truncate">{walletAddress}</p>
         </div>
         <div className="flex gap-2">
           {!user ? (
@@ -348,8 +343,8 @@ function WalletMiniCard() {
             </div>
           ) : (
             <>
-              <Button variant="outline" className="flex-1 rounded-xl border-zinc-800 text-[10px] font-bold h-10">DEPOSIT</Button>
-              <Button className="flex-1 bg-[#5100fd] rounded-xl text-[10px] font-bold h-10">WITHDRAW</Button>
+              <Button variant="outline" className="flex-1 rounded-xl border-zinc-800 text-[10px] font-bold h-10 text-white hover:bg-zinc-900">DEPOSIT</Button>
+              <Button className="flex-1 bg-[#5100fd] hover:bg-[#6610ff] rounded-xl text-[10px] font-bold h-10 text-white">WITHDRAW</Button>
             </>
           )}
         </div>
