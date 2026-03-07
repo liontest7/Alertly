@@ -64,13 +64,13 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
             <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             </div>
-            <h2 className="text-sm font-bold tracking-tight text-white uppercase">Live Alpha Feed</h2>
+            <h2 className="text-sm font-black tracking-tight text-white uppercase">Live Alpha Feed</h2>
           </div>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => router.push('/onboarding')}
-            className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest"
+            className="text-[10px] font-black text-white hover:text-[#5100fd] uppercase tracking-widest bg-zinc-900/50 border border-zinc-800 rounded-lg px-3"
           >
             <Settings className="w-3 h-3 mr-1.5" /> Edit Configuration
           </Button>
@@ -92,21 +92,21 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-base font-bold text-white truncate">{name}</span>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest ${
-                    token.type === 'DEX BOOST' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                    token.type === 'DEX LISTING' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                    token.type === 'VOLUME SPIKE' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                    token.type === 'WHALE ALERT' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                    'bg-zinc-800 text-zinc-400'
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                    token.type === 'DEX BOOST' ? 'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.4)]' :
+                    token.type === 'DEX LISTING' ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' :
+                    token.type === 'VOLUME SPIKE' ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]' :
+                    token.type === 'WHALE ALERT' ? 'bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]' :
+                    'bg-zinc-800 text-white'
                   }`}>
                     {token.type}
                   </span>
-                  <span className="text-[10px] text-zinc-600 font-mono ml-auto">2s ago</span>
+                  <span className="text-[10px] text-zinc-400 font-mono ml-auto">2s ago</span>
                 </div>
-                <div className="flex items-center gap-8 text-[11px] text-zinc-500 font-mono">
-                  <span className="text-zinc-300 font-bold">{token.mc} MC</span>
-                  <span className="text-zinc-300 font-bold">{token.liquidity} Liq</span>
-                  <span className="text-zinc-300 font-bold">{token.holders} Boosts</span>
+                <div className="flex items-center gap-8 text-[11px] text-white font-mono">
+                  <span className="text-white font-black">{token.mc} MC</span>
+                  <span className="text-white font-black">{token.liquidity} Liq</span>
+                  <span className="text-white font-black">{token.holders} Boosts</span>
                 </div>
               </div>
 
@@ -128,16 +128,15 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
               </div>
             </div>
           )})}
+          <div className="flex flex-wrap gap-2 px-6 pb-6">
+            <FilterChip label="All" active />
+            <FilterChip label="Boost" />
+            <FilterChip label="Volume Spike" />
+            <FilterChip label="Whale Alert" />
+            <FilterChip label="Dex Listing" />
+          </div>
         </div>
       </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <FilterChip label="All" active />
-        <FilterChip label="Boost" />
-        <FilterChip label="Volume Spike" />
-        <FilterChip label="Whale Alert" />
-        <FilterChip label="Dex Listing" />
-      </div>
     </div>
   )
 }

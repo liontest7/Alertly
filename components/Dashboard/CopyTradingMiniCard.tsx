@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 export function CopyTradingMiniCard() {
   // Real data structure for future sync
   const traders = [
-    { address: "7xKp...4nNz", profit: "+234.8%", status: "Live" },
-    { address: "3bRt...9wQx", profit: "+156.2%", status: "Active" }
+    { address: "7xKp...4nNz", profit: "+12.4%", status: "Live" },
+    { address: "3bRt...9wQx", profit: "+8.2%", status: "Active" }
   ];
 
   return (
@@ -22,13 +22,13 @@ export function CopyTradingMiniCard() {
       </div>
       <div className="space-y-3">
         {traders.map((trader, i) => (
-          <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-zinc-900/30 border border-zinc-900 group-hover:border-zinc-800/50 transition-all">
+          <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 transition-all">
             <div className="flex flex-col">
-              <span className="text-[10px] font-mono text-zinc-400">{trader.address}</span>
-              <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">{trader.status}</span>
+              <span className="text-[10px] font-black font-mono text-white">{trader.address}</span>
+              <span className="text-[8px] text-zinc-400 font-black uppercase tracking-tighter">{trader.status}</span>
             </div>
             <div className="text-right">
-              <span className="text-sm font-black text-green-500">{trader.profit}</span>
+              <span className="text-sm font-black text-green-400">{trader.profit}</span>
             </div>
           </div>
         ))}

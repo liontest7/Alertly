@@ -116,19 +116,13 @@ export default function OnboardingPage() {
       <Card className="max-w-xl w-full bg-[#080808] border-zinc-900/50 p-8 md:p-12 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95vh] relative z-10 backdrop-blur-3xl border">
         {step === 1 && (
           <div className="space-y-10 py-4 text-center">
-            <div className="relative inline-block">
-               <div className="absolute inset-0 bg-[#5100fd]/30 blur-[30px] rounded-full animate-pulse" />
-               <div className="relative w-24 h-24 bg-gradient-to-br from-[#5100fd] to-[#7c3aed] rounded-3xl flex items-center justify-center shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                <Zap className="w-12 h-12 text-white fill-white/20" />
-               </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-center gap-4 mb-2">
-                <Image src="/images/logo.png" alt="Logo" width={64} height={64} className="rounded-full shadow-[0_0_30px_rgba(81,0,253,0.4)]" />
+            <div className="flex items-center justify-center mb-8">
+              <div className="p-1 bg-[#5100fd] rounded-full shadow-[0_0_30px_rgba(81,0,253,0.4)] border-2 border-[#5100fd]">
+                <Image src="/images/logo.png" alt="Logo" width={80} height={80} className="rounded-full" />
               </div>
+            </div>
               <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">
-                ALERTLY <span className="text-[#5100fd]">ALPHA</span>
+                Alerty
               </h1>
               <p className="text-zinc-500 text-base md:text-lg leading-relaxed max-w-sm mx-auto font-medium">
                 Professional-grade Solana trading intelligence. Set your parameters and dominate the DEX.
@@ -177,18 +171,18 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, volumeSpikeEnabled: !settings.volumeSpikeEnabled})} 
                     />
                     {settings.volumeSpikeEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Alert on Pairs:</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Alert on Pairs:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["SOL", "USDC", "USDT"].map(pair => (
                             <button 
                               key={pair} 
                               type="button" 
                               onClick={() => togglePair(pair)}
-                              className={`px-2 py-1 rounded-md border text-[9px] font-black transition-all ${
+                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all ${
                                 settings.alertPairs.includes(pair)
-                                ? 'bg-[#5100fd]/20 border-[#5100fd] text-white'
-                                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_15px_rgba(81,0,253,0.4)]'
+                                : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
                               }`}
                             >
                               {pair}
@@ -205,10 +199,10 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, whaleAlertEnabled: !settings.whaleAlertEnabled})} 
                     />
                     {settings.whaleAlertEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Min Buy Amount ($):</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Min Buy Amount ($):</Label>
                         <Input 
-                          className="h-9 bg-zinc-900 border-zinc-800 text-xs text-white font-bold rounded-xl focus:border-[#5100fd] focus:ring-0" 
+                          className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-bold rounded-xl focus:border-[#5100fd] focus:ring-0" 
                           value={settings.minWhaleBuy}
                           onChange={(e) => setSettings({...settings, minWhaleBuy: parseInt(e.target.value) || 0})}
                           type="number" 
@@ -223,18 +217,18 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
                     />
                     {settings.dexBoostEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Boost Levels:</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Boost Levels:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["Level 1", "Level 2", "Level 3", "Top Boost"].map(level => (
                             <button 
                               key={level} 
                               type="button" 
                               onClick={() => toggleBoostLevel(level)}
-                              className={`px-2 py-1 rounded-md border text-[9px] font-black transition-all ${
+                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all ${
                                 settings.boostLevels.includes(level)
-                                ? 'bg-[#5100fd]/20 border-[#5100fd] text-white'
-                                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_15px_rgba(81,0,253,0.4)]'
+                                : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
                               }`}
                             >
                               {level}
@@ -244,11 +238,23 @@ export default function OnboardingPage() {
                       </div>
                     )}
                   </div>
-                  <MonitorToggle 
-                    label="New Listings" 
-                    active={settings.dexListingEnabled} 
-                    onToggle={() => setSettings({...settings, dexListingEnabled: !settings.dexListingEnabled})} 
-                  />
+                    {settings.dexListingEnabled && (
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Listing Options:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {["Paid", "Organic"].map(opt => (
+                            <button 
+                              key={opt} 
+                              type="button" 
+                              className="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 text-[10px] font-black text-white shadow-[0_0_15px_rgba(81,0,253,0.2)]"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -259,7 +265,7 @@ export default function OnboardingPage() {
                 </Label>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Min Liquidity ($)</Label>
+                    <Label className="text-white uppercase text-[10px] font-black tracking-widest">Min Liquidity ($)</Label>
                     <div className="relative group">
                       <Input 
                         type="number" 
@@ -270,10 +276,10 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">DEX Sources</Label>
+                    <Label className="text-white uppercase text-[10px] font-black tracking-widest">DEX Sources</Label>
                     <div className="flex gap-2">
                       {["Raydium", "Jupiter", "Meteora"].map(source => (
-                        <button key={source} type="button" className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-400 hover:border-[#5100fd] transition-all">
+                        <button key={source} type="button" className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-black text-white hover:border-[#5100fd] transition-all">
                           {source}
                         </button>
                       ))}
@@ -329,7 +335,7 @@ export default function OnboardingPage() {
                 <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-3">
-                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
+                      <Label className="text-white uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
                       <div className="relative group">
                         <Input 
                           type="number" 
@@ -338,11 +344,22 @@ export default function OnboardingPage() {
                           onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
                           className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">SOL</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">SOL</div>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        {[0.1, 0.5, 1.0, 2.0].map(val => (
+                          <button 
+                            key={val} 
+                            onClick={() => setSettings({...settings, buyAmount: val})}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all ${settings.buyAmount === val ? 'bg-[#5100fd] border-[#5100fd] text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}
+                          >
+                            {val} SOL
+                          </button>
+                        ))}
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
+                      <Label className="text-white uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
                       <div className="relative group">
                         <Input 
                           type="number" 
@@ -350,11 +367,11 @@ export default function OnboardingPage() {
                           onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
                           className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
+                      <Label className="text-white uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
                       <div className="relative">
                         <Input 
                           type="number" 
@@ -362,11 +379,11 @@ export default function OnboardingPage() {
                           onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
                           className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
+                      <Label className="text-white uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
                       <div className="relative">
                         <Input 
                           type="number" 
@@ -374,7 +391,7 @@ export default function OnboardingPage() {
                           onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
                           className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
                       </div>
                     </div>
                   </div>
