@@ -12,7 +12,6 @@ const nextConfig = {
   devIndicators: {
     buildActivity: false,
   },
-  allowedDevOrigins: ["*"],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
