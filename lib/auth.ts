@@ -225,10 +225,11 @@ export async function buildAuthToken(user: { id: string; walletAddress: string; 
 }
 
 export function setAuthCookie(response: NextResponse, token: string) {
+  const isProduction = process.env.NODE_ENV === "production";
   response.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isProduction,
     path: "/",
     maxAge: TOKEN_TTL_SECONDS,
   });

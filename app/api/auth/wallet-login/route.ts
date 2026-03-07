@@ -62,14 +62,7 @@ export async function POST(req: Request) {
       { status: 200 },
     );
 
-    // Set the cookie directly in the response
-    response.cookies.set("auth_token", authToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    setAuthCookie(response, authToken);
 
     return response;
   } catch (error) {

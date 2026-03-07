@@ -5,7 +5,7 @@ import { verifyToken } from "@/lib/auth";
 const PROTECTED_PATHS = ["/dashboard", "/profile", "/settings", "/telegram-link"];
 const AUTH_PATHS = ["/login", "/connect-wallet"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
   if (
