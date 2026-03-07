@@ -36,8 +36,9 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Dashboard auth check:", { hasUser: !!user, sessionLoading });
-    // Public access allowed, no redirect to home
+    if (!sessionLoading && !user && localStorage.getItem('onboarding_completed') !== 'true') {
+      router.push("/onboarding");
+    }
   }, [user, sessionLoading, router]);
 
   const [alerts, setAlerts] = useState<any[]>([])

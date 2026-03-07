@@ -61,7 +61,7 @@ export function Navbar() {
 
   // Auto-login when wallet is connected but user is not authenticated
   useEffect(() => {
-    if (isClient && connected && publicKey && !user && !loading) {
+    if (isClient && connected && publicKey && !user && !loading && pathname !== "/dashboard") {
       // Avoid auto-login loops - only refresh if we haven't tried recently
       console.log("Navbar: Wallet connected, checking session...");
       const timer = setTimeout(() => {
@@ -71,7 +71,7 @@ export function Navbar() {
       }, 2000); 
       return () => clearTimeout(timer);
     }
-  }, [connected, publicKey, user, loading, refreshSession, isClient]);
+  }, [connected, publicKey, user, loading, refreshSession, isClient, pathname]);
 
   const handleLaunchTerminal = async () => {
     if (loading) {
