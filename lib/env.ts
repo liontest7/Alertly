@@ -19,7 +19,10 @@ if (typeof window === "undefined") {
       const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
       console.error(errorMsg);
       // We exit to prevent the server from actually being "ready" in a broken state
-      process.exit(1);
+      if (typeof process !== "undefined" && typeof process.exit === "function") {
+        process.exit(1);
+      }
+      throw new Error(`Missing Secret: ${name}`);
     }
   }
 }
@@ -34,7 +37,7 @@ export function requireEnv(name: string, options?: { allowInDev?: boolean; devFa
     const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
     console.error(errorMsg);
     // In Next.js dev mode, this will show a big error overlay
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" && typeof process !== "undefined" && typeof process.exit === "function") {
       process.exit(1);
     }
     throw new Error(`Missing Secret: ${name}`);
