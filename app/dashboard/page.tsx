@@ -56,6 +56,10 @@ export default function DashboardPage() {
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/settings');
+      if (res.status === 401) {
+         router.replace("/");
+         return;
+      }
       const data = await res.json();
       if (res.ok) {
         setSettings(data);
