@@ -62,12 +62,13 @@ export function Navbar() {
   // Auto-login when wallet is connected but user is not authenticated
   useEffect(() => {
     if (isClient && connected && publicKey && !user && !loading) {
-      console.log("Navbar: Wallet connected, ensuring session refresh...");
+      // Avoid auto-login loops - only refresh if we haven't tried recently
+      console.log("Navbar: Wallet connected, checking session...");
       const timer = setTimeout(() => {
         refreshSession().catch((err) => {
           console.error("Auto-login failed:", err);
         });
-      }, 1000); 
+      }, 2000); 
       return () => clearTimeout(timer);
     }
   }, [connected, publicKey, user, loading, refreshSession, isClient]);

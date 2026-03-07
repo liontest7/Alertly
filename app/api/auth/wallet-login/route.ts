@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { buildAuthToken, getVipStatus, setAuthCookie, verifyWalletSignature } from "@/lib/auth";
 import { createTradingWallet } from "@/lib/blockchain/trading-wallet";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   try {
     const { wallet_address, signature, message, nonce_token } = await req.json();

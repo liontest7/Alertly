@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireEnv } from "@/lib/env";
 
+export const dynamic = "force-dynamic";
+
 const INTERNAL_API_KEY = requireEnv("INTERNAL_API_KEY", {
   allowInDev: true,
   devFallback: "dev-internal-api-key",
