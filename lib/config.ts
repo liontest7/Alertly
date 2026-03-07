@@ -1,5 +1,5 @@
 export const siteConfig = {
-  name: "Alerty",
+  name: "Alertly",
   description: "Real-time Solana trading intelligence and automation. Snipe, trade, and track with millisecond precision.",
   url: "https://alertly.ai",
   ogImage: "/images/logo.png",

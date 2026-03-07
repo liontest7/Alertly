@@ -1,7 +1,7 @@
-# Alerty - Project Status & Refactor Summary
+# Alertly - Project Status & Refactor Summary
 
 ## Completed Refactor:
-- **Branding Sync**: System-wide update from "Alertly" to **Alerty** (Web, Bot, Configs).
+- **Branding Sync**: System-wide update to **Alertly** (Web, Bot, Configs).
 - **Live Data Pipeline**: 
     - Connected `getLiveAlerts` to real Dexscreener APIs for both Top Boosts and Volume Spikes.
     - Standardized internal types (`VOL_SPIKE`) for consistent UI rendering.
