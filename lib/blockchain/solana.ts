@@ -38,7 +38,6 @@ export async function getLiveAlerts(): Promise<TokenAlert[]> {
     );
 
     if (!response.ok) {
-      // Fallback to pairs if boosts API fails
       const solResponse = await fetch(
         "https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112",
         { next: { revalidate: 10 } }
@@ -47,7 +46,7 @@ export async function getLiveAlerts(): Promise<TokenAlert[]> {
       if (solData.pairs) {
         return solData.pairs.slice(0, 15).map((pair: any) => ({
           name: pair.baseToken.symbol,
-          type: "VOL_SPIKE",
+          type: "VOLUME_SPIKE",
           mc: pair.fdv ? `$${(pair.fdv / 1000000).toFixed(1)}M` : "N/A",
           vol: pair.volume?.h24 ? `$${(pair.volume.h24 / 1000).toFixed(0)}K` : "N/A",
           age: "Live",
@@ -65,22 +64,21 @@ export async function getLiveAlerts(): Promise<TokenAlert[]> {
 
     if (Array.isArray(data)) {
       return data.slice(0, 15).map((item: any) => ({
-        name: item.tokenAddress.substring(0, 4), // Fallback if name not in boost data
+        name: item.baseToken?.symbol || item.tokenAddress.substring(0, 4),
         type: "DEX_BOOST",
-        mc: "Live",
-        vol: "Live",
+        mc: item.fdv ? `$${(item.fdv / 1000).toFixed(0)}K` : "Live",
+        vol: item.volume?.h24 ? `$${(item.volume.h24 / 1000).toFixed(0)}K` : "Live",
         age: "New",
-        change: "0%",
-        trend: "neutral",
+        change: item.priceChange?.h24 ? `${item.priceChange.h24 > 0 ? "+" : ""}${item.priceChange.h24}%` : "0%",
+        trend: item.priceChange?.h24 > 0 ? "up" : "down",
         address: item.tokenAddress,
         holders: item.amount || 0,
-        liquidity: "Live",
+        liquidity: item.liquidity?.usd ? `$${(item.liquidity.usd / 1000).toFixed(0)}K` : "Live",
       }));
     }
   } catch (error) {
     console.error("Failed to fetch real DEX alerts:", error);
   }
-
   return [];
 }
 

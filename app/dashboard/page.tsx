@@ -281,8 +281,10 @@ export default function DashboardPage() {
 
 function FilterChip({ label, active = false }: { label: string, active?: boolean }) {
   return (
-    <button className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
-      active ? 'bg-[#5100fd] border-[#5100fd] text-white' : 'bg-zinc-900/50 border-zinc-900 text-zinc-500 hover:border-zinc-700'
+    <button className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all duration-200 shadow-sm ${
+      active 
+        ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[#5100fd]/20' 
+        : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600 hover:bg-zinc-900'
     }`}>
       {label}
     </button>
@@ -290,18 +292,29 @@ function FilterChip({ label, active = false }: { label: string, active?: boolean
 }
 
 function QuickSettingsCard({ settings, onToggle }: { settings: any, onToggle: () => void }) {
+  const router = useRouter();
   return (
     <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem]">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
           <Zap className="w-3.5 h-3.5" /> Quick Settings
         </h3>
-        <button 
-          onClick={onToggle}
-          className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all shadow-inner ${settings.autoTrade ? 'bg-green-500' : 'bg-zinc-800'}`}
-        >
-          <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-sm ${settings.autoTrade ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => router.push('/onboarding')}
+            className="h-7 px-2 text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-tighter"
+          >
+            <Settings className="w-3 h-3 mr-1" /> Edit All
+          </Button>
+          <button 
+            onClick={onToggle}
+            className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all shadow-inner ${settings.autoTrade ? 'bg-green-500' : 'bg-zinc-800'}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-sm ${settings.autoTrade ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-2 gap-4">
@@ -316,8 +329,8 @@ function QuickSettingsCard({ settings, onToggle }: { settings: any, onToggle: ()
 
 function MiniSetting({ label, value, color = "text-white" }: { label: string, value: string, color?: string }) {
   return (
-    <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-4">
-      <p className="text-[9px] text-zinc-600 uppercase font-bold mb-1">{label}</p>
+    <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-4 hover:border-zinc-700 transition-all group">
+      <p className="text-[9px] text-zinc-500 uppercase font-bold mb-1 tracking-wider group-hover:text-zinc-400">{label}</p>
       <p className={`text-sm font-bold ${color}`}>{value}</p>
     </div>
   )
@@ -460,12 +473,12 @@ function ConnectionsCard() {
 
 function StatCard({ label, value, subValue, trend, isPositive }: { label: string, value: string, subValue: string, trend?: string, isPositive?: boolean }) {
   return (
-    <Card className="bg-zinc-950 border-zinc-900 p-8 rounded-[2rem]">
+    <Card className="bg-zinc-950 border-zinc-900 p-8 rounded-[2rem] shadow-xl hover:border-zinc-800 transition-all">
       <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-4">{label}</p>
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-3xl font-bold">{value}</p>
-          <p className="text-xs text-zinc-600 mt-1 font-medium">{subValue}</p>
+          <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
+          <p className="text-xs text-zinc-500 mt-1 font-medium">{subValue}</p>
         </div>
         {trend && (
           <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full border ${isPositive ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'}`}>
