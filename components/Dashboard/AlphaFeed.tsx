@@ -95,7 +95,7 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
                     token.type === 'DEX BOOST' ? 'bg-green-500 text-white shadow-[0_0_10px_rgba(34,197,94,0.4)]' :
                     token.type === 'DEX LISTING' ? 'bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.4)]' :
-                    token.type === 'VOLUME SPIKE' ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]' :
+                    token.type === 'VOL SPIKE' ? 'bg-purple-500 text-white shadow-[0_0_10px_rgba(168,85,247,0.4)]' :
                     token.type === 'WHALE ALERT' ? 'bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]' :
                     'bg-zinc-800 text-white'
                   }`}>

@@ -11,7 +11,9 @@ export async function GET() {
     const formattedAlerts = alerts.map(a => ({
       ...a,
       type: a.type.replace('_', ' '), // Handle consistent naming
-      trend: a.trend || (parseFloat(a.change) > 0 ? "up" : "down")
+      trend: a.trend || (parseFloat(a.change) > 0 ? "up" : "down"),
+      mc: a.mc || "Live",
+      liquidity: a.liquidity || "Live"
     }));
 
     return NextResponse.json(formattedAlerts);

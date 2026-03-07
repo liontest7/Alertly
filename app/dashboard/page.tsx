@@ -79,7 +79,7 @@ export default function DashboardPage() {
       } catch (err) {
         // Fallback to real-looking data if API fails to show system working
         setAlerts([
-          { name: "SOLANA", token: "SOL", type: "VOLUME SPIKE", mc: "85.2B", liquidity: "1.2B", holders: "124", change: "+4.2%", trend: "up", address: "So11111111111111111111111111111111111111112" },
+          { name: "SOLANA", token: "SOL", type: "VOL SPIKE", mc: "85.2B", liquidity: "1.2B", holders: "124", change: "+4.2%", trend: "up", address: "So11111111111111111111111111111111111111112" },
           { name: "BONK", token: "BONK", type: "DEX BOOST", mc: "1.4B", liquidity: "45M", holders: "89", change: "+12.5%", trend: "up", address: "DezXAZ8z7PnrnqyjzPDUBmRQneBfL8U6mshK3UJxKEDv" }
         ])
       } finally {

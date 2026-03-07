@@ -93,7 +93,7 @@ const getSettingsText = async (telegramId: string) => {
   try {
     const s = await fetchBotSettings(telegramId);
 
-    return `⚙️ *Alertly Control Center*
+    return `⚙️ *Alerty Control Center*
 
 *Trading Configuration*
 💰 Buy Amount: ${s.buyAmount} SOL
@@ -117,7 +117,7 @@ const getSettingsText = async (telegramId: string) => {
 💹 MC: $${(s.minMarketCap / 1000).toFixed(0)}K - $${(s.maxMarketCap / 1000000).toFixed(0)}M
 💧 Min Liq: $${(s.minLiquidity / 1000).toFixed(0)}K
 
-Stay sharp. Stay early. Stay Alertly.`;
+Stay sharp. Stay early. Stay Alerty.`;
   } catch {
     return "❌ Telegram account is not linked yet.\n\nIn the web app, open Telegram Link and run the generated command:\n`/link <token>`";
   }
@@ -127,7 +127,7 @@ bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   await bot.sendMessage(
     chatId,
-    "Welcome to *Alertly* — real-time Solana intelligence for serious traders.\n\n1) Link your account from the website (Telegram Link section).\n2) Run `/link <token>` here once.\n3) Use `/settings` to manage your live trading preferences.",
+    "Welcome to *Alerty* — real-time Solana intelligence for serious traders.\n\n1) Link your account from the website (Telegram Link section).\n2) Run `/link <token>` here once.\n3) Use `/settings` to manage your live trading preferences.",
     { parse_mode: "Markdown" },
   );
 });
@@ -145,7 +145,7 @@ bot.onText(/\/link\s+(.+)/, async (msg, match) => {
     await confirmLink(tokenValue, String(chatId));
     await bot.sendMessage(
       chatId,
-      "✅ Telegram account linked successfully.\nUse /settings to manage synced Alertly preferences.",
+      "✅ Telegram account linked successfully.\nUse /settings to manage synced Alerty preferences.",
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Could not link your account.";

@@ -121,6 +121,8 @@ export default function OnboardingPage() {
                 <Image src="/images/logo.png" alt="Logo" width={80} height={80} className="rounded-full" />
               </div>
             </div>
+            
+            <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">
                 Alerty
               </h1>

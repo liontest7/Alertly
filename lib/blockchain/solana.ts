@@ -30,52 +30,55 @@ export interface TokenAlert {
 
 export async function getLiveAlerts(): Promise<TokenAlert[]> {
   try {
-    const response = await fetch(
+    let boostAlerts: TokenAlert[] = [];
+    const boostResponse = await fetch(
       "https://api.dexscreener.com/token-boosts/top/v1/solana",
       {
         next: { revalidate: 10 },
       },
     );
 
-    if (!response.ok) {
-      const solResponse = await fetch(
-        "https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112",
-        { next: { revalidate: 10 } }
-      );
-      const solData = await solResponse.json();
-      if (solData.pairs) {
-        return solData.pairs.slice(0, 15).map((pair: any) => ({
-          name: pair.baseToken.symbol,
-          type: "VOLUME_SPIKE",
-          mc: pair.fdv ? `$${(pair.fdv / 1000000).toFixed(1)}M` : "N/A",
-          vol: pair.volume?.h24 ? `$${(pair.volume.h24 / 1000).toFixed(0)}K` : "N/A",
-          age: "Live",
-          change: pair.priceChange?.h24 ? `${pair.priceChange.h24 > 0 ? "+" : ""}${pair.priceChange.h24}%` : "0.0%",
-          trend: pair.priceChange?.h24 > 0 ? "up" : "down",
-          address: pair.baseToken.address,
-          holders: 0,
-          liquidity: pair.liquidity?.usd ? `$${(pair.liquidity.usd / 1000).toFixed(0)}K` : "N/A",
+    if (boostResponse.ok) {
+      const data = await boostResponse.json();
+      if (Array.isArray(data)) {
+        boostAlerts = data.slice(0, 10).map((item: any) => ({
+          name: item.baseToken?.symbol || item.tokenAddress.substring(0, 4),
+          type: "DEX_BOOST",
+          mc: item.fdv ? `$${(item.fdv / 1000).toFixed(0)}K` : "Live",
+          vol: item.volume?.h24 ? `$${(item.volume.h24 / 1000).toFixed(0)}K` : "Live",
+          age: "New",
+          change: item.priceChange?.h24 ? `${item.priceChange.h24 > 0 ? "+" : ""}${item.priceChange.h24}%` : "0%",
+          trend: item.priceChange?.h24 > 0 ? "up" : "down",
+          address: item.tokenAddress,
+          holders: item.amount || 0,
+          liquidity: item.liquidity?.usd ? `$${(item.liquidity.usd / 1000).toFixed(0)}K` : "Live",
         }));
       }
-      return [];
     }
 
-    const data = await response.json();
-
-    if (Array.isArray(data)) {
-      return data.slice(0, 15).map((item: any) => ({
-        name: item.baseToken?.symbol || item.tokenAddress.substring(0, 4),
-        type: "DEX_BOOST",
-        mc: item.fdv ? `$${(item.fdv / 1000).toFixed(0)}K` : "Live",
-        vol: item.volume?.h24 ? `$${(item.volume.h24 / 1000).toFixed(0)}K` : "Live",
-        age: "New",
-        change: item.priceChange?.h24 ? `${item.priceChange.h24 > 0 ? "+" : ""}${item.priceChange.h24}%` : "0%",
-        trend: item.priceChange?.h24 > 0 ? "up" : "down",
-        address: item.tokenAddress,
-        holders: item.amount || 0,
-        liquidity: item.liquidity?.usd ? `$${(item.liquidity.usd / 1000).toFixed(0)}K` : "Live",
+    // Parallel: Get Volume Spikes from latest pairs
+    const solResponse = await fetch(
+      "https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112",
+      { next: { revalidate: 10 } }
+    );
+    const solData = await solResponse.json();
+    if (solData.pairs) {
+      const volumeAlerts = solData.pairs.slice(0, 10).map((pair: any) => ({
+        name: pair.baseToken.symbol,
+        type: "VOL_SPIKE",
+        mc: pair.fdv ? `$${(pair.fdv / 1000000).toFixed(1)}M` : "N/A",
+        vol: pair.volume?.h24 ? `$${(pair.volume.h24 / 1000).toFixed(0)}K` : "N/A",
+        age: "Live",
+        change: pair.priceChange?.h24 ? `${pair.priceChange.h24 > 0 ? "+" : ""}${pair.priceChange.h24}%` : "0.0%",
+        trend: pair.priceChange?.h24 > 0 ? "up" : "down",
+        address: pair.baseToken.address,
+        holders: 0,
+        liquidity: pair.liquidity?.usd ? `$${(pair.liquidity.usd / 1000).toFixed(0)}K` : "N/A",
       }));
+      return [...boostAlerts, ...volumeAlerts].slice(0, 20);
     }
+
+    return boostAlerts;
   } catch (error) {
     console.error("Failed to fetch real DEX alerts:", error);
   }
