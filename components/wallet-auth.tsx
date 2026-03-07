@@ -115,10 +115,7 @@ export function WalletAuth() {
           });
 
           authAttemptedRef.current = false;
-          // Disconnect wallet to reset button state if user cancels signature
-          if (connected) {
-            disconnect();
-          }
+          // Don't disconnect wallet on signature rejection, just stop auth process
           return;
         }
 
@@ -173,10 +170,7 @@ export function WalletAuth() {
         variant: "destructive",
       });
       
-      // Disconnect on auth error to reset button
-      if (connected) {
-        disconnect();
-      }
+      // Don't disconnect on auth error, just allow retry
     } finally {
       setIsAuthenticating(false);
     }

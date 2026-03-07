@@ -6,7 +6,9 @@ import { createAuthNonce } from "@/lib/auth";
 export async function POST(req: Request) {
   try {
     const { origin } = await req.json();
-    const { message, nonce, nonceToken } = await createAuthNonce(origin || "localhost");
+    // Use the actual request origin or a safe fallback
+    const domain = req.headers.get("host") || origin || "alertly.ai";
+    const { message, nonce, nonceToken } = await createAuthNonce(domain);
     return new NextResponse(JSON.stringify({ message, nonce, nonceToken }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

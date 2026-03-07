@@ -226,10 +226,14 @@ export async function buildAuthToken(user: { id: string; walletAddress: string; 
 
 export function setAuthCookie(response: NextResponse, token: string) {
   const isProduction = process.env.NODE_ENV === "production";
+  // Use a more permissive secure setting for development/Replit/Render environments
+  // that might not always report as production correctly but use HTTPS
+  const secure = isProduction || process.env.VERCEL_ENV === "production" || process.env.RENDER === "true";
+  
   response.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: isProduction,
+    secure: secure,
     path: "/",
     maxAge: TOKEN_TTL_SECONDS,
   });

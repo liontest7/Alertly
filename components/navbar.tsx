@@ -111,22 +111,28 @@ export function Navbar() {
       const checkSessionAction = async () => {
         try {
           const res = await fetch("/api/auth/session", { cache: 'no-store' });
+          if (!res.ok) throw new Error("Session check failed");
+          
           const data = await res.json();
           if (data.authenticated) {
             console.log("Session found, redirecting...");
             router.push("/dashboard");
           } else {
-            console.log("No session, triggering manual auth");
-            // Find and click the wallet-auth signature button or similar
-            // For now, we rely on the WalletAuth component to detect !user && connected
-            // But we'll add a toast to inform the user
+            console.log("No session, triggering auth toast");
             toast({
               title: "Authentication Required",
               description: "Please sign the message in your wallet to access the terminal.",
             });
+            // We can also trigger refreshSession here to be proactive
+            refreshSession();
           }
         } catch (e) {
           console.error("Session check error", e);
+          toast({
+            title: "Authentication Error",
+            description: "Failed to verify your session. Please try again.",
+            variant: "destructive",
+          });
         }
       };
       checkSessionAction();

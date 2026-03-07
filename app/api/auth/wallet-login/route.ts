@@ -67,9 +67,16 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json(loginData);
     setAuthCookie(response, authToken);
+    
+    // Add additional headers to ensure cookie is respected
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    
     return response;
   } catch (error) {
     console.error("Login route error:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ 
+      authenticated: false, 
+      message: "Internal server error during login" 
+    }, { status: 500 });
   }
 }

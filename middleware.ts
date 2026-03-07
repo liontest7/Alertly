@@ -30,7 +30,16 @@ export async function middleware(request: NextRequest) {
         if (isAuthPath) {
           return NextResponse.redirect(new URL("/dashboard", request.url));
         }
-        return NextResponse.next();
+        const response = NextResponse.next();
+        // Ensure the token persists
+        response.cookies.set("auth_token", tokenValue, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: request.nextUrl.protocol === "https:",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+        return response;
       }
     } catch (e) {
       console.error("Middleware token verification error:", e);
