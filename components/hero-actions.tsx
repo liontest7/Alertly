@@ -5,7 +5,7 @@ import { siteConfig } from "@/lib/config";
 import { CircleArrowRight, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "./ui/use-toast";
-import { useWalletModal, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useState } from "react";
 import { useAuthSession } from "@/components/providers";
@@ -21,9 +21,23 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { setVisible } = useWalletModal();
-  const { connected, publicKey, signMessage } = useWallet();
+  const { connected, publicKey, signMessage, setVisible } = useWallet();
   const { refreshSession } = useAuthSession();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleLaunchTerminal = async () => {
+    if (user) {
+      router.push("/dashboard");
+      return;
+    }
+
+    if (!connected) {
+      setVisible(true);
+      return;
+    }
+
+    await handleLogin();
+  };
 
   const handleLogin = async () => {
     if (!connected || !publicKey || !signMessage) return;
@@ -77,30 +91,14 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
 
   return (
     <div className="flex flex-wrap gap-4 animate-fade-in-up animation-delay-400">
-      {user ? (
-        <Button
-          size="lg"
-          className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
-          onClick={() => router.push("/dashboard")}
-        >
-          Go to Dashboard
-          <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
-        </Button>
-      ) : connected ? (
-        <Button
-          size="lg"
-          className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
-          onClick={handleLogin}
-          disabled={isAuthenticating}
-        >
-          {isAuthenticating ? "Authenticating..." : "Sign to Login"}
-          <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
-        </Button>
-      ) : (
-        <div className="[&_.wallet-adapter-button]:!bg-[#5100fd] [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button]:!rounded-full [&_.wallet-adapter-button]:!px-8 [&_.wallet-adapter-button]:!h-[60px] [&_.wallet-adapter-button]:!text-base [&_.wallet-adapter-button]:!font-bold [&_.wallet-adapter-button]:hover:!bg-[#6610ff] [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:hover:!scale-[1.02]">
-          <WalletMultiButton>Connect Wallet</WalletMultiButton>
-        </div>
-      )}
+      <Button
+        size="lg"
+        className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
+        onClick={handleLaunchTerminal}
+      >
+        GET ALERT NOW
+        <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
+      </Button>
       <Button
         variant="outline"
         size="lg"

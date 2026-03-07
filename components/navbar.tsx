@@ -105,7 +105,7 @@ export function Navbar() {
             window.scrollTo({ top: 0, behavior: "smooth" });
             toast({
               title: "Authentication Required",
-              description: "Please click 'Sign to Login' on the main button to access the terminal.",
+              description: "Please click 'GET ALERT NOW' to sign and enter the terminal.",
             });
             // We can also trigger refreshSession here to be proactive
             refreshSession();
@@ -209,7 +209,7 @@ export function Navbar() {
               className="rounded-full bg-[#5100fd] hover:bg-[#6610ff] text-white px-5 h-10 text-[15px] font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#5100fd]/20 relative z-[120]"
               onClick={handleLaunchTerminal}
             >
-              Launch Terminal
+              Terminal
             </Button>
           </div>
         </div>

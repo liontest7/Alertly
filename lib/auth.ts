@@ -189,30 +189,8 @@ export async function verifyWalletSignature({
 }
 
 export async function getVipStatus(walletAddress: string): Promise<boolean> {
-  if (!VIP_MINT) return false;
-
-  try {
-    const publicKey = new PublicKey(walletAddress);
-    const mint = new PublicKey(VIP_MINT);
-    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
-
-    const response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTokenAccountsByOwner",
-        params: [publicKey.toBase58(), { mint: mint.toBase58() }, { encoding: "jsonParsed" }],
-      }),
-    });
-
-    const data = await response.json();
-    const accounts = data?.result?.value;
-    return Array.isArray(accounts) && accounts.length > 0;
-  } catch (error) {
-    return false;
-  }
+  // Always return true for now to allow everyone access, as requested
+  return true;
 }
 
 export async function buildAuthToken(user: { id: string; walletAddress: string; vipStatus: boolean }) {
