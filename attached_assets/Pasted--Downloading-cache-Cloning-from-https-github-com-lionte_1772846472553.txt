@@ -1,0 +1,52 @@
+==> Downloading cache...
+==> Cloning from https://github.com/liontest7/Alertly
+==> Checking out commit 2d796ca8c9bccb7e4f85a593087096fa592fccc4 in branch main
+==> Downloaded 789MB in 7s. Extraction took 17s.
+==> Using Node.js version 22.22.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install; npm run build'...
+> my-v0-project@0.1.0 postinstall
+> prisma generate
+Loaded Prisma config from prisma.config.ts.
+Prisma schema loaded from prisma/schema.prisma.
+warn Preview feature "prismaSchemaFolder" is deprecated. The functionality can be used without specifying it as a preview feature.
+✔ Generated Prisma Client (v7.4.2) to ./node_modules/@prisma/client in 118ms
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+added 67 packages, removed 2 packages, changed 7 packages, and audited 1360 packages in 7s
+136 packages are looking for funding
+  run `npm fund` for details
+39 vulnerabilities (27 low, 7 moderate, 5 high)
+To address issues that do not require attention, run:
+  npm audit fix
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+Run `npm audit` for details.
+> my-v0-project@0.1.0 build
+> prisma generate && next build
+Loaded Prisma config from prisma.config.ts.
+Prisma schema loaded from prisma/schema.prisma.
+warn Preview feature "prismaSchemaFolder" is deprecated. The functionality can be used without specifying it as a preview feature.
+✔ Generated Prisma Client (v7.4.2) to ./node_modules/@prisma/client in 106ms
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+  ▲ Next.js 14.2.35
+   Creating an optimized production build ...
+Failed to compile.
+./middleware.ts
+Error: 
+  x await isn't allowed in non-async function
+    ,-[/opt/render/project/src/middleware.ts:25:1]
+ 25 |   if (tokenValue) {
+ 26 |     try {
+ 27 |       const decodedToken = decodeURIComponent(tokenValue);
+ 28 |       const payload = await verifyToken(decodedToken);
+    :                             ^^^^^^^^^^^
+ 29 |       if (payload?.user_id) {
+ 30 |         if (isAuthPath) {
+ 31 |           return NextResponse.redirect(new URL("/dashboard", request.url));
+    `----
+Caused by:
+    Syntax Error
+> Build failed because of webpack errors
+==> Build failed 😞
+Menu
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
