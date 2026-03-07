@@ -10,20 +10,33 @@ export function getEnv(name: string, fallback?: string) {
   return fallback;
 }
 
+// This will run during server startup in Next.js
+if (typeof window === "undefined") {
+  const required = ["DATABASE_URL", "SOLANA_RPC_URL", "AUTH_SECRET", "ENCRYPTION_KEY", "TELEGRAM_BOT_TOKEN", "INTERNAL_API_KEY"];
+  for (const name of required) {
+    const val = process.env[name];
+    if (!val || val.trim().length === 0 || val.startsWith("YOUR_") || val === "placeholder") {
+      const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
+      console.error(errorMsg);
+      // We throw to prevent the server from actually being "ready" in a broken state
+      if (process.env.NODE_ENV === "production") {
+         throw new Error(`Missing Secret: ${name}`);
+      }
+    }
+  }
+}
+
 export function requireEnv(name: string, options?: { allowInDev?: boolean; devFallback?: string }) {
   const value = process.env[name];
-  if (value && value.trim().length > 0) return value;
+  // Check if it's a placeholder or empty
+  if (value && value.trim().length > 0 && !value.startsWith("YOUR_") && value !== "placeholder") return value;
 
-  // Replit-provided secrets or Render environment variables
-  const requiredVars = ["DATABASE_URL", "SOLANA_RPC_URL", "AUTH_SECRET", "ENCRYPTION_KEY"];
+  const requiredVars = ["DATABASE_URL", "SOLANA_RPC_URL", "AUTH_SECRET", "ENCRYPTION_KEY", "TELEGRAM_BOT_TOKEN", "INTERNAL_API_KEY"];
   if (requiredVars.includes(name)) {
-    const val = process.env[name];
-    if (val && val.trim().length > 0) return val;
-    
-    // Always throw for critical vars in Replit or Prod
-    const errorMsg = `CRITICAL ERROR: Missing required environment variable: ${name}. The application cannot function without this. Please add it to your Replit Secrets.`;
+    const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
     console.error(errorMsg);
-    throw new Error(errorMsg);
+    // In Next.js dev mode, this will show a big error overlay
+    throw new Error(`Missing Secret: ${name}`);
   }
 
   const isProd = process.env.NODE_ENV === "production" || process.env.RENDER || process.env.REPLIT_ENVIRONMENT === "production" || (typeof process.env.REPL_ID === 'string' && process.env.REPL_ID.length > 0);
