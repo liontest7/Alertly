@@ -26,20 +26,8 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleLaunchTerminal = async () => {
-    console.log("Hero: Terminal clicked", { hasUser: !!user, connected });
-    if (user) {
-      router.push("/dashboard");
-      return;
-    }
-
-    if (!connected) {
-      console.log("Hero: Not connected, showing modal");
-      setVisible(true);
-      return;
-    }
-
-    console.log("Hero: Connected, triggering login");
-    await handleLogin();
+    console.log("Hero: Terminal clicked (public access)");
+    router.push("/dashboard");
   };
 
   const handleLogin = async () => {

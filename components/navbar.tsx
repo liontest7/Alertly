@@ -82,32 +82,9 @@ export function Navbar() {
     console.log("Terminal clicked: Current state", { hasUser: !!user, connected });
 
     // If we have a user, go to dashboard
-    if (user) {
-      console.log("User found, navigating to dashboard");
-      router.push("/dashboard");
-      return;
-    }
-    
-    // If not connected, show modal
-    if (!connected) {
-      toast({
-        title: "Connection Required",
-        description: "Please connect your wallet to access the terminal.",
-        variant: "destructive",
-        duration: 5000,
-      });
-      setVisible(true);
-      return;
-    }
-
-    // If connected but no user, we need to sign.
-    console.log("Terminal clicked: Connected but no user. Triggering session refresh and informing user.");
-    refreshSession();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    toast({
-      title: "Signature Required",
-      description: "Please click 'GET ALERT NOW' to sign into your account.",
-    });
+    console.log("Terminal clicked: Navigating to dashboard (public access)");
+    router.push("/dashboard");
+    return;
   };
 
   return (

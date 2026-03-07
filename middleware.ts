@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth";
 
-const PROTECTED_PATHS = ["/dashboard", "/profile", "/settings", "/telegram-link"];
+const PROTECTED_PATHS = ["/profile", "/settings", "/telegram-link"];
 const AUTH_PATHS = ["/login", "/connect-wallet"];
 
 export async function middleware(request: NextRequest) {
