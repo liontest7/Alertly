@@ -39,10 +39,8 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
       });
       setVisible(true);
     } else {
-      // Small delay to ensure state is synchronized
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 100);
+      // Use router for client-side navigation
+      router.push("/dashboard");
     }
   };
 
