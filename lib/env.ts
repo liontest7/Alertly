@@ -14,7 +14,7 @@ export function requireEnv(name: string, options?: { allowInDev?: boolean; devFa
   const value = process.env[name];
   if (value && value.trim().length > 0) return value;
 
-  const isProd = process.env.NODE_ENV === "production" || process.env.RENDER || process.env.REPLIT_ENVIRONMENT === "production" || !!process.env.REPL_ID;
+  const isProd = process.env.NODE_ENV === "production" || process.env.RENDER || process.env.REPLIT_ENVIRONMENT === "production" || (typeof process.env.REPL_ID === 'string' && process.env.REPL_ID.length > 0);
   
   // Replit-provided secrets or Render environment variables
   const requiredVars = ["DATABASE_URL", "SOLANA_RPC_URL", "AUTH_SECRET", "ENCRYPTION_KEY"];

@@ -13,6 +13,37 @@ export function WalletAuth() {
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  // Check if we are already authenticated by checking the session directly
+  const checkSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/session", { 
+        credentials: "include",
+        headers: { 
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        }
+      });
+      
+      if (!res.ok) return false;
+      
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          if (data?.authenticated) {
+            return true;
+          }
+        } catch (e) {
+          console.error("Session parse error", e);
+        }
+      }
+    } catch (e) {
+      console.error("Session fetch error", e);
+    }
+    return false;
+  }, []);
+
   // Prevent multiple auth attempts
   const authAttemptedRef = useRef(false);
 
@@ -175,49 +206,20 @@ export function WalletAuth() {
       // If we're already authenticating, don't start another check
       if (isAuthenticating) return;
 
-      // Check if we are already authenticated by checking the session directly
-      const checkSession = async () => {
-        try {
-          const res = await fetch("/api/auth/session", { 
-            credentials: "include",
-            headers: { 
-              "Accept": "application/json",
-              "Cache-Control": "no-cache"
-            }
-          });
-          
-          if (!res.ok) return false;
-          
-          const contentType = res.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            const text = await res.text();
-            try {
-              const data = JSON.parse(text);
-              if (data?.authenticated) {
-                // Mark as attempted BEFORE refreshing
-                authAttemptedRef.current = true;
-                lastWalletAddressRef.current = currentAddress || null;
-                console.log("Session valid, refreshing...");
-                await refreshSession();
-                return true;
-              }
-            } catch (e) {
-              console.error("Session parse error", e);
-            }
-          }
-        } catch (e) {
-          console.error("Session fetch error", e);
-        }
-        return false;
-      };
-
       const attemptAuth = async () => {
         if (user) return; // double check
         const isAuthenticated = await checkSession();
-        if (!isAuthenticated) {
-          console.log("Not authenticated, calling authenticate()");
-          authenticate();
+        if (isAuthenticated) {
+          // Mark as attempted BEFORE refreshing
+          authAttemptedRef.current = true;
+          const currentAddress = publicKey?.toBase58();
+          lastWalletAddressRef.current = currentAddress || null;
+          console.log("Session valid, refreshing...");
+          await refreshSession();
+          return;
         }
+        console.log("Not authenticated, calling authenticate()");
+        authenticate();
       };
 
       const timer = setTimeout(attemptAuth, 800);
