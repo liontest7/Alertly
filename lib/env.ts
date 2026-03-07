@@ -1,4 +1,5 @@
 const warned = new Set<string>();
+const globalWarned = typeof globalThis !== "undefined" ? (globalThis as any)._envWarned || ((globalThis as any)._envWarned = new Set<string>()) : new Set<string>();
 
 function isBuildPhase() {
   return process.env.NEXT_PHASE === "phase-production-build";
@@ -16,8 +17,12 @@ if (typeof window === "undefined") {
   for (const name of required) {
     const val = process.env[name];
     if (!val || val.trim().length === 0 || val.startsWith("YOUR_") || val === "placeholder") {
-      const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
-      console.error(errorMsg);
+      if (!globalWarned.has(name)) {
+        const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
+        console.error(errorMsg);
+        globalWarned.add(name);
+      }
+      
       // We exit to prevent the server from actually being "ready" in a broken state
       if (typeof window === "undefined" && typeof process !== "undefined" && process.env?.NEXT_RUNTIME !== "edge") {
         if (typeof process.exit === "function") {
@@ -36,8 +41,12 @@ export function requireEnv(name: string, options?: { allowInDev?: boolean; devFa
 
   const requiredVars = ["DATABASE_URL", "SOLANA_RPC_URL", "AUTH_SECRET", "ENCRYPTION_KEY", "TELEGRAM_BOT_TOKEN", "INTERNAL_API_KEY"];
   if (requiredVars.includes(name)) {
-    const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
-    console.error(errorMsg);
+    if (!globalWarned.has(name)) {
+      const errorMsg = `\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nCRITICAL ERROR: Missing required environment variable: ${name}\n\nThe application CANNOT start without this secret.\nPlease go to the "Secrets" tab (lock icon) and add "${name}".\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n`;
+      console.error(errorMsg);
+      globalWarned.add(name);
+    }
+
     // In Next.js dev mode, this will show a big error overlay
     if (typeof window === "undefined" && typeof process !== "undefined" && process.env?.NEXT_RUNTIME !== "edge") {
       if (typeof process.exit === "function") {
