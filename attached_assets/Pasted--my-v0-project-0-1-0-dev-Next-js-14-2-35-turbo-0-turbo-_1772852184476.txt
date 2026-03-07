@@ -1,0 +1,143 @@
+
+> my-v0-project@0.1.0 dev
+  ▲ Next.js 14.2.35 (turbo).0 --turbo
+  - Local:        http://localhost:5000
+  - Network:      http://0.0.0.0:5000
+
+ ✓ Starting...
+ ✓ Compiled in 1392ms
+ ✓ Ready in 5.5s
+ ⚠ Webpack is configured while Turbopack is not, which may cause problems.
+ ⚠ See instructions if you need to configure Turbopack:
+  https://nextjs.org/docs/app/api-reference/next-config-js/turbo
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: DATABASE_URL
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "DATABASE_URL".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: SOLANA_RPC_URL
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "SOLANA_RPC_URL".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: AUTH_SECRET
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "AUTH_SECRET".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: ENCRYPTION_KEY
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "ENCRYPTION_KEY".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: TELEGRAM_BOT_TOKEN
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "TELEGRAM_BOT_TOKEN".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: INTERNAL_API_KEY
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "INTERNAL_API_KEY".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+ ○ Compiling / ...
+ ✓ Compiled / in 6.3s
+ GET / 200 in 7056ms
+ ⚠ Blocked cross-origin request from 16d68c7a-86f3-4bed-800d-c677f2822dca-00-2x09lgvnwmgkp.sisko.replit.dev to /_next/* resource. To allow this, configure "allowedDevOrigins" in next.config
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 743ms
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: DATABASE_URL
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "DATABASE_URL".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: SOLANA_RPC_URL
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "SOLANA_RPC_URL".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: AUTH_SECRET
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "AUTH_SECRET".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: ENCRYPTION_KEY
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "ENCRYPTION_KEY".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: TELEGRAM_BOT_TOKEN
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "TELEGRAM_BOT_TOKEN".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+CRITICAL ERROR: Missing required environment variable: INTERNAL_API_KEY
+
+The application CANNOT start without this secret.
+Please go to the "Secrets" tab (lock icon) and add "INTERNAL_API_KEY".
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+ GET /api/auth/session 200 in 938ms
+ GET / 200 in 103ms
+ GET /api/auth/session 200 in 62ms
