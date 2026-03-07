@@ -143,31 +143,6 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
               </div>
             </div>
           )})}
-          <div className="flex flex-wrap gap-2 px-6 py-6 bg-zinc-950/50">
-            <FilterChip label="All Activity" active />
-            <FilterChip label="Dex Boosts" />
-            <FilterChip label="Volume" />
-            <FilterChip label="Whales" />
-          </div>
-        </div>
-              <div className="text-right">
-                 <span className={`text-sm font-bold block ${token.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                   {token.change}
-                 </span>
-              </div>
-              
-              <div className="opacity-0 group-hover:opacity-100 transition-all ml-4">
-                <Button 
-                  size="lg"
-                  onClick={() => handleQuickBuy(token)}
-                  disabled={executing === name}
-                  className="bg-[#5100fd] border border-[#5100fd]/50 hover:bg-[#6610ff] h-10 px-6 text-xs font-bold rounded-xl text-white"
-                >
-                  {executing === name ? <Loader2 className="w-3 h-3 animate-spin" /> : "QUICK BUY"}
-                </Button>
-              </div>
-            </div>
-          )})}
           <div className="flex flex-wrap gap-2 px-6 pb-6">
             <FilterChip label="All" active />
             <FilterChip label="Boost" />
