@@ -107,6 +107,8 @@ export function Navbar() {
         title: "Authentication Required",
         description: "Please sign the message in your wallet to access the terminal.",
       });
+      // Try to trigger re-auth
+      refreshSession().catch(console.error);
       return;
     }
 

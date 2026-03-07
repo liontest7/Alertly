@@ -55,7 +55,9 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      setSettings(data);
+      if (res.ok) {
+        setSettings(data);
+      }
     } catch (err) {
       console.error("Failed to fetch settings");
     }
@@ -87,7 +89,7 @@ export default function DashboardPage() {
         const data = await res.json()
         setAlerts(Array.isArray(data) ? data : [])
       } catch (err) {
-        // Silently retry or handle
+        console.error("Alerts fetch error:", err);
       } finally {
         setLoading(false)
       }
