@@ -8,8 +8,18 @@ export const prisma =
   new PrismaClient({
     log: ["error", "warn"],
     ...(process.env.DATABASE_URL ? {} : {
-      datasourceUrl: process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/postgres"
+      datasourceUrl: process.env.DATABASE_URL || "postgresql://postgres:password@helium/heliumdb?sslmode=disable"
     })
   });
+
+// Test connection on startup
+if (process.env.NODE_ENV !== "production") {
+  prisma.$connect()
+    .then(() => console.log("Successfully connected to Database"))
+    .catch((err) => {
+      console.error("CRITICAL: Failed to connect to Database. Please check your DATABASE_URL secret.");
+      console.error(err);
+    });
+}
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

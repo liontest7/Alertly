@@ -21,7 +21,9 @@ export function requireEnv(name: string, options?: { allowInDev?: boolean; devFa
     if (val && val.trim().length > 0) return val;
     
     // Always throw for critical vars in Replit or Prod
-    throw new Error(`Missing required environment variable: ${name}`);
+    const errorMsg = `CRITICAL ERROR: Missing required environment variable: ${name}. The application cannot function without this. Please add it to your Replit Secrets.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
 
   const isProd = process.env.NODE_ENV === "production" || process.env.RENDER || process.env.REPLIT_ENVIRONMENT === "production" || (typeof process.env.REPL_ID === 'string' && process.env.REPL_ID.length > 0);
