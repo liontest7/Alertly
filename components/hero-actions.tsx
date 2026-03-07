@@ -2,11 +2,15 @@
 
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/config";
-import { CircleArrowRight } from "lucide-react";
+import { CircleArrowRight, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "./ui/use-toast";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useState } from "react";
+import { useAuthSession } from "@/components/providers";
+import bs58 from "bs58";
+import Link from "next/link";
 
 interface HeroActionsProps {
   loading: boolean;
@@ -17,30 +21,53 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { setVisible } = useWalletModal();
+  const { connected, publicKey, signMessage } = useWallet();
+  const { refreshSession } = useAuthSession();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const { connected } = useWallet();
-
-  const handleGetAlerts = () => {
-    if (loading) return;
-    
-    if (!user) {
-      if (connected) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign the message in your wallet to access the terminal.",
-        });
-        return;
-      }
-      toast({
-        title: "Connection Required",
-        description: "Please connect your wallet to access the terminal.",
-        variant: "destructive",
-        duration: 5000,
+  const handleLogin = async () => {
+    if (!connected || !publicKey || !signMessage) return;
+    setIsAuthenticating(true);
+    try {
+      const nonceRes = await fetch("/api/auth/nonce", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: window.location.origin }),
       });
-      setVisible(true);
-    } else {
-      // Use router for client-side navigation
-      router.push("/dashboard");
+      if (!nonceRes.ok) throw new Error("Failed to get nonce");
+      const { message, nonceToken } = await nonceRes.json();
+      
+      const encodedMessage = new TextEncoder().encode(message);
+      const signature = await signMessage(encodedMessage);
+      const signatureBase58 = bs58.encode(signature);
+
+      const loginRes = await fetch("/api/auth/wallet-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: publicKey.toBase58(),
+          signature: signatureBase58,
+          message,
+          nonce_token: nonceToken,
+        }),
+        credentials: "include",
+      });
+
+      if (loginRes.ok) {
+        await refreshSession(true);
+        router.push("/dashboard");
+      } else {
+        const errorData = await loginRes.json();
+        throw new Error(errorData.message || "Login failed");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Authentication Error",
+        description: error.message || "Login failed",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -50,14 +77,30 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
 
   return (
     <div className="flex flex-wrap gap-4 animate-fade-in-up animation-delay-400">
-      <Button
-        size="lg"
-        className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
-        onClick={handleGetAlerts}
-      >
-        Get Alerts Now
-        <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
-      </Button>
+      {user ? (
+        <Button
+          size="lg"
+          className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
+          onClick={() => router.push("/dashboard")}
+        >
+          Go to Dashboard
+          <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
+        </Button>
+      ) : connected ? (
+        <Button
+          size="lg"
+          className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
+          onClick={handleLogin}
+          disabled={isAuthenticating}
+        >
+          {isAuthenticating ? "Authenticating..." : "Sign to Login"}
+          <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
+        </Button>
+      ) : (
+        <div className="[&_.wallet-adapter-button]:!bg-[#5100fd] [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button]:!rounded-full [&_.wallet-adapter-button]:!px-8 [&_.wallet-adapter-button]:!h-[60px] [&_.wallet-adapter-button]:!text-base [&_.wallet-adapter-button]:!font-bold [&_.wallet-adapter-button]:hover:!bg-[#6610ff] [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:hover:!scale-[1.02]">
+          <WalletMultiButton>Connect Wallet</WalletMultiButton>
+        </div>
+      )}
       <Button
         variant="outline"
         size="lg"

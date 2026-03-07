@@ -72,24 +72,6 @@ export function Navbar() {
     }
   }, [connected, publicKey, user, loading, refreshSession, isClient]);
 
-  const handleConnectWallet = () => {
-    if (connected) {
-      // If already connected but not logged in, we might want to show disconnect or just re-auth
-      // But typically WalletMultiButton handles its own menu
-      return;
-    }
-    setVisible(true);
-  };
-
-  const navigateHome = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (pathname === "/") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    router.push("/");
-  };
-
   const handleLaunchTerminal = () => {
     if (loading) {
       console.log("Terminal clicked: Session is loading...");
@@ -118,10 +100,11 @@ export function Navbar() {
             console.log("Session found, redirecting...");
             router.push("/dashboard");
           } else {
-            console.log("No session, triggering auth toast");
+            console.log("No session, scrolling to top and showing auth prompt");
+            window.scrollTo({ top: 0, behavior: "smooth" });
             toast({
               title: "Authentication Required",
-              description: "Please sign the message in your wallet to access the terminal.",
+              description: "Please click 'Sign to Login' on the main button to access the terminal.",
             });
             // We can also trigger refreshSession here to be proactive
             refreshSession();
@@ -159,7 +142,7 @@ export function Navbar() {
         {/* Logo */}
         <Link
           href="/"
-          onClick={navigateHome}
+          onClick={(e) => navigateHome(e, pathname, router)}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer shrink-0 group relative z-[60]"
         >
           <div
@@ -238,3 +221,13 @@ export function Navbar() {
     </nav>
   );
 }
+
+const navigateHome = (e: React.MouseEvent, pathname: string, router: any) => {
+  e.preventDefault();
+  if (pathname === "/") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  router.push("/");
+};
+

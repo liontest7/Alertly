@@ -222,8 +222,9 @@ export function WalletAuth() {
            return;
         }
         
-        console.log("WalletAuth: Triggering signature request...");
-        authenticate();
+        // Removed automatic trigger of authenticate() to prevent loop
+        // console.log("WalletAuth: Triggering signature request...");
+        // authenticate();
       };
 
       const timer = setTimeout(attemptAuth, 1000);
