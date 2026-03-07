@@ -21,7 +21,7 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { setVisible } = useWalletModal();
-  const { connected, publicKey, signMessage, setVisible } = useWallet();
+  const { connected, publicKey, signMessage } = useWallet();
   const { refreshSession } = useAuthSession();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
