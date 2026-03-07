@@ -146,7 +146,7 @@ async function verifyNonceToken(token: string): Promise<NonceTokenPayload | null
 
 export async function createAuthNonce(domain: string) {
   const nonce = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
-  const message = `Sign this message to authenticate with Alertly.\n\nDomain: ${domain}\nNonce: ${nonce}\n\nThis request will not trigger a blockchain transaction or cost any gas fees.`;
+  const message = `Sign this message to authenticate with Alertly.\n\nDomain: ${domain}\nNonce: ${nonce}\n\nBy signing, you also agree to allow access to the terminal while you are logged in. This request will not trigger a blockchain transaction or cost any gas fees.`;
   const payload: NonceTokenPayload = {
     nonce,
     domain,

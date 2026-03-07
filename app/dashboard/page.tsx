@@ -36,7 +36,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!sessionLoading && !user) {
-      router.push("/");
+      // Small delay to allow session to refresh if it was just created
+      const timer = setTimeout(() => {
+        if (!user) router.push("/");
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [user, sessionLoading, router]);
 
