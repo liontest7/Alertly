@@ -97,7 +97,7 @@ export function Navbar() {
     
     // If we have a user, go to dashboard
     if (user) {
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
       return;
     }
     

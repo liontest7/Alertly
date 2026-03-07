@@ -46,6 +46,7 @@ export function WalletAuth() {
 
   // Prevent multiple auth attempts
   const authAttemptedRef = useRef(false);
+  const isRefreshingRef = useRef(false);
 
   const lastWalletAddressRef = useRef<string | null>(null);
 
@@ -65,10 +66,16 @@ export function WalletAuth() {
     }
 
     // Check session one last time before starting auth
+    if (isRefreshingRef.current) return;
     const alreadyAuth = await checkSession();
     if (alreadyAuth) {
       console.log("CheckSession returned true, refreshing...");
-      await refreshSession();
+      isRefreshingRef.current = true;
+      try {
+        await refreshSession();
+      } finally {
+        isRefreshingRef.current = false;
+      }
       return;
     }
 
