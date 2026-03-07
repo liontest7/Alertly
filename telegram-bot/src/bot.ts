@@ -25,20 +25,24 @@ const mainMenu = {
       ],
       [
         { text: "📊 Slippage", callback_data: "set_slippage" },
-        { text: "🚨 Price Alerts", callback_data: "set_alerts" },
+        { text: "🚀 Max Buy/Token", callback_data: "set_max_buy" },
       ],
-      [
-        { text: "🛡️ Auto-Buy Protection", callback_data: "toggle_protection" },
-        { text: "🚀 Signal Preferences", callback_data: "signals" },
-      ],
-      [{ text: "-- Exit Strategies --", callback_data: "none" }],
       [
         { text: "📈 Take Profit", callback_data: "set_tp" },
         { text: "🛑 Stop Loss", callback_data: "set_sl" },
       ],
       [
-        { text: "🎯 Trailing Stop", callback_data: "set_ts" },
-        { text: "⤴️ Trailing TP", callback_data: "set_ttp" },
+        { text: "🎯 Trailing Stop", callback_data: "toggle_ts" },
+        { text: "⏱️ Auto-Sell (m)", callback_data: "set_autosell" },
+      ],
+      [{ text: "-- Alerts --", callback_data: "none" }],
+      [
+        { text: "🔊 Vol Spike", callback_data: "toggle_vol" },
+        { text: "🐋 Whale", callback_data: "toggle_whale" },
+      ],
+      [
+        { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
+        { text: "💎 Dex List", callback_data: "toggle_list" },
       ],
     ],
   },
@@ -87,9 +91,33 @@ async function confirmLink(tokenValue: string, telegramId: string) {
 
 const getSettingsText = async (telegramId: string) => {
   try {
-    const settings = await fetchBotSettings(telegramId);
+    const s = await fetchBotSettings(telegramId);
 
-    return `⚙️ *Alertly Control Center*\n\n*Trading Configuration*\n💰 Buy Amount: ${settings.buyAmount} SOL\n📊 Slippage: ${settings.slippage}%\n🔄 Auto-Trade: ${settings.autoTrade ? "✅ Enabled" : "❌ Disabled"}\n\n*Exit Strategy*\n📈 Take Profit: +${settings.takeProfit}%\n🛑 Stop Loss: ${settings.stopLoss}%\n\n*Discovery Filters*\n💹 Market Cap: $${(settings.minMarketCap / 1000).toFixed(0)}K - $${(settings.maxMarketCap / 1000000).toFixed(0)}M\n👥 Min Holders: ${settings.minHolders}\n\nStay sharp. Stay early. Stay Alertly.`;
+    return `⚙️ *Alertly Control Center*
+
+*Trading Configuration*
+💰 Buy Amount: ${s.buyAmount} SOL
+🚀 Max Buy/Token: ${s.maxBuyPerToken} SOL
+📊 Slippage: ${s.slippage}%
+🔄 Auto-Trade: ${s.autoTrade ? "✅ ON" : "❌ OFF"}
+
+*Exit Strategy*
+📈 Take Profit: +${s.takeProfit}%
+🛑 Stop Loss: -${s.stopLoss}%
+🎯 Trailing Stop: ${s.trailingStop ? "✅ ON" : "❌ OFF"}
+⏱️ Auto-Sell: ${s.autoSellMinutes > 0 ? `${s.autoSellMinutes} min` : "OFF"}
+
+*Active Alerts*
+🔊 Volume Spike: ${s.volumeSpikeEnabled ? "✅" : "❌"}
+🐋 Whale Wallet: ${s.whaleAlertEnabled ? "✅" : "❌"}
+⚡ Dex Boost: ${s.dexBoostEnabled ? "✅" : "❌"}
+💎 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
+
+*Filters*
+💹 MC: $${(s.minMarketCap / 1000).toFixed(0)}K - $${(s.maxMarketCap / 1000000).toFixed(0)}M
+💧 Min Liq: $${(s.minLiquidity / 1000).toFixed(0)}K
+
+Stay sharp. Stay early. Stay Alertly.`;
   } catch {
     return "❌ Telegram account is not linked yet.\n\nIn the web app, open Telegram Link and run the generated command:\n`/link <token>`";
   }
@@ -135,12 +163,68 @@ bot.on("callback_query", async (query) => {
   const chatId = query.message?.chat.id;
   if (!chatId) return;
   const telegramId = String(chatId);
+  const data = query.data;
 
-  if (query.data === "toggle_auto") {
-    try {
-      const current = await fetchBotSettings(telegramId);
-      await updateBotSettings(telegramId, { autoTrade: !current.autoTrade });
+  try {
+    const s = await fetchBotSettings(telegramId);
+    let update: Record<string, any> = {};
+    let answer = "";
 
+    if (data === "toggle_auto") {
+      update = { autoTrade: !s.autoTrade };
+      answer = `Auto-Trade ${!s.autoTrade ? "ON" : "OFF"}`;
+    } else if (data === "toggle_ts") {
+      update = { trailingStop: !s.trailingStop };
+      answer = `Trailing Stop ${!s.trailingStop ? "ON" : "OFF"}`;
+    } else if (data === "toggle_vol") {
+      update = { volumeSpikeEnabled: !s.volumeSpikeEnabled };
+      answer = `Vol Spike ${!s.volumeSpikeEnabled ? "ON" : "OFF"}`;
+    } else if (data === "toggle_whale") {
+      update = { whaleAlertEnabled: !s.whaleAlertEnabled };
+      answer = `Whale Alert ${!s.whaleAlertEnabled ? "ON" : "OFF"}`;
+    } else if (data === "toggle_boost") {
+      update = { dexBoostEnabled: !s.dexBoostEnabled };
+      answer = `Dex Boost ${!s.dexBoostEnabled ? "ON" : "OFF"}`;
+    } else if (data === "toggle_list") {
+      update = { dexListingEnabled: !s.dexListingEnabled };
+      answer = `Dex Listing ${!s.dexListingEnabled ? "ON" : "OFF"}`;
+    } else if (data?.startsWith("set_")) {
+      const field = data.replace("set_", "");
+      const promptMap: Record<string, string> = {
+        buy: "Enter Buy Amount in SOL (e.g., 0.5):",
+        max_buy: "Enter Max Buy Per Token in SOL (e.g., 2.0):",
+        slippage: "Enter Slippage % (e.g., 10):",
+        tp: "Enter Take Profit % (e.g., 50):",
+        sl: "Enter Stop Loss % (e.g., 25):",
+        autosell: "Enter Auto-Sell minutes (0 to disable):",
+      };
+      
+      const prompt = promptMap[field];
+      if (prompt) {
+        const msg = await bot.sendMessage(chatId, prompt, { reply_markup: { force_reply: true } });
+        bot.onReplyToMessage(chatId, msg.message_id, async (reply) => {
+          const val = parseFloat(reply.text || "0");
+          if (!isNaN(val)) {
+            const fieldMap: Record<string, string> = {
+              buy: "buyAmount",
+              max_buy: "maxBuyPerToken",
+              slippage: "slippage",
+              tp: "takeProfit",
+              sl: "stopLoss",
+              autosell: "autoSellMinutes",
+            };
+            await updateBotSettings(telegramId, { [fieldMap[field]]: val });
+            const newText = await getSettingsText(telegramId);
+            bot.sendMessage(chatId, "✅ Updated!\n\n" + newText, { parse_mode: "Markdown", ...mainMenu });
+          }
+        });
+        bot.answerCallbackQuery(query.id);
+        return;
+      }
+    }
+
+    if (Object.keys(update).length > 0) {
+      await updateBotSettings(telegramId, update);
       const newText = await getSettingsText(telegramId);
       bot.editMessageText(newText, {
         chat_id: chatId,
@@ -148,10 +232,11 @@ bot.on("callback_query", async (query) => {
         parse_mode: "Markdown",
         ...mainMenu,
       });
-      bot.answerCallbackQuery(query.id, { text: `Auto-Trade ${!current.autoTrade ? "Enabled" : "Disabled"}` });
-    } catch {
-      bot.answerCallbackQuery(query.id, { text: "❌ Failed to update settings" });
+      bot.answerCallbackQuery(query.id, { text: answer });
     }
+  } catch (e) {
+    console.error("Bot action error:", e);
+    bot.answerCallbackQuery(query.id, { text: "❌ Error updating settings" });
   }
 });
 

@@ -19,12 +19,20 @@ function sanitizeUpdate(input: Record<string, unknown>) {
   const output: Record<string, unknown> = {};
   if (typeof input.autoTrade === "boolean") output.autoTrade = input.autoTrade;
   if (typeof input.buyAmount === "number" && input.buyAmount > 0) output.buyAmount = input.buyAmount;
+  if (typeof input.maxBuyPerToken === "number" && input.maxBuyPerToken > 0) output.maxBuyPerToken = input.maxBuyPerToken;
   if (typeof input.slippage === "number" && input.slippage >= 0 && input.slippage <= 100) output.slippage = input.slippage;
-  if (typeof input.stopLoss === "number" && input.stopLoss <= 0 && input.stopLoss >= -100) output.stopLoss = input.stopLoss;
+  if (typeof input.stopLoss === "number" && input.stopLoss > 0 && input.stopLoss <= 100) output.stopLoss = input.stopLoss;
   if (typeof input.takeProfit === "number" && input.takeProfit > 0 && input.takeProfit <= 1000) output.takeProfit = input.takeProfit;
   if (typeof input.minMarketCap === "number" && input.minMarketCap >= 0) output.minMarketCap = input.minMarketCap;
   if (typeof input.maxMarketCap === "number" && input.maxMarketCap >= 0) output.maxMarketCap = input.maxMarketCap;
   if (typeof input.minHolders === "number" && input.minHolders >= 0) output.minHolders = Math.floor(input.minHolders);
+  if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) output.minLiquidity = input.minLiquidity;
+  if (typeof input.trailingStop === "boolean") output.trailingStop = input.trailingStop;
+  if (typeof input.autoSellMinutes === "number" && input.autoSellMinutes >= 0) output.autoSellMinutes = Math.floor(input.autoSellMinutes);
+  if (typeof input.volumeSpikeEnabled === "boolean") output.volumeSpikeEnabled = input.volumeSpikeEnabled;
+  if (typeof input.whaleAlertEnabled === "boolean") output.whaleAlertEnabled = input.whaleAlertEnabled;
+  if (typeof input.dexBoostEnabled === "boolean") output.dexBoostEnabled = input.dexBoostEnabled;
+  if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
   if (Array.isArray(input.sources)) output.sources = input.sources.filter((v) => typeof v === "string");
   return output;
 }
@@ -49,14 +57,22 @@ export async function GET(req: Request) {
   const settings = await prisma.userSetting.findUnique({ where: { userId } });
   return NextResponse.json(
     settings ?? {
-      autoTrade: true,
+      autoTrade: false,
       buyAmount: 0.5,
-      slippage: 15,
-      stopLoss: -30,
-      takeProfit: 100,
-      minMarketCap: 100000,
-      maxMarketCap: 50000000,
+      maxBuyPerToken: 2.0,
+      slippage: 10,
+      stopLoss: 25,
+      takeProfit: 50,
+      minMarketCap: 10000,
+      maxMarketCap: 10000000,
       minHolders: 100,
+      minLiquidity: 50000,
+      trailingStop: false,
+      autoSellMinutes: 0,
+      volumeSpikeEnabled: true,
+      whaleAlertEnabled: true,
+      dexBoostEnabled: true,
+      dexListingEnabled: true,
       sources: ["Raydium", "Jupiter"],
     },
   );
