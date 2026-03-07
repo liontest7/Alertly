@@ -285,11 +285,13 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
   const payload = await verifyToken(token);
   if (!payload) return null;
 
-  return {
-    user: {
-      id: payload.user_id,
-      walletAddress: payload.wallet_address,
-      vipStatus: payload.vip_status,
-    },
+  const user = {
+    id: payload.user_id,
+    user_id: payload.user_id,
+    walletAddress: payload.wallet_address,
+    wallet_address: payload.wallet_address,
+    vipStatus: payload.vip_status,
+    vip_status: payload.vip_status,
   };
+  return { user };
 }

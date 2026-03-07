@@ -64,13 +64,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
           setUser(null);
           return;
         }
-        // If we get an error, wait and don't clear user yet to avoid loops
         return;
       }
 
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        setUser(null);
         return;
       }
 
@@ -86,14 +84,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setUser(null);
       }
     } catch (error) {
-      console.error("Session refresh failed:", error);
-      // Only clear user if we are sure it's an auth error, or if we want to force re-auth
-      // For network errors, we might want to keep the current user state to avoid flickering
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        // Network error, keep user
-      } else {
-        setUser(null);
-      }
+      // Network error
     } finally {
       setLoading(false);
       refreshingRef.current = false;

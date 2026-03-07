@@ -318,6 +318,7 @@ function MiniSetting({ label, value, color = "text-white" }: { label: string, va
 
 function WalletMiniCard() {
   const { user } = useAuthSession();
+  const walletAddress = user?.wallet_address || user?.walletAddress || "Connect to see details";
   return (
     <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem]">
       <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -326,7 +327,7 @@ function WalletMiniCard() {
       <div className="space-y-4">
         <div>
           <p className="text-2xl font-bold">Trading Wallet</p>
-          <p className="text-xs text-zinc-600 truncate">{user?.wallet_address || "Connect to see details"}</p>
+          <p className="text-xs text-zinc-600 truncate">{walletAddress}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 rounded-xl border-zinc-800 text-[10px] font-bold h-10">DEPOSIT</Button>

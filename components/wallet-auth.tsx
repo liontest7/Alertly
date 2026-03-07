@@ -180,13 +180,18 @@ export function WalletAuth() {
           
           const contentType = res.headers.get("content-type");
           if (contentType && contentType.includes("application/json")) {
-            const data = await res.json();
-            if (data?.authenticated) {
-              // Mark as attempted so we don't loop BEFORE refreshing
-              authAttemptedRef.current = true;
-              lastWalletAddressRef.current = currentAddress || null;
-              await refreshSession();
-              return true;
+            const text = await res.text();
+            try {
+              const data = JSON.parse(text);
+              if (data?.authenticated) {
+                // Mark as attempted BEFORE refreshing
+                authAttemptedRef.current = true;
+                lastWalletAddressRef.current = currentAddress || null;
+                await refreshSession();
+                return true;
+              }
+            } catch (e) {
+              // Not JSON
             }
           }
         } catch (e) {
@@ -199,19 +204,16 @@ export function WalletAuth() {
         const isAuthenticated = await checkSession();
         if (!isAuthenticated) {
           authenticate();
-        } else {
-          // Double check if we need to refresh the session state in the provider
-          refreshSession();
         }
       };
 
-      const timer = setTimeout(attemptAuth, 1500);
+      const timer = setTimeout(attemptAuth, 500);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
       lastWalletAddressRef.current = null;
     }
-  }, [connected, user, isAuthenticating, loading, authenticate, publicKey, toast]);
+  }, [connected, user, isAuthenticating, loading, authenticate, publicKey, refreshSession, toast]);
 
   return null;
 }

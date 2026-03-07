@@ -20,7 +20,14 @@ export async function GET(req: Request) {
 
     return new NextResponse(JSON.stringify({
       authenticated: true,
-      user: session.user,
+      user: {
+        id: session.user.id,
+        user_id: session.user.id,
+        walletAddress: session.user.walletAddress,
+        wallet_address: session.user.walletAddress,
+        vipStatus: session.user.vipStatus,
+        vip_status: session.user.vipStatus,
+      },
     }), {
       status: 200,
       headers: {

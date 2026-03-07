@@ -57,8 +57,11 @@ export async function POST(req: Request) {
       authenticated: true,
       user: {
         id: user.id,
+        user_id: user.id,
         walletAddress: user.walletAddress,
+        wallet_address: user.walletAddress,
         vipStatus,
+        vip_status: vipStatus,
       },
     };
 
