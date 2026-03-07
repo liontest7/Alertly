@@ -36,6 +36,7 @@ export function Navbar() {
       
       const connectWallet = async () => {
         try {
+          console.log("Attempting to connect wallet:", wallet.adapter.name);
           await wallet.adapter.connect();
         } catch (err: any) {
           console.error("Wallet connection failed:", err);
@@ -61,15 +62,12 @@ export function Navbar() {
   // Auto-login when wallet is connected but user is not authenticated
   useEffect(() => {
     if (isClient && connected && publicKey && !user && !loading) {
-      // Small delay to let providers initialize
+      console.log("Navbar: Wallet connected, ensuring session refresh...");
       const timer = setTimeout(() => {
-        if (!user && !loading) {
-          console.log("Wallet connected, refreshing session...");
-          refreshSession().catch((err) => {
-            console.error("Auto-login failed:", err);
-          });
-        }
-      }, 1000);
+        refreshSession().catch((err) => {
+          console.error("Auto-login failed:", err);
+        });
+      }, 1000); 
       return () => clearTimeout(timer);
     }
   }, [connected, publicKey, user, loading, refreshSession, isClient]);
@@ -93,21 +91,45 @@ export function Navbar() {
   };
 
   const handleLaunchTerminal = () => {
-    if (loading) return;
+    if (loading) {
+      console.log("Terminal clicked: Session is loading...");
+      return;
+    }
     
+    console.log("Terminal clicked: Current state", { hasUser: !!user, connected });
+
     // If we have a user, go to dashboard
     if (user) {
+      console.log("User found, navigating to dashboard");
       router.push("/dashboard");
       return;
     }
     
     // If not logged in but connected, user needs to sign
     if (connected) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign the message in your wallet to access the terminal.",
-      });
-      // The WalletAuth component will handle the signature request
+      console.log("Terminal clicked: Connected but no user. Checking session...");
+      const checkSessionAction = async () => {
+        try {
+          const res = await fetch("/api/auth/session", { cache: 'no-store' });
+          const data = await res.json();
+          if (data.authenticated) {
+            console.log("Session found, redirecting...");
+            router.push("/dashboard");
+          } else {
+            console.log("No session, triggering manual auth");
+            // Find and click the wallet-auth signature button or similar
+            // For now, we rely on the WalletAuth component to detect !user && connected
+            // But we'll add a toast to inform the user
+            toast({
+              title: "Authentication Required",
+              description: "Please sign the message in your wallet to access the terminal.",
+            });
+          }
+        } catch (e) {
+          console.error("Session check error", e);
+        }
+      };
+      checkSessionAction();
       return;
     }
 

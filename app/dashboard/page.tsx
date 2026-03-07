@@ -35,7 +35,9 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("Dashboard auth check:", { hasUser: !!user, sessionLoading });
     if (!sessionLoading && !user) {
+      console.log("No user found, redirecting to home");
       router.replace("/");
     }
   }, [user, sessionLoading, router]);

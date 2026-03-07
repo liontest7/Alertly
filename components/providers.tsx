@@ -50,6 +50,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      console.log("Providers: Fetching session...");
       const res = await fetch("/api/auth/session", {
         credentials: "include",
         cache: "no-store",
@@ -73,14 +74,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json();
+      console.log("Session data received:", data);
 
       if (data?.authenticated && data.user) {
-        setUser({
+        const userData = {
           user_id: String(data.user.id || data.user.user_id),
           wallet_address: String(data.user.walletAddress || data.user.wallet_address),
           vip_status: Boolean(data.user.vipStatus || data.user.vip_status)
-        });
+        };
+        console.log("Setting user state:", userData);
+        setUser(userData);
       } else {
+        console.log("No authenticated user found in session");
         setUser(null);
       }
     } catch (error) {

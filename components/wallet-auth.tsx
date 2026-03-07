@@ -125,7 +125,7 @@ export function WalletAuth() {
         throw e;
       }
 
-      const loginRes = await fetch("/api/auth/wallet-login", {
+        const loginRes = await fetch("/api/auth/wallet-login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -140,20 +140,18 @@ export function WalletAuth() {
         credentials: "include",
       });
 
-      const contentType = loginRes.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-         const text = await loginRes.text();
-         console.error("Login non-JSON:", text.substring(0, 100));
-         throw new Error("Server returned non-JSON response");
-      }
-
-      const loginData = await loginRes.json();
-
       if (!loginRes.ok) {
-        throw new Error(loginData.message || "Login failed");
+        const errorText = await loginRes.text();
+        console.error("Login failed response:", errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message || "Login failed");
+        } catch (e) {
+          throw new Error(`Login failed (Status ${loginRes.status})`);
+        }
       }
 
-      await refreshSession();
+      await refreshSession(true);
 
       toast({
         title: "Authenticated",
@@ -211,18 +209,14 @@ export function WalletAuth() {
         return;
       }
 
-      // If we're already authenticating, don't start another check
       if (isAuthenticating) return;
 
       const attemptAuth = async () => {
-        if (user) return; // double check
+        if (user) return;
         const isAuthenticated = await checkSession();
         if (isAuthenticated) {
-          // Mark as attempted BEFORE refreshing
           authAttemptedRef.current = true;
-          const currentAddress = publicKey?.toBase58();
-          lastWalletAddressRef.current = currentAddress || null;
-          console.log("Session valid, refreshing...");
+          lastWalletAddressRef.current = publicKey?.toBase58() || null;
           await refreshSession();
           return;
         }
@@ -231,15 +225,14 @@ export function WalletAuth() {
         // they will be redirected to "/" by the dashboard's own check.
         // We only trigger auto-auth if they are already on the landing page or similar.
         if (window.location.pathname === "/dashboard") {
-           console.log("On dashboard without session, waiting for redirect or manual auth");
            return;
         }
         
-        console.log("Not authenticated, calling authenticate()");
+        console.log("WalletAuth: Triggering signature request...");
         authenticate();
       };
 
-      const timer = setTimeout(attemptAuth, 2000);
+      const timer = setTimeout(attemptAuth, 1000);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
