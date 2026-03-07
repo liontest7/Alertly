@@ -223,11 +223,16 @@ export function WalletAuth() {
         // Final check: if user is on dashboard and session is invalid, 
         // they will be redirected to "/" by the dashboard's own check.
         // We only trigger auto-auth if they are already on the landing page or similar.
+        if (window.location.pathname === "/dashboard") {
+           console.log("On dashboard without session, waiting for redirect or manual auth");
+           return;
+        }
+        
         console.log("Not authenticated, calling authenticate()");
         authenticate();
       };
 
-      const timer = setTimeout(attemptAuth, 1500);
+      const timer = setTimeout(attemptAuth, 2000);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
