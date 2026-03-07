@@ -27,6 +27,7 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { useAuthSession } from "@/components/providers"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 
 export const dynamic = "force-dynamic";
 
