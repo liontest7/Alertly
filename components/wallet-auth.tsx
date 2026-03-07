@@ -148,7 +148,7 @@ export function WalletAuth() {
       // Use a shorter delay for a more responsive feel
       const timer = setTimeout(() => {
         authenticate();
-      }, 500);
+      }, 100);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;

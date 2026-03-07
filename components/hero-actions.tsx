@@ -6,6 +6,7 @@ import { CircleArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "./ui/use-toast";
 import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 interface HeroActionsProps {
   loading: boolean;
@@ -17,13 +18,22 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const { toast } = useToast();
   const { setVisible } = useWalletModal();
 
+  const { connected } = useWallet();
+
   const handleGetAlerts = () => {
     if (loading) return;
     
     if (!user) {
+      if (connected) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign the message in your wallet to access the terminal.",
+        });
+        return;
+      }
       toast({
-        title: "Authentication Required",
-        description: "Please connect your wallet and sign the message to access the terminal.",
+        title: "Connection Required",
+        description: "Please connect your wallet to access the terminal.",
         variant: "destructive",
         duration: 5000,
       });

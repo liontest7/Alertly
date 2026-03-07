@@ -34,23 +34,29 @@ export function Navbar() {
       // Avoid auto-connecting if it's already connecting
       if (wallet.adapter.connecting) return;
       
-      wallet.adapter.connect().catch((err: any) => {
-        console.error("Wallet connection failed:", err);
-        // If connection fails or is cancelled, disconnect to reset the button state
-        wallet.adapter.disconnect();
-        
-        // Show informative toast for connection failure
-        const isUserRejected = err.message?.includes("User rejected") || err.name === "WalletConnectionError";
-        toast({
-          title: isUserRejected ? "Connection Cancelled" : "Connection Failed",
-          description: isUserRejected 
-            ? "You cancelled the connection request in your wallet." 
-            : "Failed to connect to the wallet. Please try again.",
-          variant: "destructive",
-        });
-      });
+      const connectWallet = async () => {
+        try {
+          await wallet.adapter.connect();
+        } catch (err: any) {
+          console.error("Wallet connection failed:", err);
+          // If connection fails or is cancelled, disconnect to reset the button state
+          wallet.adapter.disconnect();
+          
+          // Show informative toast for connection failure
+          const isUserRejected = err.message?.includes("User rejected") || err.name === "WalletConnectionError";
+          toast({
+            title: isUserRejected ? "Connection Cancelled" : "Connection Failed",
+            description: isUserRejected 
+              ? "You cancelled the connection request in your wallet." 
+              : "Failed to connect to the wallet. Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      connectWallet();
     }
-  }, [wallet, connected, loading, user, isClient]);
+  }, [wallet, connected, loading, user, isClient, toast]);
 
   // Auto-login when wallet is connected but user is not authenticated
   useEffect(() => {
@@ -84,9 +90,18 @@ export function Navbar() {
     if (loading) return;
     
     if (!user) {
+      if (connected) {
+        // If wallet is connected but not logged in, we don't need to show the modal
+        // The WalletAuth component will handle the signature request
+        toast({
+          title: "Authentication Required",
+          description: "Please sign the message in your wallet to access the terminal.",
+        });
+        return;
+      }
       toast({
-        title: "Authentication Required",
-        description: "Please connect your wallet and sign the message to access the terminal.",
+        title: "Connection Required",
+        description: "Please connect your wallet to access the terminal.",
         variant: "destructive",
         duration: 5000,
       });
