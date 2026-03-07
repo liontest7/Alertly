@@ -35,27 +35,27 @@ function sanitizeSettings(input: SettingsPayload) {
 export async function GET(req: Request) {
   const session = await auth(req);
 
+  const defaultSettings = {
+    autoTrade: true,
+    buyAmount: 0.5,
+    slippage: 15,
+    stopLoss: -30,
+    takeProfit: 100,
+    minMarketCap: 100000,
+    maxMarketCap: 50000000,
+    minHolders: 100,
+    sources: ["Raydium", "Jupiter"],
+  };
+
   if (!session?.user?.id) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(defaultSettings);
   }
 
   const settings = await prisma.userSetting.findUnique({
     where: { userId: session.user.id },
   });
 
-  return NextResponse.json(
-    settings ?? {
-      autoTrade: true,
-      buyAmount: 0.5,
-      slippage: 15,
-      stopLoss: -30,
-      takeProfit: 100,
-      minMarketCap: 100000,
-      maxMarketCap: 50000000,
-      minHolders: 100,
-      sources: ["Raydium", "Jupiter"],
-    },
-  );
+  return NextResponse.json(settings ?? defaultSettings);
 }
 
 export async function POST(req: Request) {

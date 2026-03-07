@@ -36,10 +36,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     console.log("Dashboard auth check:", { hasUser: !!user, sessionLoading });
-    if (!sessionLoading && !user) {
-      console.log("No user found, redirecting to home");
-      router.replace("/");
-    }
+    // Public access allowed, no redirect to home
   }, [user, sessionLoading, router]);
 
   const [alerts, setAlerts] = useState<any[]>([])
@@ -57,7 +54,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/settings');
       if (res.status === 401) {
-         router.replace("/");
+         // Silently fail or handle unauthenticated state for settings
          return;
       }
       const data = await res.json();
@@ -70,6 +67,10 @@ export default function DashboardPage() {
   };
 
   const handleToggleAutoTrade = async () => {
+    if (!user) {
+      alert("Please connect your wallet to change settings.");
+      return;
+    }
     try {
       const newStatus = !settings.autoTrade;
       const res = await fetch('/api/settings', {
@@ -86,7 +87,6 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (!user) return;
     fetchSettings();
     const fetchAlerts = async () => {
       try {
@@ -115,9 +115,11 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) return null;
-
   const handleQuickBuy = async (token: any) => {
+    if (!user) {
+      alert("Please connect your wallet to execute trades.");
+      return;
+    }
     const tokenName = token.token || token.name
     if (!token.address) {
       alert("This alert does not include a valid token address.")
@@ -338,8 +340,16 @@ function WalletMiniCard() {
           <p className="text-xs text-zinc-600 truncate">{walletAddress}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 rounded-xl border-zinc-800 text-[10px] font-bold h-10">DEPOSIT</Button>
-          <Button className="flex-1 bg-[#5100fd] rounded-xl text-[10px] font-bold h-10">WITHDRAW</Button>
+          {!user ? (
+            <div className="flex-1 [&_.wallet-adapter-button]:!w-full [&_.wallet-adapter-button]:!bg-[#5100fd] [&_.wallet-adapter-button]:!text-white [&_.wallet-adapter-button]:!rounded-xl [&_.wallet-adapter-button]:!h-10 [&_.wallet-adapter-button]:!text-[10px] [&_.wallet-adapter-button]:!font-bold">
+              <WalletMultiButton />
+            </div>
+          ) : (
+            <>
+              <Button variant="outline" className="flex-1 rounded-xl border-zinc-800 text-[10px] font-bold h-10">DEPOSIT</Button>
+              <Button className="flex-1 bg-[#5100fd] rounded-xl text-[10px] font-bold h-10">WITHDRAW</Button>
+            </>
+          )}
         </div>
       </div>
     </Card>
