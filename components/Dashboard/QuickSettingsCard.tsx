@@ -6,17 +6,17 @@ import { useRouter } from "next/navigation"
 function MiniSetting({ label, value, color = "text-white" }: { label: string, value: string, color?: string }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-[#5100fd]/50 transition-all group">
-      <p className="text-[9px] text-white uppercase font-black mb-1 tracking-wider group-hover:text-[#5100fd] transition-colors">{label}</p>
-      <p className={`text-sm font-black ${color}`}>{value}</p>
+      <p className="text-[10px] text-white uppercase font-black mb-1 tracking-widest opacity-70 group-hover:text-[#5100fd] transition-colors">{label}</p>
+      <p className={`text-base font-black ${color}`}>{value}</p>
     </div>
   )
 }
 
 function StatusIndicator({ active, label }: { active: boolean, label?: string }) {
   return (
-    <div className="flex items-center gap-2 bg-zinc-900 px-2 py-1 rounded-md border border-zinc-800">
-      <span className="text-[8px] font-black text-white uppercase tracking-tighter">{label}</span>
-      <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_8px_#5100fd]' : 'bg-zinc-700'}`} />
+    <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800">
+      <span className="text-[9px] font-black text-white uppercase tracking-wider">{label}</span>
+      <div className={`w-2 h-2 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_10px_#5100fd]' : 'bg-zinc-700'}`} />
     </div>
   )
 }

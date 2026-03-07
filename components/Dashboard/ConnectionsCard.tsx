@@ -38,39 +38,39 @@ export function ConnectionsCard() {
 
   return (
     <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem]">
-      <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-        <Monitor className="w-3.5 h-3.5" /> Connections
+      <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+        <Monitor className="w-3.5 h-3.5 text-[#5100fd]" /> Connections
       </h3>
       <div className="space-y-3">
-        <div className="flex justify-between items-center p-3 rounded-xl bg-zinc-900/30 border border-zinc-900">
-          <span className="text-[10px] font-medium text-zinc-400">Extension</span>
+        <div className="flex justify-between items-center p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+          <span className="text-[11px] font-black text-white uppercase tracking-widest">Extension</span>
           {extensionSynced ? (
-            <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">Synced</span>
+            <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">Synced</span>
           ) : (
-            <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-900">Not Connected</span>
+            <span className="text-[10px] font-bold text-white uppercase tracking-widest px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800">Not Connected</span>
           )}
         </div>
-        <div className="p-3 rounded-xl bg-zinc-900/30 border border-zinc-900 space-y-3">
+        <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-medium text-zinc-400">Telegram</span>
+            <span className="text-[11px] font-black text-white uppercase tracking-widest">Telegram Bot</span>
             {telegramLinked ? (
-              <span className="text-green-500 text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">Linked</span>
+              <span className="text-green-500 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">Linked</span>
             ) : (
-              <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest px-2 py-0.5 rounded-full bg-zinc-950 border border-zinc-900">Not Linked</span>
+              <span className="text-[10px] font-bold text-white uppercase tracking-widest px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800">Not Linked</span>
             )}
           </div>
           {!telegramLinked && (
             <>
-              <p className="text-[11px] text-zinc-500">Generate a one-time secure command and send it to our bot once:</p>
+              <p className="text-[12px] text-white font-medium leading-relaxed">Generate a secure command to link your Telegram account for real-time alerts:</p>
               <Button
                 onClick={createTelegramLinkCommand}
                 disabled={linking}
-                className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-9 rounded-xl text-[10px] font-bold text-white"
+                className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-11 rounded-xl text-[11px] font-black text-white uppercase tracking-widest shadow-lg shadow-[#5100fd]/20"
               >
                 {linking ? 'Generating…' : 'Generate /link Command'}
               </Button>
               {linkCommand && (
-                <div className="text-[10px] font-mono text-zinc-300 bg-zinc-950 border border-zinc-800 rounded-lg p-2 break-all">
+                <div className="text-[11px] font-mono text-white bg-black border border-zinc-800 rounded-lg p-3 break-all shadow-inner">
                   {linkCommand}
                 </div>
               )}

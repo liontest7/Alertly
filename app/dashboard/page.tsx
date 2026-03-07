@@ -109,9 +109,9 @@ export default function DashboardPage() {
             </h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <StatCard label="Total Balance" value="Live" subValue="Connected trading wallet" />
-              <StatCard label="24h Profit" value="Live" subValue="Calculated from executed trades" />
-              <StatCard label="Active Alerts" value={alerts.length.toString()} subValue="Scanning Solana Mainnet" />
+              <StatCard label="Total Balance" value="Live" subValue="Sniper Wallet Balance" />
+              <StatCard label="24h Profit" value="Live" subValue="Trading performance" />
+              <StatCard label="Active Alerts" value={alerts.length.toString()} subValue="Real-time Solana stream" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
