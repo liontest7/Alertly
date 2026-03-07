@@ -4,6 +4,10 @@ import { auth } from "@/lib/auth";
 export async function GET(req: Request) {
   try {
     const session = await auth(req);
+    
+    // Debug session
+    console.log("Session check:", session ? `User ${session.user.user_id}` : "No session");
+
     if (!session) {
       return NextResponse.json({ authenticated: false }, { 
         status: 200,
@@ -22,6 +26,7 @@ export async function GET(req: Request) {
       }
     });
   } catch (error) {
+    console.error("Session API Error:", error);
     return NextResponse.json({ authenticated: false }, { status: 200 });
   }
 }

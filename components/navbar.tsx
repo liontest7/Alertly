@@ -62,9 +62,12 @@ export function Navbar() {
   useEffect(() => {
     if (isClient && connected && publicKey && !user && !loading) {
       console.log("Wallet connected, attempting login...");
-      login().catch((err) => {
-        console.error("Auto-login failed:", err);
-      });
+      const timer = setTimeout(() => {
+        login().catch((err) => {
+          console.error("Auto-login failed:", err);
+        });
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [connected, publicKey, user, loading, login, isClient]);
 
