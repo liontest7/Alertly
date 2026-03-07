@@ -142,23 +142,37 @@ export function WalletAuth() {
     }
     
     // Only attempt authentication if connected and NOT already logged in
-    if (connected && !user && !isAuthenticating) {
+    if (connected && !user && !isAuthenticating && !loading) {
       const currentAddress = publicKey?.toBase58();
       // If we already tried this address and it failed or we are in a loop, don't retry immediately
       if (authAttemptedRef.current && lastWalletAddressRef.current === currentAddress) {
         return;
       }
 
-      // Use a shorter delay for a more responsive feel
+      // First, check session one more time before showing signature request
+      const checkSessionAndAuth = async () => {
+        try {
+          const res = await fetch("/api/auth/session", { credentials: "include" });
+          const data = await res.json();
+          if (data?.authenticated) {
+            await refreshSession();
+            return;
+          }
+          authenticate();
+        } catch (e) {
+          authenticate();
+        }
+      };
+
       const timer = setTimeout(() => {
-        authenticate();
-      }, 100);
+        checkSessionAndAuth();
+      }, 500);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
       lastWalletAddressRef.current = null;
     }
-  }, [connected, user, isAuthenticating, authenticate, publicKey, toast]);
+  }, [connected, user, isAuthenticating, loading, authenticate, publicKey, toast]);
 
   return null;
 }

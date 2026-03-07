@@ -43,7 +43,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (refreshingRef.current) return;
 
     refreshingRef.current = true;
-    // Don't set loading to true if we already have a user to avoid UI flickering
     if (!user) setLoading(true);
 
     try {
@@ -57,20 +56,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const data = await res.json();
 
       if (data?.authenticated && data.user) {
-        setUser((prev) => {
-          // Deep check to ensure we don't skip update if properties changed
-          if (prev?.user_id === data.user.user_id && 
-              prev?.wallet_address === data.user.wallet_address && 
-              prev?.vip_status === data.user.vip_status) {
-            return prev;
-          }
-
-          window.dispatchEvent(
-            new CustomEvent("auth-session-updated", { detail: data.user }),
-          );
-
-          return data.user;
-        });
+        setUser(data.user);
       } else {
         setUser(null);
       }
