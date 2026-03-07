@@ -17,7 +17,7 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const { user, loading, refreshSession: login } = useAuthSession();
+  const { user, loading, refreshSession } = useAuthSession();
   const { setVisible } = useWalletModal();
   const { connected, publicKey, wallet, select, wallets, disconnect } = useWallet();
   const [isClient, setIsClient] = useState(false);
@@ -63,13 +63,14 @@ export function Navbar() {
     if (isClient && connected && publicKey && !user && !loading) {
       console.log("Wallet connected, attempting login...");
       const timer = setTimeout(() => {
-        login().catch((err) => {
+        // Use refreshSession from context
+        refreshSession().catch((err) => {
           console.error("Auto-login failed:", err);
         });
-      }, 500);
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [connected, publicKey, user, loading, login, isClient]);
+  }, [connected, publicKey, user, loading, refreshSession, isClient]);
 
   const handleConnectWallet = () => {
     if (connected) {
@@ -92,29 +93,29 @@ export function Navbar() {
   const handleLaunchTerminal = () => {
     if (loading) return;
     
-    if (!user) {
-      if (connected) {
-        // If wallet is connected but not logged in, we don't need to show the modal
-        // The WalletAuth component will handle the signature request
-        toast({
-          title: "Authentication Required",
-          description: "Please sign the message in your wallet to access the terminal.",
-        });
-        return;
-      }
-      toast({
-        title: "Connection Required",
-        description: "Please connect your wallet to access the terminal.",
-        variant: "destructive",
-        duration: 5000,
-      });
-      // Ensure modal is visible
-      setVisible(true);
+    // If we have a user, go to dashboard
+    if (user) {
+      window.location.href = "/dashboard";
       return;
     }
     
-    // Immediate redirect
-    window.location.href = "/dashboard";
+    // If not logged in but connected, user needs to sign
+    if (connected) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign the message in your wallet to access the terminal.",
+      });
+      return;
+    }
+
+    // Not connected at all
+    toast({
+      title: "Connection Required",
+      description: "Please connect your wallet to access the terminal.",
+      variant: "destructive",
+      duration: 5000,
+    });
+    setVisible(true);
   };
 
   return (

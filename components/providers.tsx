@@ -43,7 +43,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (refreshingRef.current) return;
 
     refreshingRef.current = true;
-    setLoading(true);
+    // Don't set loading to true if we already have a user to avoid UI flickering
+    if (!user) setLoading(true);
 
     try {
       const res = await fetch("/api/auth/session", {
@@ -80,7 +81,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setLoading(false);
       refreshingRef.current = false;
     }
-  }, []);
+  }, [user]);
 
   const logout = async () => {
     try {

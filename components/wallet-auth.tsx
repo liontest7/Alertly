@@ -26,6 +26,10 @@ export function WalletAuth() {
     const currentAddress = publicKey.toBase58();
     if (authAttemptedRef.current && lastWalletAddressRef.current === currentAddress) return;
 
+    // Use a small delay to ensure we are not in a race condition with session check
+    await new Promise(resolve => setTimeout(resolve, 500));
+    if (user) return;
+
     authAttemptedRef.current = true;
     lastWalletAddressRef.current = currentAddress;
 
