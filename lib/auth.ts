@@ -32,7 +32,14 @@ type NonceTokenPayload = {
   exp: number;
 };
 
-function base64url(input: string | Buffer) {
+function base64url(input: string | Buffer | Uint8Array) {
+  if (typeof input === "string") {
+    return Buffer.from(input)
+      .toString("base64")
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+  }
   return Buffer.from(input)
     .toString("base64")
     .replace(/=/g, "")
@@ -58,11 +65,7 @@ async function computeSignature(header: string, body: string, secret: string) {
   );
 
   const signature = await crypto.subtle.sign("HMAC", cryptoKey, data);
-  return Buffer.from(signature)
-    .toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  return base64url(new Uint8Array(signature));
 }
 
 function parsePayload(body: string): AuthTokenPayload | null {
@@ -110,10 +113,7 @@ export async function verifyTokenWithSecret(token: string, secret: string): Prom
   );
 
   const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  const expected = Buffer.from(signed).toString("base64")
-    .replace(/=/g, "")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
+  const expected = base64url(new Uint8Array(signed));
 
   if (expected !== signature) return null;
   return parsePayload(body);

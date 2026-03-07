@@ -6,10 +6,13 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  allowedDevOrigins: ["*"],
-  env: {
-    PORT: "10000",
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
+  devIndicators: {
+    buildActivity: false,
+  },
+  allowedDevOrigins: ["*"],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
