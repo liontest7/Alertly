@@ -49,6 +49,14 @@ export default function OnboardingPage() {
   })
 
   useEffect(() => {
+    const saved = localStorage.getItem('alertly_config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      } catch (e) {}
+    }
+
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
@@ -64,6 +72,9 @@ export default function OnboardingPage() {
   }, []);
 
   const handleComplete = async () => {
+    localStorage.setItem('onboarding_completed', 'true');
+    localStorage.setItem('alertly_config', JSON.stringify(settings));
+
     try {
       await fetch('/api/settings', {
         method: 'POST',
@@ -82,11 +93,9 @@ export default function OnboardingPage() {
           dexListingEnabled: settings.dexListingEnabled,
         })
       });
-      localStorage.setItem('onboarding_completed', 'true')
       router.push("/dashboard")
     } catch (err) {
       console.error("Failed to save onboarding settings", err);
-      localStorage.setItem('onboarding_completed', 'true')
       router.push("/dashboard")
     }
   }

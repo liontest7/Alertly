@@ -3,9 +3,12 @@ import { Zap, Settings, Shield, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
-function MiniSetting({ label, value, color = "text-white" }: { label: string, value: string, color?: string }) {
+function MiniSetting({ label, value, color = "text-white", onClick }: { label: string, value: string, color?: string, onClick?: () => void }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-[#5100fd]/50 transition-all group">
+    <div 
+      onClick={onClick}
+      className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-[#5100fd]/50 transition-all group cursor-pointer"
+    >
       <p className="text-[10px] text-white uppercase font-black mb-1 tracking-widest opacity-70 group-hover:text-[#5100fd] transition-colors">{label}</p>
       <p className={`text-base font-black ${color}`}>{value}</p>
     </div>
@@ -35,9 +38,9 @@ export function QuickSettingsCard({ settings, onToggle }: { settings: any, onTog
             variant="ghost" 
             size="sm" 
             onClick={() => router.push('/onboarding')}
-            className="h-8 px-4 text-[10px] font-black text-white hover:bg-zinc-900 uppercase tracking-tighter bg-zinc-900 border border-zinc-800 rounded-lg"
+            className="h-10 px-6 text-[11px] font-black text-white hover:bg-[#5100fd] uppercase tracking-widest bg-zinc-900 border border-zinc-800 rounded-xl shadow-lg transition-all"
           >
-            <Settings className="w-3 h-3 mr-1" /> Full Setup
+            <Settings className="w-4 h-4 mr-2" /> Open Full Settings
           </Button>
           <button 
             onClick={onToggle}
@@ -49,10 +52,10 @@ export function QuickSettingsCard({ settings, onToggle }: { settings: any, onTog
       </div>
       
       <div className="grid grid-cols-2 gap-3">
-        <MiniSetting label="Entry Size" value={`${settings.buyAmount} SOL`} />
-        <MiniSetting label="Slippage" value={`${settings.slippage}%`} />
-        <MiniSetting label="Stop Loss" value={`-${settings.stopLoss}%`} color="text-red-500" />
-        <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" />
+        <MiniSetting label="Entry Size" value={`${settings.buyAmount} SOL`} onClick={() => router.push('/onboarding')} />
+        <MiniSetting label="Slippage" value={`${settings.slippage}%`} onClick={() => router.push('/onboarding')} />
+        <MiniSetting label="Stop Loss" value={`-${settings.stopLoss}%`} color="text-red-500" onClick={() => router.push('/onboarding')} />
+        <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" onClick={() => router.push('/onboarding')} />
       </div>
 
       <div className="pt-4 border-t border-zinc-900 space-y-4">

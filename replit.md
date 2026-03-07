@@ -28,6 +28,16 @@
     - [COMPLETED] Mock data removed from Dashboard and Alerts API.
 5. **Copy Trading & Wallet**:
     - [COMPLETED] Copy Trading UI implemented with real API connection.
-    - [COMPLETED] Sniper Wallet (Trading Wallet) generation and management implemented.
-    - [COMPLETED] Telegram linking command generator connected to DB.
+    - [COMPLETED] Sniper Wallet (Trading Wallet) generation, import, and key export implemented.
+    - [COMPLETED] Telegram linking command generator connected to DB and auto-opens bot.
     - [COMPLETED] UI High Contrast & Font scaling applied to right-side dashboard panels.
+6. **Configuration & Persistence**:
+    - [COMPLETED] Dashboard "Global Configuration" button links to full setup.
+    - [COMPLETED] Sniper Config cards link to relevant setup steps.
+    - [COMPLETED] Settings persistence via localStorage (for guests) and DB (for users) implemented in Onboarding.
+7. **Final Polish & Launch Prep**:
+    - [COMPLETED] Copy Trading mode selection (Alert/Trade/Both).
+    - [COMPLETED] Sniper Wallet import from private key (Hex/Base58).
+    - [COMPLETED] Private key decryption and export UI.
+    - [COMPLETED] Telegram Bot deep linking with auto-start.
+    - [COMPLETED] Fixed CopyTradingMiniCard syntax error.

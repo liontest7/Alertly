@@ -8,13 +8,7 @@ export function CopyTradingMiniCard() {
   const [buyAmount, setBuyAmount] = useState("0.5");
   const [loading, setLoading] = useState(false);
   const [traders, setTraders] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetch('/api/copy-trading')
-      .then(res => res.json())
-      .then(data => setTraders(Array.isArray(data) ? data : []))
-      .catch(() => {});
-  }, []);
+  const [mode, setMode] = useState<"both" | "alert" | "trade">("both");
 
   const addTrader = async () => {
     if (!address) return;
@@ -23,10 +17,14 @@ export function CopyTradingMiniCard() {
       const res = await fetch('/api/copy-trading', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, buyAmount: parseFloat(buyAmount) })
+        body: JSON.stringify({ 
+          address, 
+          buyAmount: parseFloat(buyAmount),
+          mode 
+        })
       });
       if (res.ok) {
-        setTraders([...traders, { address, profit: "0.0%", status: "Live" }]);
+        setTraders([...traders, { address, profit: "0.0%", status: "Live", mode }]);
         setAddress("");
       }
     } catch (err) {
@@ -37,27 +35,30 @@ export function CopyTradingMiniCard() {
   };
 
   return (
-    <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem] shadow-xl hover:border-zinc-800/50 transition-all group">
+    <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem] shadow-xl hover:border-zinc-800/50 transition-all group text-white">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-[12px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+        <h3 className="text-[12px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-[#5100fd]" /> Copy Trading
         </h3>
         <div className="flex items-center gap-1.5">
            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-           <span className="text-[10px] font-black text-white uppercase tracking-widest">Live</span>
+           <span className="text-[10px] font-black uppercase tracking-widest">Live</span>
         </div>
       </div>
       <div className="space-y-3">
-        <p className="text-[11px] text-white/90 leading-relaxed mb-4">
-          Enter a wallet address to automatically mirror their trades with your custom allocation.
+        <p className="text-[11px] text-white font-medium leading-relaxed mb-4">
+          Mirror wallet moves with custom allocation or get alerts only.
         </p>
         
         {traders.length > 0 ? (
           traders.map((trader, i) => (
             <div key={i} className="flex justify-between items-center p-4 rounded-xl bg-zinc-900 border border-zinc-800 group-hover:border-zinc-700 transition-all">
               <div className="flex flex-col">
-                <span className="text-[11px] font-black font-mono text-white">{trader.address}</span>
-                <span className="text-[9px] text-white font-black uppercase tracking-tighter">{trader.status}</span>
+                <span className="text-[11px] font-black font-mono">{trader.address}</span>
+                <div className="flex gap-2 mt-1">
+                  <span className="text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700">{trader.status}</span>
+                  <span className="text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded bg-[#5100fd]/20 border border-[#5100fd]/30 text-[#5100fd]">{trader.mode}</span>
+                </div>
               </div>
               <div className="text-right">
                 <span className="text-base font-black text-green-400">{trader.profit}</span>
@@ -65,40 +66,52 @@ export function CopyTradingMiniCard() {
             </div>
           ))
         ) : (
-          <p className="text-[10px] text-white/40 italic text-center py-2">No active copy traders</p>
+          <p className="text-[10px] text-white font-bold italic text-center py-2 opacity-50">No active copy traders</p>
         )}
         
-        <div className="space-y-3 mt-4">
-          <div className="space-y-1">
-            <label className="text-[9px] font-black text-white uppercase tracking-widest">Wallet Address</label>
+        <div className="space-y-4 mt-6 pt-4 border-t border-zinc-900">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-white">Target Wallet</label>
             <input 
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter Solana Address" 
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-[11px] text-white focus:outline-none focus:border-[#5100fd] font-mono" 
+              placeholder="Solana Address" 
+              className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-[11px] text-white focus:outline-none focus:border-[#5100fd] font-mono shadow-inner" 
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-white uppercase tracking-widest">Amount (SOL)</label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white">Amount (SOL)</label>
               <input 
                 type="number" 
                 value={buyAmount}
                 onChange={(e) => setBuyAmount(e.target.value)}
                 placeholder="0.5" 
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-[11px] text-white focus:outline-none focus:border-[#5100fd]" 
+                className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-[11px] text-white focus:outline-none focus:border-[#5100fd] font-bold shadow-inner" 
               />
             </div>
-            <div className="flex items-end">
-              <Button 
-                onClick={addTrader}
-                disabled={loading || !address}
-                className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-11 rounded-xl text-[10px] font-black text-white uppercase tracking-widest"
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white">Mode</label>
+              <select 
+                value={mode}
+                onChange={(e) => setMode(e.target.value as any)}
+                className="w-full bg-black border border-zinc-800 rounded-xl p-3 text-[11px] text-white focus:outline-none focus:border-[#5100fd] font-bold appearance-none cursor-pointer"
               >
-                {loading ? 'ADDING...' : 'ADD WALLET'}
-              </Button>
+                <option value="both">Trade & Alert</option>
+                <option value="trade">Trade Only</option>
+                <option value="alert">Alert Only</option>
+              </select>
             </div>
           </div>
+
+          <Button 
+            onClick={addTrader}
+            disabled={loading || !address}
+            className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-12 rounded-xl text-[11px] font-black text-white uppercase tracking-widest shadow-lg shadow-[#5100fd]/20 mt-2"
+          >
+            {loading ? 'PROCESSING...' : 'ACTIVATE COPY'}
+          </Button>
         </div>
       </div>
     </Card>

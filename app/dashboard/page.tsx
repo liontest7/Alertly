@@ -103,9 +103,17 @@ export default function DashboardPage() {
       <div className="container mx-auto px-6 pt-32 pb-12">
         <div className="flex flex-col gap-8">
           <div className="flex-1 space-y-8">
-            <h1 className="text-4xl font-black text-white tracking-tighter flex items-center gap-4">
-              <img src="/images/logo.png" alt="Logo" className="w-12 h-12 rounded-full shadow-[0_0_20px_rgba(81,0,253,0.3)] border-2 border-[#5100fd]" />
-              Alertly
+            <h1 className="text-4xl font-black text-white tracking-tighter flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <img src="/images/logo.png" alt="Logo" className="w-12 h-12 rounded-full shadow-[0_0_20px_rgba(81,0,253,0.3)] border-2 border-[#5100fd]" />
+                Alertly
+              </div>
+              <Button 
+                onClick={() => router.push('/onboarding')}
+                className="bg-zinc-900 border border-zinc-800 text-white hover:bg-[#5100fd] px-6 h-12 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all"
+              >
+                Global Configuration
+              </Button>
             </h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

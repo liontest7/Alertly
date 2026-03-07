@@ -70,9 +70,9 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
             variant="ghost" 
             size="sm" 
             onClick={() => router.push('/onboarding')}
-            className="text-[10px] font-black text-white hover:text-white hover:bg-[#5100fd] uppercase tracking-widest bg-zinc-900 border border-zinc-800 rounded-lg px-4 h-8 transition-all"
+            className="text-[11px] font-black text-white hover:text-white hover:bg-[#5100fd] uppercase tracking-widest bg-zinc-900 border border-zinc-800 rounded-xl px-6 h-10 transition-all shadow-lg"
           >
-            <Settings className="w-3 h-3 mr-1.5" /> Configure Bot
+            <Settings className="w-4 h-4 mr-2" /> Global Configuration
           </Button>
         </div>
         

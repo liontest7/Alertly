@@ -28,6 +28,10 @@ export function ConnectionsCard() {
       const data = await res.json();
       if (res.ok) {
         setLinkCommand(data.command || null);
+        // Force bot link to open if requested
+        if (data.command) {
+          window.open(`https://t.me/Alertly_Solbot?start=${data.token}`, '_blank');
+        }
       }
     } catch (error) {
       console.error('Failed to create Telegram link command', error);
