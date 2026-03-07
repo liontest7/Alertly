@@ -6,19 +6,18 @@ export async function GET(req: Request) {
     const session = await auth(req);
     
     // Debug session
-    console.log("Session check:", session ? `User ${session.user.user_id}` : "No session");
+    // console.log("Session check:", session ? `User ${session.user.user_id}` : "No session");
 
     if (!session) {
-      return new NextResponse(JSON.stringify({ authenticated: false }), { 
+      return NextResponse.json({ authenticated: false }, { 
         status: 200,
         headers: {
-          'Content-Type': 'application/json',
           'Cache-Control': 'no-store, max-age=0'
         }
       });
     }
 
-    return new NextResponse(JSON.stringify({
+    return NextResponse.json({
       authenticated: true,
       user: {
         id: session.user.id,
@@ -28,10 +27,9 @@ export async function GET(req: Request) {
         vipStatus: session.user.vipStatus,
         vip_status: session.user.vipStatus,
       },
-    }), {
+    }, {
       status: 200,
       headers: {
-        'Content-Type': 'application/json',
         'Cache-Control': 'no-store, max-age=0'
       }
     });

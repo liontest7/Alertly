@@ -65,19 +65,11 @@ export async function POST(req: Request) {
       },
     };
 
-    const response = new NextResponse(JSON.stringify(loginData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
+    const response = NextResponse.json(loginData);
     setAuthCookie(response, authToken);
-
     return response;
   } catch (error) {
     console.error("Login route error:", error);
-    return new NextResponse(JSON.stringify({ message: "Internal server error" }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

@@ -84,7 +84,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setUser(null);
       }
     } catch (error) {
-      // Network error
+      console.error("Session refresh error:", error);
+      setUser(null);
     } finally {
       setLoading(false);
       refreshingRef.current = false;

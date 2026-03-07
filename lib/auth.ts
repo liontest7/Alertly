@@ -41,7 +41,7 @@ function base64url(input: string | Buffer) {
 }
 
 function getJwtSecret() {
-  return requireEnv("AUTH_SECRET", { allowInDev: true, devFallback: "dev-auth-secret" });
+  return requireEnv("AUTH_SECRET");
 }
 
 async function computeSignature(header: string, body: string, secret: string) {

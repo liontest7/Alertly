@@ -27,8 +27,18 @@ export function WalletAuth() {
     if (authAttemptedRef.current && lastWalletAddressRef.current === currentAddress) return;
 
     // Use a small delay to ensure we are not in a race condition with session check
-    await new Promise(resolve => setTimeout(resolve, 500));
-    if (user) return;
+    await new Promise(resolve => setTimeout(resolve, 800));
+    if (user) {
+      console.log("User already exists, skipping authenticate");
+      return;
+    }
+
+    // Check session one last time before starting auth
+    const alreadyAuth = await checkSession();
+    if (alreadyAuth) {
+      console.log("CheckSession returned true, skipping authenticate");
+      return;
+    }
 
     authAttemptedRef.current = true;
     lastWalletAddressRef.current = currentAddress;
@@ -187,27 +197,30 @@ export function WalletAuth() {
                 // Mark as attempted BEFORE refreshing
                 authAttemptedRef.current = true;
                 lastWalletAddressRef.current = currentAddress || null;
+                console.log("Session valid, refreshing...");
                 await refreshSession();
                 return true;
               }
             } catch (e) {
-              // Not JSON
+              console.error("Session parse error", e);
             }
           }
         } catch (e) {
-          // Ignore
+          console.error("Session fetch error", e);
         }
         return false;
       };
 
       const attemptAuth = async () => {
+        if (user) return; // double check
         const isAuthenticated = await checkSession();
         if (!isAuthenticated) {
+          console.log("Not authenticated, calling authenticate()");
           authenticate();
         }
       };
 
-      const timer = setTimeout(attemptAuth, 500);
+      const timer = setTimeout(attemptAuth, 800);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
