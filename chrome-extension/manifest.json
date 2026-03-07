@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Alertly - Solana Intelligence",
+  "version": "1.2.0",
+  "description": "Real-time Solana alerts and synced trading preferences from Alertly.",
+  "permissions": ["notifications", "alarms", "storage"],
+  "host_permissions": [
+    "https://alertly.ai/*",
+    "https://*.onrender.com/*",
+    "https://*.replit.dev/*",
+    "https://*.sisko.replit.dev/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": "public/icon128.png"
+  },
+  "background": {
+    "service_worker": "src/background.ts"
+  },
+  "icons": {
+    "128": "public/icon128.png"
+  }
+}

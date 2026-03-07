@@ -1,0 +1,8 @@
+{
+  "name": "alertly-bot",
+  "version": "1.0.0",
+  "main": "src/bot.ts",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0"
+  }
+}

@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  vipLevel      Int       @default(0)
+  telegramId    String?   @unique
+  extensionId   String?   @unique
+  lastLogin     DateTime?
+
+  walletConnections   WalletConnection[]
+  tradingWallet       TradingWallet?
+  telegramLink        TelegramLink?
+  telegramLinkRequest TelegramLinkRequest?
+  settings            UserSetting?
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  message   String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model WalletConnection {
+  id            String   @id @default(cuid())
+  userId        String
+  walletAddress String   @unique
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TradingWallet {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  walletAddress       String   @unique
+  encryptedPrivateKey String
+  createdAt           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TelegramLink {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  telegramId String   @unique
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TelegramLinkRequest {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSetting {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  buyAmount    Float    @default(0.1)
+  slippage     Float    @default(1.0)
+  autoTrade    Boolean  @default(false)
+  minMarketCap Float    @default(10000)
+  maxMarketCap Float    @default(100000000)
+  minHolders   Int      @default(100)
+  takeProfit   Float    @default(50)
+  stopLoss     Float    @default(20)
+  sources      String[] @default(["Raydium", "Jupiter"])
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
