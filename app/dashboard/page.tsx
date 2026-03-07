@@ -103,10 +103,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-8">
           <div className="flex-1 space-y-8">
             <h1 className="text-4xl font-black text-white tracking-tighter flex items-center gap-4">
-              <div className="relative w-12 h-12">
-                <div className="absolute inset-0 bg-[#5100fd]/20 blur-xl rounded-full animate-pulse" />
-                <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain relative z-10" />
-              </div>
+              <img src="/images/logo.png" alt="Logo" className="w-12 h-12 rounded-full shadow-[0_0_20px_rgba(81,0,253,0.3)]" />
               ALERTLY <span className="text-[#5100fd]">ALPHA</span>
             </h1>
             

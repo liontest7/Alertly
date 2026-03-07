@@ -12,9 +12,12 @@ function MiniSetting({ label, value, color = "text-white" }: { label: string, va
   )
 }
 
-function StatusIndicator({ active }: { active: boolean }) {
+function StatusIndicator({ active, label }: { active: boolean, label?: string }) {
   return (
-    <div className={`w-2 h-2 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_8px_#5100fd]' : 'bg-zinc-800'}`} />
+    <div className="flex items-center gap-2">
+      <span className="text-[8px] font-black text-zinc-600 uppercase tracking-tighter">{label}</span>
+      <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_8px_#5100fd]' : 'bg-zinc-800'}`} />
+    </div>
   )
 }
 
@@ -53,25 +56,13 @@ export function QuickSettingsCard({ settings, onToggle }: { settings: any, onTog
       </div>
 
       <div className="pt-4 border-t border-zinc-900/50 space-y-4">
-        <div className="flex items-center gap-2 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-          <Target className="w-3 h-3" /> Active Monitors
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Volume</span>
-            <StatusIndicator active={settings.volumeSpikeEnabled} />
-          </div>
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Whales</span>
-            <StatusIndicator active={settings.whaleAlertEnabled} />
-          </div>
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Boosts</span>
-            <StatusIndicator active={settings.dexBoostEnabled} />
-          </div>
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
-            <span className="text-[9px] font-bold text-zinc-400 uppercase">Listings</span>
-            <StatusIndicator active={settings.dexListingEnabled} />
+        <div className="flex items-center justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+          <div className="flex items-center gap-2"><Target className="w-3 h-3" /> Monitors</div>
+          <div className="flex items-center gap-3">
+            <StatusIndicator active={settings.volumeSpikeEnabled} label="Vol" />
+            <StatusIndicator active={settings.whaleAlertEnabled} label="Whl" />
+            <StatusIndicator active={settings.dexBoostEnabled} label="Bst" />
+            <StatusIndicator active={settings.dexListingEnabled} label="Lst" />
           </div>
         </div>
       </div>

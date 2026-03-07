@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Zap, ArrowRight, Settings, Shield, Target } from "lucide-react"
+import { Zap, ArrowRight, Settings, Shield, Target, Bell } from "lucide-react"
 
 function MonitorToggle({ label, active, onToggle }: { label: string, active: boolean, onToggle: () => void }) {
   return (
@@ -32,7 +32,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [settings, setSettings] = useState({
-    riskLevel: "medium",
     autoTrade: false,
     buyAmount: 0.5,
     maxBuyPerToken: 2.0,
@@ -44,6 +43,9 @@ export default function OnboardingPage() {
     whaleAlertEnabled: true,
     dexBoostEnabled: true,
     dexListingEnabled: true,
+    alertPairs: ["SOL"],
+    minWhaleBuy: 5000,
+    boostLevels: ["Level 3", "Top Boost"]
   })
 
   useEffect(() => {
@@ -89,6 +91,24 @@ export default function OnboardingPage() {
     }
   }
 
+  const togglePair = (pair: string) => {
+    setSettings(prev => ({
+      ...prev,
+      alertPairs: prev.alertPairs.includes(pair) 
+        ? prev.alertPairs.filter(p => p !== pair)
+        : [...prev.alertPairs, pair]
+    }))
+  }
+
+  const toggleBoostLevel = (level: string) => {
+    setSettings(prev => ({
+      ...prev,
+      boostLevels: prev.boostLevels.includes(level)
+        ? prev.boostLevels.filter(l => l !== level)
+        : [...prev.boostLevels, level]
+    }))
+  }
+
   return (
     <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center p-4 md:p-8 font-sans selection:bg-[#5100fd]/40">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(81,0,253,0.05),transparent_50%)] pointer-events-none" />
@@ -104,9 +124,11 @@ export default function OnboardingPage() {
             </div>
             
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white flex items-center justify-center gap-3">
-                <Image src="/images/logo.png" alt="Logo" width={48} height={48} className="rounded-full" />
-                <span>ALERTLY <span className="text-[#5100fd]">ALPHA</span></span>
+              <div className="flex items-center justify-center gap-4 mb-2">
+                <Image src="/images/logo.png" alt="Logo" width={64} height={64} className="rounded-full shadow-[0_0_30px_rgba(81,0,253,0.4)]" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">
+                ALERTLY <span className="text-[#5100fd]">ALPHA</span>
               </h1>
               <p className="text-zinc-500 text-base md:text-lg leading-relaxed max-w-sm mx-auto font-medium">
                 Professional-grade Solana trading intelligence. Set your parameters and dominate the DEX.
@@ -136,8 +158,8 @@ export default function OnboardingPage() {
               <h2 className="text-2xl font-black text-white tracking-tighter flex items-center gap-3">
                  <div className="p-2 bg-[#5100fd]/10 rounded-lg"><Settings className="w-6 h-6 text-[#5100fd]" /></div> CONFIGURATION
               </h2>
-              <div className="px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Step 2 / 2</span>
+              <div className="px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800 flex gap-2">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Page 1 / 2</span>
               </div>
             </div>
             
@@ -156,10 +178,19 @@ export default function OnboardingPage() {
                     />
                     {settings.volumeSpikeEnabled && (
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <Label className="text-[9px] font-bold text-zinc-500 uppercase">Alert on Pairs:</Label>
+                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Alert on Pairs:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["SOL", "USDC", "USDT"].map(pair => (
-                            <button key={pair} type="button" className="px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-[9px] font-bold text-zinc-400 hover:border-[#5100fd] transition-colors">
+                            <button 
+                              key={pair} 
+                              type="button" 
+                              onClick={() => togglePair(pair)}
+                              className={`px-2 py-1 rounded-md border text-[9px] font-black transition-all ${
+                                settings.alertPairs.includes(pair)
+                                ? 'bg-[#5100fd]/20 border-[#5100fd] text-white'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                              }`}
+                            >
                               {pair}
                             </button>
                           ))}
@@ -175,16 +206,44 @@ export default function OnboardingPage() {
                     />
                     {settings.whaleAlertEnabled && (
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <Label className="text-[9px] font-bold text-zinc-500 uppercase">Min Buy Amount:</Label>
-                        <Input className="h-8 bg-zinc-900 border-zinc-800 text-xs text-white" placeholder="5000" type="number" />
+                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Min Buy Amount ($):</Label>
+                        <Input 
+                          className="h-9 bg-zinc-900 border-zinc-800 text-xs text-white font-bold rounded-xl focus:border-[#5100fd] focus:ring-0" 
+                          value={settings.minWhaleBuy}
+                          onChange={(e) => setSettings({...settings, minWhaleBuy: parseInt(e.target.value) || 0})}
+                          type="number" 
+                        />
                       </div>
                     )}
                   </div>
-                  <MonitorToggle 
-                    label="DEX Boosts" 
-                    active={settings.dexBoostEnabled} 
-                    onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
-                  />
+                  <div className="space-y-4">
+                    <MonitorToggle 
+                      label="DEX Boosts" 
+                      active={settings.dexBoostEnabled} 
+                      onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
+                    />
+                    {settings.dexBoostEnabled && (
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                        <Label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Boost Levels:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {["Level 1", "Level 2", "Level 3", "Top Boost"].map(level => (
+                            <button 
+                              key={level} 
+                              type="button" 
+                              onClick={() => toggleBoostLevel(level)}
+                              className={`px-2 py-1 rounded-md border text-[9px] font-black transition-all ${
+                                settings.boostLevels.includes(level)
+                                ? 'bg-[#5100fd]/20 border-[#5100fd] text-white'
+                                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                              }`}
+                            >
+                              {level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <MonitorToggle 
                     label="New Listings" 
                     active={settings.dexListingEnabled} 
@@ -193,31 +252,59 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Risk Intelligence */}
-              <div className="space-y-4">
+              {/* Advanced Filters */}
+              <div className="space-y-5">
                 <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
-                  <Shield className="w-3.5 h-3.5" /> Risk Intelligence
+                  <Shield className="w-3.5 h-3.5" /> Filtering Engine
                 </Label>
-                <div className="grid grid-cols-3 gap-3">
-                  {["Low", "Medium", "High"].map((level) => (
-                    <Button
-                      key={level}
-                      variant="outline"
-                      type="button"
-                      onClick={() => setSettings({...settings, riskLevel: level.toLowerCase()})}
-                      className={`rounded-2xl border-zinc-800 h-14 text-xs font-black transition-all duration-300 uppercase tracking-widest ${
-                        settings.riskLevel === level.toLowerCase() 
-                          ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_10px_20px_rgba(81,0,253,0.2)]' 
-                          : 'bg-zinc-900/30 text-zinc-500 hover:text-white hover:bg-zinc-900 border-zinc-800'
-                      }`}
-                    >
-                      {level}
-                    </Button>
-                  ))}
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Min Liquidity ($)</Label>
+                    <div className="relative group">
+                      <Input 
+                        type="number" 
+                        value={settings.minLiquidity} 
+                        onChange={(e) => setSettings({...settings, minLiquidity: parseInt(e.target.value) || 0})}
+                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">DEX Sources</Label>
+                    <div className="flex gap-2">
+                      {["Raydium", "Jupiter", "Meteora"].map(source => (
+                        <button key={source} type="button" className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-bold text-zinc-400 hover:border-[#5100fd] transition-all">
+                          {source}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Auto Trade */}
+            <Button 
+              onClick={() => setStep(3)}
+              className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-16 rounded-2xl font-black text-white text-base shadow-[0_20px_40px_rgba(81,0,253,0.3)] transition-all hover:scale-[1.01] active:scale-[0.98]"
+            >
+              NEXT: TRADING ENGINE <ArrowRight className="ml-3 w-5 h-5" />
+            </Button>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-black text-white tracking-tighter flex items-center gap-3">
+                 <div className="p-2 bg-[#5100fd]/10 rounded-lg"><Zap className="w-6 h-6 text-[#5100fd]" /></div> TRADING ENGINE
+              </h2>
+              <div className="px-3 py-1 bg-zinc-900 rounded-full border border-zinc-800 flex gap-2">
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Page 2 / 2</span>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              {/* Auto Trade Toggle */}
               <div className="space-y-4">
                 <button 
                   type="button"
@@ -230,7 +317,7 @@ export default function OnboardingPage() {
                 >
                   <div className="flex flex-col items-start gap-1">
                     <span className={`text-sm font-black uppercase tracking-widest ${settings.autoTrade ? 'text-green-500' : 'text-white'}`}>Auto-Trade Execution</span>
-                    <span className="text-[10px] text-zinc-500 font-medium">Automatic buys based on your alpha filters</span>
+                    <span className="text-[10px] text-zinc-500 font-medium">Synced across Web, Bot & Extension</span>
                   </div>
                   <div className={`w-14 h-7 rounded-full flex items-center px-1 transition-all duration-500 ${settings.autoTrade ? 'bg-green-500' : 'bg-zinc-800'}`}>
                     <div className={`w-5 h-5 rounded-full bg-white transition-all duration-500 shadow-xl ${settings.autoTrade ? 'translate-x-7' : 'translate-x-0'}`} />
@@ -239,66 +326,85 @@ export default function OnboardingPage() {
               </div>
 
               {settings.autoTrade && (
-                <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
-                    <div className="relative group">
-                      <Input 
-                        type="number" 
-                        step="0.1" 
-                        value={settings.buyAmount} 
-                        onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
-                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">SOL</div>
+                <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
+                      <div className="relative group">
+                        <Input 
+                          type="number" 
+                          step="0.1" 
+                          value={settings.buyAmount} 
+                          onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
+                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                        />
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">SOL</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
-                    <div className="relative group">
-                      <Input 
-                        type="number" 
-                        value={settings.maxSlippage} 
-                        onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
-                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    <div className="space-y-3">
+                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
+                      <div className="relative group">
+                        <Input 
+                          type="number" 
+                          value={settings.maxSlippage} 
+                          onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
+                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                        />
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
-                    <div className="relative">
-                      <Input 
-                        type="number" 
-                        value={settings.takeProfit} 
-                        onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
-                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    <div className="space-y-3">
+                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
+                      <div className="relative">
+                        <Input 
+                          type="number" 
+                          value={settings.takeProfit} 
+                          onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
+                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                        />
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
-                    <div className="relative">
-                      <Input 
-                        type="number" 
-                        value={settings.stopLoss} 
-                        onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
-                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                      />
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    <div className="space-y-3">
+                      <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
+                      <div className="relative">
+                        <Input 
+                          type="number" 
+                          value={settings.stopLoss} 
+                          onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
+                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                        />
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
+
+              <div className="p-6 rounded-[2rem] bg-[#5100fd]/5 border border-[#5100fd]/20 flex items-start gap-4">
+                <Bell className="w-5 h-5 text-[#5100fd] shrink-0 mt-1" />
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-white uppercase tracking-wider">Sync Notifications</p>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">Alerts will be sent to your Web Dashboard, Telegram Bot, and Browser Extension simultaneously.</p>
+                </div>
+              </div>
             </div>
 
-            <Button 
-              onClick={handleComplete}
-              className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-16 rounded-2xl font-black text-white text-base shadow-[0_20px_40px_rgba(81,0,253,0.3)] transition-all hover:scale-[1.01] active:scale-[0.98]"
-            >
-              SAVE CONFIGURATION & START TRADING
-            </Button>
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => setStep(2)}
+                variant="outline"
+                className="flex-1 bg-transparent border-zinc-800 hover:bg-zinc-900 h-16 rounded-2xl font-black text-zinc-400 text-base transition-all"
+              >
+                BACK
+              </Button>
+              <Button 
+                onClick={handleComplete}
+                className="flex-[2] bg-[#5100fd] hover:bg-[#6610ff] h-16 rounded-2xl font-black text-white text-base shadow-[0_20px_40px_rgba(81,0,253,0.3)] transition-all hover:scale-[1.01] active:scale-[0.98]"
+              >
+                SAVE & START TRADING
+              </Button>
+            </div>
           </div>
         )}
       </Card>
