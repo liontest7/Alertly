@@ -8,7 +8,12 @@ const connectionString = requireEnv("DATABASE_URL", {
   devFallback: "postgresql://postgres:postgres@localhost:5432/alertly",
 });
 
-const pool = new Pool({ connectionString });
+const pool = new Pool({ 
+  connectionString: typeof connectionString === 'string' ? connectionString : undefined,
+  max: 10,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 5000,
+});
 const adapter = new PrismaPg(pool);
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };

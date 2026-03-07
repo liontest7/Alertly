@@ -38,6 +38,9 @@ export async function POST(req: Request) {
       },
     });
 
+    // Ensure session is fully committed if using a cache or similar
+    // But mainly just ensure the user object is what we expect
+    
     try {
       await createTradingWallet(user.id);
     } catch (e) {
@@ -50,23 +53,28 @@ export async function POST(req: Request) {
       vipStatus,
     });
 
-    const response = NextResponse.json(
-      {
-        authenticated: true,
-        user: {
-          id: user.id,
-          walletAddress: user.walletAddress,
-          vipStatus,
-        },
+    const loginData = {
+      authenticated: true,
+      user: {
+        id: user.id,
+        walletAddress: user.walletAddress,
+        vipStatus,
       },
-      { status: 200 },
-    );
+    };
+
+    const response = new NextResponse(JSON.stringify(loginData), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
     setAuthCookie(response, authToken);
 
     return response;
   } catch (error) {
     console.error("Login route error:", error);
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+    return new NextResponse(JSON.stringify({ message: "Internal server error" }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

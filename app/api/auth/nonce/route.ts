@@ -7,9 +7,15 @@ export async function POST(req: Request) {
   try {
     const { origin } = await req.json();
     const { message, nonce, nonceToken } = await createAuthNonce(origin || "localhost");
-    return NextResponse.json({ message, nonce, nonceToken }, { status: 200 });
+    return new NextResponse(JSON.stringify({ message, nonce, nonceToken }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error("Nonce generation failed", error);
-    return NextResponse.json({ message: "Failed to create nonce" }, { status: 500 });
+    return new NextResponse(JSON.stringify({ message: "Failed to create nonce" }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

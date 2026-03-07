@@ -43,26 +43,57 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (refreshingRef.current) return;
 
     refreshingRef.current = true;
-    if (!user) setLoading(true);
+    
+    // Only show loading on initial load or if we don't have a user
+    if (!user) {
+      setLoading(true);
+    }
 
     try {
       const res = await fetch("/api/auth/session", {
         credentials: "include",
         cache: "no-store",
+        headers: { 
+          "Accept": "application/json",
+          "Cache-Control": "no-cache"
+        }
       });
 
-      if (!res.ok) throw new Error("Failed to fetch session");
+      if (!res.ok) {
+        if (res.status === 401) {
+          setUser(null);
+          return;
+        }
+        // If we get an error, wait and don't clear user yet to avoid loops
+        return;
+      }
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        setUser(null);
+        return;
+      }
 
       const data = await res.json();
 
       if (data?.authenticated && data.user) {
-        setUser(data.user);
+        setUser({
+          user_id: String(data.user.id || data.user.user_id),
+          wallet_address: String(data.user.walletAddress || data.user.wallet_address),
+          vip_status: Boolean(data.user.vipStatus || data.user.vip_status)
+        });
       } else {
         setUser(null);
       }
     } catch (error) {
       console.error("Session refresh failed:", error);
-      setUser(null);
+      // Only clear user if we are sure it's an auth error, or if we want to force re-auth
+      // For network errors, we might want to keep the current user state to avoid flickering
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        // Network error, keep user
+      } else {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
       refreshingRef.current = false;

@@ -38,12 +38,16 @@ export function WalletAuth() {
 
       const nonceRes = await fetch("/api/auth/nonce", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({ origin: window.location.origin }),
       });
       if (!nonceRes.ok) throw new Error("Failed to fetch nonce");
 
-      const { message, nonceToken } = await nonceRes.json();
+      const nonceData = await nonceRes.json();
+      const { message, nonceToken } = nonceData;
       const nonce_token = nonceToken;
 
       const encodedMessage = new TextEncoder().encode(message);
@@ -76,6 +80,7 @@ export function WalletAuth() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json"
         },
         body: JSON.stringify({
           wallet_address: publicKey.toBase58(),
@@ -85,6 +90,13 @@ export function WalletAuth() {
         }),
         credentials: "include",
       });
+
+      const contentType = loginRes.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+         const text = await loginRes.text();
+         console.error("Login non-JSON:", text.substring(0, 100));
+         throw new Error("Server returned non-JSON response");
+      }
 
       const loginData = await loginRes.json();
 
@@ -144,29 +156,56 @@ export function WalletAuth() {
     // Only attempt authentication if connected and NOT already logged in
     if (connected && !user && !isAuthenticating && !loading) {
       const currentAddress = publicKey?.toBase58();
+      
       // If we already tried this address and it failed or we are in a loop, don't retry immediately
       if (authAttemptedRef.current && lastWalletAddressRef.current === currentAddress) {
         return;
       }
 
-      // First, check session one more time before showing signature request
-      const checkSessionAndAuth = async () => {
+      // If we're already authenticating, don't start another check
+      if (isAuthenticating) return;
+
+      // Check if we are already authenticated by checking the session directly
+      const checkSession = async () => {
         try {
-          const res = await fetch("/api/auth/session", { credentials: "include" });
-          const data = await res.json();
-          if (data?.authenticated) {
-            await refreshSession();
-            return;
+          const res = await fetch("/api/auth/session", { 
+            credentials: "include",
+            headers: { 
+              "Accept": "application/json",
+              "Cache-Control": "no-cache"
+            }
+          });
+          
+          if (!res.ok) return false;
+          
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const data = await res.json();
+            if (data?.authenticated) {
+              // Mark as attempted so we don't loop BEFORE refreshing
+              authAttemptedRef.current = true;
+              lastWalletAddressRef.current = currentAddress || null;
+              await refreshSession();
+              return true;
+            }
           }
-          authenticate();
         } catch (e) {
+          // Ignore
+        }
+        return false;
+      };
+
+      const attemptAuth = async () => {
+        const isAuthenticated = await checkSession();
+        if (!isAuthenticated) {
           authenticate();
+        } else {
+          // Double check if we need to refresh the session state in the provider
+          refreshSession();
         }
       };
 
-      const timer = setTimeout(() => {
-        checkSessionAndAuth();
-      }, 500);
+      const timer = setTimeout(attemptAuth, 1500);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;

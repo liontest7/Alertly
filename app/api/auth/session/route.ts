@@ -9,24 +9,30 @@ export async function GET(req: Request) {
     console.log("Session check:", session ? `User ${session.user.user_id}` : "No session");
 
     if (!session) {
-      return NextResponse.json({ authenticated: false }, { 
+      return new NextResponse(JSON.stringify({ authenticated: false }), { 
         status: 200,
         headers: {
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-store, max-age=0'
         }
       });
     }
 
-    return NextResponse.json({
+    return new NextResponse(JSON.stringify({
       authenticated: true,
       user: session.user,
-    }, {
+    }), {
+      status: 200,
       headers: {
+        'Content-Type': 'application/json',
         'Cache-Control': 'no-store, max-age=0'
       }
     });
   } catch (error) {
     console.error("Session API Error:", error);
-    return NextResponse.json({ authenticated: false }, { status: 200 });
+    return new NextResponse(JSON.stringify({ authenticated: false }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
