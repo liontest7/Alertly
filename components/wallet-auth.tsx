@@ -67,7 +67,8 @@ export function WalletAuth() {
     // Check session one last time before starting auth
     const alreadyAuth = await checkSession();
     if (alreadyAuth) {
-      console.log("CheckSession returned true, skipping authenticate");
+      console.log("CheckSession returned true, refreshing...");
+      await refreshSession();
       return;
     }
 
