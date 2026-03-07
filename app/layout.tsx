@@ -5,7 +5,34 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "Alertly | Precision Solana Trading",
   description: "Real-time Solana trading intelligence and automation. Snipe, trade, and track with millisecond precision.",
-  generator: "v0.app",
+  generator: "Next.js",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/images/logo.png",
+  },
+  openGraph: {
+    title: "Alertly | Precision Solana Trading",
+    description: "Real-time Solana trading intelligence and automation. Snipe, trade, and track with millisecond precision.",
+    url: "https://alertly.ai",
+    siteName: "Alertly",
+    images: [
+      {
+        url: "/images/logo.png",
+        width: 800,
+        height: 600,
+        alt: "Alertly Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Alertly | Precision Solana Trading",
+    description: "Real-time Solana trading intelligence and automation. Snipe, trade, and track with millisecond precision.",
+    images: ["/images/logo.png"],
+  },
 }
 
 import { Providers } from "@/components/providers"

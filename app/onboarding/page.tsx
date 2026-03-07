@@ -410,7 +410,7 @@ export default function OnboardingPage() {
                 <Bell className="w-5 h-5 text-[#5100fd] shrink-0 mt-1" />
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-white uppercase tracking-wider">Sync Notifications</p>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">Alerts will be sent to your Web Dashboard, Telegram Bot, and Browser Extension simultaneously.</p>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">Alerts will be sent to your Web Dashboard and Telegram Bot simultaneously.</p>
                 </div>
               </div>
             </div>

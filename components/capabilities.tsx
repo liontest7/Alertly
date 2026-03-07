@@ -65,31 +65,32 @@ export function Capabilities() {
             <div className="relative bg-zinc-950/80 backdrop-blur-xl rounded-xl h-full flex flex-col md:flex-row border border-white/5 overflow-hidden">
               <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30">
-                    <Zap className="text-green-500 w-5 h-5" />
+                  <div className="w-10 h-10 rounded-full bg-[#5100fd]/20 flex items-center justify-center border border-[#5100fd]/30">
+                    <Zap className="text-[#5100fd] w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-[0.2em]">
-                    New: v2.1 Available
+                  <span className="text-[10px] font-bold text-[#5100fd] uppercase tracking-[0.2em]">
+                    Real-Time Engine
                   </span>
                 </div>
                 <h3 className="text-3xl md:text-4xl font-light mb-4 text-white leading-tight">
-                  Browser Extension
+                  Telegram Integration
                 </h3>
                 <p className="text-white/80 leading-relaxed mb-8 text-base md:text-lg">
-                  Receive signals instantly no matter where you trade. Our
-                  extension overlays real-time intelligence on your favorite
-                  platforms.
+                  Receive signals instantly on the go. Our Telegram bot provides real-time alerts and allows you to manage your trading settings directly from your phone.
                 </p>
                 <div className="mt-auto">
-                  <Button className="w-full md:w-auto bg-white text-black hover:bg-zinc-200 rounded-full px-10 py-6 font-bold text-lg shadow-2xl">
-                    Add to Chrome
+                  <Button 
+                    onClick={() => window.open("https://t.me/alertly_bot", '_blank')}
+                    className="w-full md:w-auto bg-white text-black hover:bg-zinc-200 rounded-full px-10 py-6 font-bold text-lg shadow-2xl"
+                  >
+                    Open Telegram Bot
                   </Button>
                 </div>
               </div>
               <div className="flex-1 relative min-h-[200px] md:min-h-full bg-zinc-900/50">
                 <Image
                   src="/images/image_1772699359538.png"
-                  alt="Browser Extension"
+                  alt="Telegram Integration"
                   fill
                   className="object-cover object-center opacity-80"
                   priority

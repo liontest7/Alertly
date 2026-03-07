@@ -20,19 +20,6 @@ export async function GET() {
     return NextResponse.json(formattedAlerts);
   } catch (error) {
     console.error("Alerts API error", error);
-    // Return mock only if real fetch fails
-    return NextResponse.json([
-      {
-        type: "VOLUME SPIKE",
-        token: "SOL",
-        name: "Solana",
-        mc: "$10.2M",
-        liquidity: "$500K",
-        change: "+15.2%",
-        trend: "up",
-        holders: "1.2K",
-        address: "So11111111111111111111111111111111111111112"
-      }
-    ]);
+    return NextResponse.json([]);
   }
 }

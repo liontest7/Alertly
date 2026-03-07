@@ -22,3 +22,7 @@
     - Currently using 10s server-side cache and 5s client-side polling. For "millisecond" precision, migrate to a dedicated WebSocket listener.
 3. **Wallet Encryption**:
     - Confirm the `INTERNAL_API_KEY` is securely set in production to prevent unauthorized settings access.
+4. **Metadata & Branding**:
+    - [COMPLETED] Site-wide branding updated to Alertly.
+    - [COMPLETED] Metadata (OG, Twitter Cards) configured in `layout.tsx`.
+    - [COMPLETED] Mock data removed from Dashboard and Alerts API.

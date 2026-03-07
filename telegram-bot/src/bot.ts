@@ -93,7 +93,7 @@ const getSettingsText = async (telegramId: string) => {
   try {
     const s = await fetchBotSettings(telegramId);
 
-    return `⚙️ *Alerty Control Center*
+    return `⚙️ *Alertly Control Center*
 
 *Trading Configuration*
 💰 Buy Amount: ${s.buyAmount} SOL

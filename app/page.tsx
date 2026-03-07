@@ -144,7 +144,7 @@ export default function Home() {
             ecosystem and sends instant alerts directly to your browser,
             Telegram, and dashboard.
             <span className="block mt-4 text-sm font-medium text-[#5100fd] opacity-90 uppercase tracking-widest">
-              Works with any Solana trading platform
+              Live DEX Data • Real-time Alerts • Auto-Trading
             </span>
           </p>
 

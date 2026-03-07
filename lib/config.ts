@@ -12,7 +12,7 @@ export const siteConfig = {
   token: {
     symbol: "ALERTLY",
     name: "Alertly",
-    address: "7xKXvS...AlertlyCA",
+    address: "7xKXvS...AlertlyCA", // Update with real CA when available
     network: "Solana",
   },
   fees: {
