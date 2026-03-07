@@ -102,7 +102,13 @@ export default function DashboardPage() {
       <div className="container mx-auto px-6 pt-32 pb-12">
         <div className="flex flex-col gap-8">
           <div className="flex-1 space-y-8">
-            <h1 className="text-2xl font-bold text-white">Alertly Terminal</h1>
+            <h1 className="text-4xl font-black text-white tracking-tighter flex items-center gap-4">
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 bg-[#5100fd]/20 blur-xl rounded-full animate-pulse" />
+                <img src="/images/logo.png" alt="Logo" className="w-full h-full object-contain relative z-10" />
+              </div>
+              ALERTLY <span className="text-[#5100fd]">ALPHA</span>
+            </h1>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <StatCard label="Total Balance" value="Live" subValue="Connected trading wallet" />
@@ -112,6 +118,13 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-8 space-y-6">
+                <div className="bg-zinc-950/50 backdrop-blur-xl border border-zinc-900 rounded-[2rem] p-1.5 flex items-center gap-1.5 w-fit mb-4 shadow-2xl overflow-x-auto no-scrollbar max-w-full">
+                  <Button variant="ghost" size="sm" className="rounded-full px-5 h-9 text-[11px] font-black uppercase tracking-widest bg-[#5100fd] text-white hover:bg-[#5100fd] shadow-[0_0_20px_rgba(81,0,253,0.4)] transition-all shrink-0">All</Button>
+                  <Button variant="ghost" size="sm" className="rounded-full px-5 h-9 text-[11px] font-black uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all shrink-0">Boost</Button>
+                  <Button variant="ghost" size="sm" className="rounded-full px-5 h-9 text-[11px] font-black uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all shrink-0">Volume Spike</Button>
+                  <Button variant="ghost" size="sm" className="rounded-full px-5 h-9 text-[11px] font-black uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all shrink-0">Whale Alert</Button>
+                  <Button variant="ghost" size="sm" className="rounded-full px-5 h-9 text-[11px] font-black uppercase tracking-widest text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all shrink-0 text-nowrap">Dex Listing</Button>
+                </div>
                 <AlphaFeed 
                   alerts={alerts} 
                   loading={loading} 

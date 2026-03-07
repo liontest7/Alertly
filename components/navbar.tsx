@@ -111,8 +111,8 @@ export function Navbar() {
               priority
             />
           </div>
-          <span className="text-xl font-bold tracking-tight text-white leading-none">
-            {siteConfig.name}
+          <span className="text-xl font-black tracking-tighter text-white leading-none uppercase">
+            {siteConfig.name} <span className="text-[#5100fd]">ALPHA</span>
           </span>
         </Link>
 
@@ -156,11 +156,11 @@ export function Navbar() {
 
           <div className="flex items-center gap-4 relative z-[110]">
             <div className="[&_.wallet-adapter-button]:!bg-white [&_.wallet-adapter-button]:!text-black [&_.wallet-adapter-button]:!rounded-full [&_.wallet-adapter-button]:!px-5 [&_.wallet-adapter-button]:!h-10 [&_.wallet-adapter-button]:!text-[15px] [&_.wallet-adapter-button]:!font-bold [&_.wallet-adapter-button]:hover:!bg-zinc-200 [&_.wallet-adapter-button]:!transition-all [&_.wallet-adapter-button]:hover:!scale-105 [&_.wallet-adapter-button]:active:!scale-95 relative z-[120]">
-              {isClient && <WalletMultiButton />}
+              {isClient && <WalletMultiButton>Select Wallet</WalletMultiButton>}
             </div>
 
             <Button
-              className="rounded-full bg-[#5100fd] hover:bg-[#6610ff] text-white px-5 h-10 text-[15px] font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#5100fd]/20 relative z-[120]"
+              className="rounded-full bg-[#5100fd] hover:bg-[#6610ff] text-white px-5 h-10 text-[15px] font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[#5100fd]/20 relative z-[120] uppercase tracking-wider"
               onClick={handleLaunchTerminal}
             >
               Terminal

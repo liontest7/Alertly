@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -103,7 +104,10 @@ export default function OnboardingPage() {
             </div>
             
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">ALERTLY <span className="text-[#5100fd]">ALPHA</span></h1>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white flex items-center justify-center gap-3">
+                <Image src="/images/logo.png" alt="Logo" width={48} height={48} className="rounded-full" />
+                <span>ALERTLY <span className="text-[#5100fd]">ALPHA</span></span>
+              </h1>
               <p className="text-zinc-500 text-base md:text-lg leading-relaxed max-w-sm mx-auto font-medium">
                 Professional-grade Solana trading intelligence. Set your parameters and dominate the DEX.
               </p>
@@ -138,7 +142,58 @@ export default function OnboardingPage() {
             </div>
             
             <div className="space-y-8">
-              {/* Risk Profile */}
+              {/* Intelligence Monitors */}
+              <div className="space-y-5">
+                <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
+                  <Target className="w-3.5 h-3.5" /> Intelligence Monitors
+                </Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <MonitorToggle 
+                      label="Volume Spikes" 
+                      active={settings.volumeSpikeEnabled} 
+                      onToggle={() => setSettings({...settings, volumeSpikeEnabled: !settings.volumeSpikeEnabled})} 
+                    />
+                    {settings.volumeSpikeEnabled && (
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                        <Label className="text-[9px] font-bold text-zinc-500 uppercase">Alert on Pairs:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {["SOL", "USDC", "USDT"].map(pair => (
+                            <button key={pair} type="button" className="px-2 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-[9px] font-bold text-zinc-400 hover:border-[#5100fd] transition-colors">
+                              {pair}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <MonitorToggle 
+                      label="Whale Movement" 
+                      active={settings.whaleAlertEnabled} 
+                      onToggle={() => setSettings({...settings, whaleAlertEnabled: !settings.whaleAlertEnabled})} 
+                    />
+                    {settings.whaleAlertEnabled && (
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
+                        <Label className="text-[9px] font-bold text-zinc-500 uppercase">Min Buy Amount:</Label>
+                        <Input className="h-8 bg-zinc-900 border-zinc-800 text-xs text-white" placeholder="5000" type="number" />
+                      </div>
+                    )}
+                  </div>
+                  <MonitorToggle 
+                    label="DEX Boosts" 
+                    active={settings.dexBoostEnabled} 
+                    onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
+                  />
+                  <MonitorToggle 
+                    label="New Listings" 
+                    active={settings.dexListingEnabled} 
+                    onToggle={() => setSettings({...settings, dexListingEnabled: !settings.dexListingEnabled})} 
+                  />
+                </div>
+              </div>
+
+              {/* Risk Intelligence */}
               <div className="space-y-4">
                 <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
                   <Shield className="w-3.5 h-3.5" /> Risk Intelligence
@@ -162,92 +217,6 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Trade Settings */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
-                  <div className="relative group">
-                    <Input 
-                      type="number" 
-                      step="0.1" 
-                      value={settings.buyAmount} 
-                      onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
-                      className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                    />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">SOL</div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
-                  <div className="relative group">
-                    <Input 
-                      type="number" 
-                      value={settings.maxSlippage} 
-                      onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
-                      className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                    />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Profit/Loss */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
-                  <div className="relative">
-                    <Input 
-                      type="number" 
-                      value={settings.takeProfit} 
-                      onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
-                      className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                    />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
-                  <div className="relative">
-                    <Input 
-                      type="number" 
-                      value={settings.stopLoss} 
-                      onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
-                      className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
-                    />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Monitors */}
-              <div className="space-y-5">
-                <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
-                  <Target className="w-3.5 h-3.5" /> Intelligence Monitors
-                </Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <MonitorToggle 
-                    label="Volume Spikes" 
-                    active={settings.volumeSpikeEnabled} 
-                    onToggle={() => setSettings({...settings, volumeSpikeEnabled: !settings.volumeSpikeEnabled})} 
-                  />
-                  <MonitorToggle 
-                    label="Whale Movement" 
-                    active={settings.whaleAlertEnabled} 
-                    onToggle={() => setSettings({...settings, whaleAlertEnabled: !settings.whaleAlertEnabled})} 
-                  />
-                  <MonitorToggle 
-                    label="DEX Boosts" 
-                    active={settings.dexBoostEnabled} 
-                    onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
-                  />
-                  <MonitorToggle 
-                    label="New Listings" 
-                    active={settings.dexListingEnabled} 
-                    onToggle={() => setSettings({...settings, dexListingEnabled: !settings.dexListingEnabled})} 
-                  />
-                </div>
-              </div>
-
               {/* Auto Trade */}
               <div className="space-y-4">
                 <button 
@@ -268,6 +237,60 @@ export default function OnboardingPage() {
                   </div>
                 </button>
               </div>
+
+              {settings.autoTrade && (
+                <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Buy Amount (SOL)</Label>
+                    <div className="relative group">
+                      <Input 
+                        type="number" 
+                        step="0.1" 
+                        value={settings.buyAmount} 
+                        onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
+                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                      />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">SOL</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Max Slippage</Label>
+                    <div className="relative group">
+                      <Input 
+                        type="number" 
+                        value={settings.maxSlippage} 
+                        onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
+                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                      />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Take Profit</Label>
+                    <div className="relative">
+                      <Input 
+                        type="number" 
+                        value={settings.takeProfit} 
+                        onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
+                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                      />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-zinc-400 uppercase text-[10px] font-black tracking-widest">Stop Loss</Label>
+                    <div className="relative">
+                      <Input 
+                        type="number" 
+                        value={settings.stopLoss} 
+                        onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
+                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                      />
+                      <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-zinc-600 uppercase">%</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button 

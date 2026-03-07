@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { Zap, Settings } from "lucide-react"
+import { Zap, Settings, Shield, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -12,11 +12,18 @@ function MiniSetting({ label, value, color = "text-white" }: { label: string, va
   )
 }
 
+function StatusIndicator({ active }: { active: boolean }) {
+  return (
+    <div className={`w-2 h-2 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_8px_#5100fd]' : 'bg-zinc-800'}`} />
+  )
+}
+
 export function QuickSettingsCard({ settings, onToggle }: { settings: any, onToggle: () => void }) {
   const router = useRouter();
+  
   return (
-    <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem]">
-      <div className="flex justify-between items-center mb-6">
+    <Card className="bg-zinc-950 border-zinc-900 p-6 rounded-[2rem] space-y-6">
+      <div className="flex justify-between items-center">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
           <Zap className="w-3.5 h-3.5" /> Quick Settings
         </h3>
@@ -38,11 +45,35 @@ export function QuickSettingsCard({ settings, onToggle }: { settings: any, onTog
         </div>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <MiniSetting label="Buy" value={`${settings.buyAmount} SOL`} />
         <MiniSetting label="Slippage" value={`${settings.slippage}%`} />
         <MiniSetting label="Stop Loss" value={`${settings.stopLoss}%`} color="text-red-500" />
         <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" />
+      </div>
+
+      <div className="pt-4 border-t border-zinc-900/50 space-y-4">
+        <div className="flex items-center gap-2 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+          <Target className="w-3 h-3" /> Active Monitors
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Volume</span>
+            <StatusIndicator active={settings.volumeSpikeEnabled} />
+          </div>
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Whales</span>
+            <StatusIndicator active={settings.whaleAlertEnabled} />
+          </div>
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Boosts</span>
+            <StatusIndicator active={settings.dexBoostEnabled} />
+          </div>
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/20 border border-zinc-900/50">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase">Listings</span>
+            <StatusIndicator active={settings.dexListingEnabled} />
+          </div>
+        </div>
       </div>
     </Card>
   )
