@@ -73,7 +73,7 @@ export function Navbar() {
     }
   }, [connected, publicKey, user, loading, refreshSession, isClient]);
 
-  const handleLaunchTerminal = () => {
+  const handleLaunchTerminal = async () => {
     if (loading) {
       console.log("Terminal clicked: Session is loading...");
       return;
@@ -88,49 +88,26 @@ export function Navbar() {
       return;
     }
     
-    // If not logged in but connected, user needs to sign
-    if (connected) {
-      console.log("Terminal clicked: Connected but no user. Checking session...");
-      const checkSessionAction = async () => {
-        try {
-          const res = await fetch("/api/auth/session", { cache: 'no-store' });
-          if (!res.ok) throw new Error("Session check failed");
-          
-          const data = await res.json();
-          if (data.authenticated) {
-            console.log("Session found, redirecting...");
-            router.push("/dashboard");
-          } else {
-            console.log("No session, scrolling to top and showing auth prompt");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            toast({
-              title: "Authentication Required",
-              description: "Please click 'GET ALERT NOW' to sign and enter the terminal.",
-            });
-            // We can also trigger refreshSession here to be proactive
-            refreshSession();
-          }
-        } catch (e) {
-          console.error("Session check error", e);
-          toast({
-            title: "Authentication Error",
-            description: "Failed to verify your session. Please try again.",
-            variant: "destructive",
-          });
-        }
-      };
-      checkSessionAction();
+    // If not connected, show modal
+    if (!connected) {
+      toast({
+        title: "Connection Required",
+        description: "Please connect your wallet to access the terminal.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      setVisible(true);
       return;
     }
 
-    // Not connected at all
+    // If connected but no user, we need to sign.
+    console.log("Terminal clicked: Connected but no user. Triggering session refresh and informing user.");
+    refreshSession();
+    window.scrollTo({ top: 0, behavior: "smooth" });
     toast({
-      title: "Connection Required",
-      description: "Please connect your wallet to access the terminal.",
-      variant: "destructive",
-      duration: 5000,
+      title: "Signature Required",
+      description: "Please click 'GET ALERT NOW' to sign into your account.",
     });
-    setVisible(true);
   };
 
   return (

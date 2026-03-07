@@ -26,16 +26,19 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleLaunchTerminal = async () => {
+    console.log("Hero: Terminal clicked", { hasUser: !!user, connected });
     if (user) {
       router.push("/dashboard");
       return;
     }
 
     if (!connected) {
+      console.log("Hero: Not connected, showing modal");
       setVisible(true);
       return;
     }
 
+    console.log("Hero: Connected, triggering login");
     await handleLogin();
   };
 
@@ -95,8 +98,9 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
         size="lg"
         className="group bg-[#5100fd] hover:bg-[#6610ff] text-white px-8 py-6 text-base rounded-full transition-all duration-[650ms] hover:scale-[1.02]"
         onClick={handleLaunchTerminal}
+        disabled={isAuthenticating}
       >
-        GET ALERT NOW
+        {isAuthenticating ? "Authenticating..." : "GET ALERT NOW"}
         <CircleArrowRight className="ml-2 h-5 w-5 transition-transform duration-[650ms] group-hover:rotate-90" />
       </Button>
       <Button
