@@ -8,7 +8,7 @@ import { useToast } from "./ui/use-toast";
 
 export function WalletAuth() {
   const { publicKey, signMessage, connected, disconnect } = useWallet();
-  const { user, refreshSession } = useAuthSession();
+  const { user, refreshSession, loading } = useAuthSession();
   const { toast } = useToast();
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
