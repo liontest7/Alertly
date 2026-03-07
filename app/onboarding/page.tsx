@@ -124,7 +124,7 @@ export default function OnboardingPage() {
             
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">
-                Alerty
+                Alertly
               </h1>
               <p className="text-zinc-500 text-base md:text-lg leading-relaxed max-w-sm mx-auto font-medium">
                 Professional-grade Solana trading intelligence. Set your parameters and dominate the DEX.
@@ -173,17 +173,17 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, volumeSpikeEnabled: !settings.volumeSpikeEnabled})} 
                     />
                     {settings.volumeSpikeEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
-                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Alert on Pairs:</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Alert on Pairs:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["SOL", "USDC", "USDT"].map(pair => (
                             <button 
                               key={pair} 
                               type="button" 
                               onClick={() => togglePair(pair)}
-                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all ${
+                              className={`px-4 py-2 rounded-xl border text-[11px] font-black transition-all ${
                                 settings.alertPairs.includes(pair)
-                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_15px_rgba(81,0,253,0.4)]'
+                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]'
                                 : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
                               }`}
                             >
@@ -201,10 +201,10 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, whaleAlertEnabled: !settings.whaleAlertEnabled})} 
                     />
                     {settings.whaleAlertEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
-                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Min Buy Amount ($):</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Min Buy Amount ($):</Label>
                         <Input 
-                          className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-bold rounded-xl focus:border-[#5100fd] focus:ring-0" 
+                          className="h-12 bg-zinc-800 border-zinc-700 text-sm text-white font-black rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all" 
                           value={settings.minWhaleBuy}
                           onChange={(e) => setSettings({...settings, minWhaleBuy: parseInt(e.target.value) || 0})}
                           type="number" 
@@ -219,17 +219,17 @@ export default function OnboardingPage() {
                       onToggle={() => setSettings({...settings, dexBoostEnabled: !settings.dexBoostEnabled})} 
                     />
                     {settings.dexBoostEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800">
-                        <Label className="text-[10px] font-black text-white uppercase tracking-wider">Boost Levels:</Label>
+                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
+                        <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Boost Packages:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["Level 1", "Level 2", "Level 3", "Top Boost"].map(level => (
                             <button 
                               key={level} 
                               type="button" 
                               onClick={() => toggleBoostLevel(level)}
-                              className={`px-3 py-1.5 rounded-lg border text-[10px] font-black transition-all ${
+                              className={`px-4 py-2 rounded-xl border text-[11px] font-black transition-all ${
                                 settings.boostLevels.includes(level)
-                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_15px_rgba(81,0,253,0.4)]'
+                                ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]'
                                 : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
                               }`}
                             >
@@ -279,18 +279,18 @@ export default function OnboardingPage() {
                         type="number" 
                         value={settings.minLiquidity} 
                         onChange={(e) => setSettings({...settings, minLiquidity: parseInt(e.target.value) || 0})}
-                        className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                        className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-base font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-inner"
                       />
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <Label className="text-white uppercase text-[10px] font-black tracking-widest">DEX Sources</Label>
-                    <div className="flex gap-2">
-                      {["Raydium", "Jupiter", "Meteora"].map(source => (
-                        <button key={source} type="button" className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-[10px] font-black text-white hover:border-[#5100fd] transition-all">
-                          {source}
-                        </button>
-                      ))}
+                    <Label className="text-white uppercase text-[10px] font-black tracking-widest">Global Status</Label>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-inner">
+                      <span className="text-[11px] font-black text-white uppercase">Cloud Monitoring</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-[#5100fd] animate-pulse shadow-[0_0_10px_#5100fd]" />
+                        <span className="text-[9px] font-black text-[#5100fd] uppercase tracking-tighter">Active</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -350,16 +350,16 @@ export default function OnboardingPage() {
                           step="0.1" 
                           value={settings.buyAmount} 
                           onChange={(e) => setSettings({...settings, buyAmount: parseFloat(e.target.value)})}
-                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                          className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-lg font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-2xl"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">SOL</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/50 uppercase">SOL</div>
                       </div>
                       <div className="flex gap-2 mt-2">
                         {[0.1, 0.5, 1.0, 2.0].map(val => (
                           <button 
                             key={val} 
                             onClick={() => setSettings({...settings, buyAmount: val})}
-                            className={`px-3 py-1 rounded-lg text-[10px] font-black border transition-all ${settings.buyAmount === val ? 'bg-[#5100fd] border-[#5100fd] text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500'}`}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black border transition-all ${settings.buyAmount === val ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-lg' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-600'}`}
                           >
                             {val} SOL
                           </button>
@@ -373,9 +373,9 @@ export default function OnboardingPage() {
                           type="number" 
                           value={settings.maxSlippage} 
                           onChange={(e) => setSettings({...settings, maxSlippage: parseFloat(e.target.value)})}
-                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-white focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                          className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-lg font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-2xl"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/50 uppercase">%</div>
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -385,9 +385,9 @@ export default function OnboardingPage() {
                           type="number" 
                           value={settings.takeProfit} 
                           onChange={(e) => setSettings({...settings, takeProfit: parseFloat(e.target.value)})}
-                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-green-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                          className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-lg font-black text-green-500 focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-2xl"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/50 uppercase">%</div>
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -397,9 +397,9 @@ export default function OnboardingPage() {
                           type="number" 
                           value={settings.stopLoss} 
                           onChange={(e) => setSettings({...settings, stopLoss: parseFloat(e.target.value)})}
-                          className="bg-zinc-900/40 border-zinc-800 rounded-2xl h-14 text-base font-bold text-red-500 focus:border-[#5100fd] focus:ring-0 transition-all pl-5"
+                          className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-lg font-black text-red-500 focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-2xl"
                         />
-                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white uppercase">%</div>
+                        <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-white/50 uppercase">%</div>
                       </div>
                     </div>
                   </div>

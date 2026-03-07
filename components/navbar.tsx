@@ -112,7 +112,7 @@ export function Navbar() {
             />
           </div>
           <span className="text-xl font-black tracking-tighter text-white leading-none uppercase">
-            {siteConfig.name}
+            Alertly
           </span>
         </Link>
 
