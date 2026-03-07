@@ -26,3 +26,8 @@
     - [COMPLETED] Site-wide branding updated to Alertly.
     - [COMPLETED] Metadata (OG, Twitter Cards) configured in `layout.tsx`.
     - [COMPLETED] Mock data removed from Dashboard and Alerts API.
+5. **Copy Trading & Wallet**:
+    - [COMPLETED] Copy Trading UI implemented with real API connection.
+    - [COMPLETED] Sniper Wallet (Trading Wallet) generation and management implemented.
+    - [COMPLETED] Telegram linking command generator connected to DB.
+    - [COMPLETED] UI High Contrast & Font scaling applied to right-side dashboard panels.

@@ -70,8 +70,16 @@ export function ConnectionsCard() {
                 {linking ? 'Generating…' : 'Generate /link Command'}
               </Button>
               {linkCommand && (
-                <div className="text-[11px] font-mono text-white bg-black border border-zinc-800 rounded-lg p-3 break-all shadow-inner">
-                  {linkCommand}
+                <div className="flex flex-col gap-2">
+                  <div className="text-[11px] font-mono text-white bg-black border border-zinc-800 rounded-lg p-3 break-all shadow-inner">
+                    {linkCommand}
+                  </div>
+                  <Button
+                    onClick={() => window.open('https://t.me/alertly_bot', '_blank')}
+                    className="w-full bg-zinc-800 hover:bg-zinc-700 h-9 rounded-xl text-[10px] font-black text-white uppercase"
+                  >
+                    Open Bot
+                  </Button>
                 </div>
               )}
             </>
