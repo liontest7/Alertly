@@ -40,3 +40,16 @@ externalPort = 3001
 [[ports]]
 localPort = 10000
 externalPort = 3002
+
+[userenv]
+
+[userenv.shared]
+AUTH_SECRET = "4baf7f0c4b7e5d2b1e9e7a0f3c8d9e6b7c5d4a2f"
+INTERNAL_API_KEY = "Alertly162534"
+SOLANA_RPC_URL = "https://mainnet.helius-rpc.com/?api-key=dd4d0f55-719e-4f2e-b8b8-2f686bc7d2bf"
+TELEGRAM_BOT_TOKEN = "8795050457:AAF85kVOow9gQAirrBbfokSpQ3ab9p3nKNQ"
+ENCRYPTION_KEY = "8c1f6a2d7e9b4c5a3f8d1e0b6a7c9d2f"
+ALERTLY_API_BASE_URL = "https://alertly-5zmw.onrender.com"
+NEXT_PUBLIC_APP_URL = "https://alertly-5zmw.onrender.com"
+JWT_SECRET = "4baf7f0c4b7e5d2b1e9e7a0f3c8d9e6b7c5d4a2f"
+ADMIN_WALLETS = "[]"

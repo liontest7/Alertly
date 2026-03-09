@@ -12,12 +12,10 @@ export const prisma = (() => {
   }
 
   try {
-    // Add SSL requirement for Render PostgreSQL
-    const url = new URL(connectionString || "postgresql://localhost/alertly");
-    url.searchParams.set("sslmode", "require");
+    const connectionString = process.env.DATABASE_URL || "postgresql://alertly_postgres_user:sNJ9TdJe29bZSYccrdRZebvnUik3rNNt@dpg-d6llhc15pdvs7381e920-a.oregon-postgres.render.com/alertly_postgres?sslmode=require";
     
     const adapter = new PrismaPg({ 
-      connectionString: url.toString()
+      connectionString: connectionString
     });
     
     const client = new PrismaClient({
