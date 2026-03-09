@@ -21,6 +21,8 @@ export async function requireAdmin(request: Request) {
   const wallet = session?.user?.walletAddress;
   const adminWallets = getAdminWallets();
 
+  console.log("Admin check:", { wallet, adminWallets, hasAccess: wallet && adminWallets.includes(wallet) });
+
   if (!wallet || !adminWallets.includes(wallet)) {
     return { ok: false as const, session: null };
   }

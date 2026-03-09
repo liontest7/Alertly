@@ -26,8 +26,6 @@ type AdminLogs = {
   failedTrades: Array<{ id: string; action: string; status: string; message?: string | null; createdAt: string }>;
 };
 
-import { Footer } from "@/components/footer";
-
 export default function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -131,7 +129,18 @@ export default function AdminPage() {
   }
 
   if (!overview) {
-    return <main className="min-h-screen bg-[#050505] text-red-400 p-8">Admin access denied.</main>;
+    return (
+      <main className="min-h-screen bg-[#050505] text-red-400 p-8 flex flex-col items-center justify-center gap-4">
+        <h1 className="text-2xl font-bold">Admin access denied.</h1>
+        <p className="text-zinc-400">Make sure your wallet is connected and authorized.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
+        >
+          Retry
+        </button>
+      </main>
+    );
   }
 
   return (

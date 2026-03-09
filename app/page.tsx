@@ -49,8 +49,6 @@ export default function Home() {
 
   return (
     <main className="relative min-h-[100dvh] bg-black text-white overflow-x-hidden selection:bg-[#5100fd]/30">
-      <Navbar />
-
       <HeroLogo progress={scrollProgress} scale={linesScale} />
 
       <div
