@@ -7,10 +7,18 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient };
 export const prisma = (() => {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
 
-  const connectionString = process.env.DATABASE_URL || "postgresql://alertly_postgres_user:sNJ9TdJe29bZSYccrdRZebvnUik3rNNt@dpg-d6llhc15pdvs7381e920-a.oregon-postgres.render.com/alertly_postgres?sslmode=require";
-
   try {
-    const pool = new pg.Pool({ connectionString });
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is not set");
+    }
+
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('helium');
+    
+    const pool = new pg.Pool({ 
+      connectionString,
+      ssl: isLocal ? false : (connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false)
+    });
     const adapter = new PrismaPg(pool);
     const client = new PrismaClient({ adapter });
 

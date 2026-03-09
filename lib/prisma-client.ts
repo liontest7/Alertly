@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -9,7 +10,12 @@ function createAdapter() {
     return undefined;
   }
 
-  return new PrismaPg({ connectionString });
+  const isLocal = connectionString.includes('localhost') || connectionString.includes('helium');
+
+  return new PrismaPg(new pg.Pool({ 
+    connectionString,
+    ssl: isLocal ? false : (connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false)
+  }));
 }
 
 export const createPrismaClient = () => {
