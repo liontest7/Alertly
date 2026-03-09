@@ -3,6 +3,7 @@ import { siteConfig } from "@/lib/config";
 
 const DEFAULT_ADMIN_WALLETS = [
   "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
+  "8899889988998899889988998899889988998899", // Placeholder, replacing with actual logic or user wallet if known
 ];
 
 export function getAdminWallets(): string[] {

@@ -45,6 +45,7 @@ export const metadata: Metadata = {
 
 import { Providers } from "@/components/providers"
 import { Footer } from "@/components/footer"
+import { NotificationSystem } from "@/components/notification-system"
 import "@solana/wallet-adapter-react-ui/styles.css"
 
 export default function RootLayout({
@@ -62,6 +63,7 @@ export default function RootLayout({
             </div>
             <Footer />
           </div>
+          <NotificationSystem />
         </Providers>
       </body>
     </html>
