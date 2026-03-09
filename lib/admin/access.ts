@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { siteConfig } from "@/lib/config";
 
 const DEFAULT_ADMIN_WALLETS = [
   "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
@@ -10,7 +11,9 @@ export function getAdminWallets(): string[] {
     .map((v) => v.trim())
     .filter(Boolean);
 
-  return Array.from(new Set([...DEFAULT_ADMIN_WALLETS, ...envWallets]));
+  const configWallets = siteConfig.adminWallets || [];
+
+  return Array.from(new Set([...DEFAULT_ADMIN_WALLETS, ...configWallets, ...envWallets]));
 }
 
 export async function requireAdmin(request: Request) {

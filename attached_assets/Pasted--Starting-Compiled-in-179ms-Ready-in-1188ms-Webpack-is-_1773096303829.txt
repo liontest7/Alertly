@@ -1,0 +1,73 @@
+✓ Starting...
+ ✓ Compiled in 179ms
+ ✓ Ready in 1188ms
+ ⚠ Webpack is configured while Turbopack is not, which may cause problems.
+ ⚠ See instructions if you need to configure Turbopack:
+  https://nextjs.org/docs/app/api-reference/next-config-js/turbo
+
+ ○ Compiling / ...
+ ✓ Compiled / in 5s
+ GET / 200 in 5580ms
+ ⚠ Cross origin request detected from de12e0a1-2fa9-47d6-b062-c57f820e88dc-00-320qpaak409zw.sisko.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 1069ms
+ GET /api/auth/session 200 in 1285ms
+🚀 Starting real-time alert listener
+Failed to start alert listener: Error: Non-base58 character
+    at Object.decode (/home/runner/workspace/.next/server/chunks/node_modules_4f7fa9._.js:8564:15)
+    at new PublicKey (/home/runner/workspace/.next/server/chunks/node_modules_@solana_web3_js_lib_index_esm_93978a.js:218:214)
+    at setupProgramSubscription (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1248:35)
+    at startBlockchainListener (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1280:11)
+    at AlertListener.start (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1347:191)
+    at startAlertListener (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1418:20)
+    at ensureAlertListenerStarted (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1425:32)
+    at GET (/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:1457:172)
+    at /home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:57234
+    at /home/runner/workspace/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+    at ContextAPI.with (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+    at NoopTracer.startActiveSpan (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
+    at ProxyTracer.startActiveSpan (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
+    at /home/runner/workspace/node_modules/next/dist/server/lib/trace/tracer.js:122:103
+    at NoopContextManager.with (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+    at ContextAPI.with (/home/runner/workspace/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+    at NextTracerImpl.trace (/home/runner/workspace/node_modules/next/dist/server/lib/trace/tracer.js:122:28)
+    at /home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:48896
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:40958)
+    at /home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47472
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:38293)
+    at /home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47434
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eT.execute (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:46881)
+    at eT.handle (/home/runner/workspace/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:58771)
+    at doRender (/home/runner/workspace/node_modules/next/dist/server/base-server.js:1366:60)
+    at cacheEntry.responseCache.get.routeKind (/home/runner/workspace/node_modules/next/dist/server/base-server.js:1588:34)
+    at ResponseCache.get (/home/runner/workspace/node_modules/next/dist/server/response-cache/index.js:49:26)
+    at DevServer.renderToResponseWithComponentsImpl (/home/runner/workspace/node_modules/next/dist/server/base-server.js:1496:53)
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].alertEvent.findMany()` invocation in
+/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:520:161
+
+  517 }
+  518 async function getLiveAlerts(filters) {
+  519     try {
+→ 520         const rows = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].alertEvent.findMany(
+The table `public.AlertEvent` does not exist in the current database.
+Failed to read live blockchain alerts: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].alertEvent.findMany()` invocation in
+/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:520:161
+
+  517 }
+  518 async function getLiveAlerts(filters) {
+  519     try {
+→ 520         const rows = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].alertEvent.findMany(
+The table `public.AlertEvent` does not exist in the current database.
+ GET /api/auth/session 200 in 100ms
+prisma:error 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].alertEvent.findMany()` invocation in
+/home/runner/workspace/.next/server/chunks/_cc0fe3._.js:520:161
+
+  517 }

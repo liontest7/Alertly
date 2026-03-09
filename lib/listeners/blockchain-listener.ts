@@ -381,6 +381,10 @@ async function setupProgramSubscription() {
   const programIds = Object.values(DEX_PROGRAMS);
 
   for (const programId of programIds) {
+    if (!isPotentialPublicKey(programId)) {
+      console.warn(`Skipping invalid program ID: ${programId}`);
+      continue;
+    }
     const subId = conn.onLogs(new PublicKey(programId), async (logs) => {
       await handleProgramLogs(logs, programId);
     }, "confirmed");
@@ -398,11 +402,10 @@ async function setupProgramSubscription() {
     programAccountSubscriptionIds.push(accountSubId);
   }
 
-  const accountSubscribeWallets = new Set<string>([
-    ...DEX_BOOST_WALLETS,
-    ...DEX_LISTING_WALLETS,
-    ...GLOBAL_WHALE_WALLETS,
-  ]);
+  const accountSubscribeWallets = new Set<string>();
+  [...DEX_BOOST_WALLETS, ...DEX_LISTING_WALLETS, ...GLOBAL_WHALE_WALLETS].forEach(w => {
+    if (isPotentialPublicKey(w)) accountSubscribeWallets.add(w);
+  });
 
   for (const wallet of accountSubscribeWallets) {
     try {
