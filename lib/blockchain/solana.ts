@@ -17,7 +17,15 @@ const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 export interface TokenAlert {
   name: string;
-  type: "DEX_BOOST" | "NEW_LISTING" | "VOL_SPIKE" | "LIQ_ADD";
+  type:
+    | "EARLY TOKEN PAIR"
+    | "LIQUIDITY ADDED"
+    | "LIQUIDITY REMOVAL"
+    | "VOLUME SPIKE"
+    | "WHALE BUY"
+    | "DEX BOOST"
+    | "DEX LISTING"
+    | "SMART MONEY ENTRY";
   mc: string;
   vol: string;
   age: string;
@@ -36,6 +44,8 @@ export interface TokenAlert {
   priceUsd?: string;
   alertedAt?: string;
   fingerprint?: string;
+  riskScore?: number;
+  riskLevel?: string;
 }
 
 export interface AlertFilterSettings {
@@ -49,119 +59,76 @@ export interface AlertFilterSettings {
   dexListingEnabled?: boolean;
 }
 
-type AlertWithMetrics = TokenAlert & {
-  mcValue: number | null;
-  liquidityValue: number | null;
-  holdersValue: number | null;
+const TYPE_TO_LABEL: Record<string, TokenAlert["type"]> = {
+  EARLY_TOKEN_PAIR: "EARLY TOKEN PAIR",
+  LIQUIDITY_ADDED: "LIQUIDITY ADDED",
+  LIQUIDITY_REMOVAL: "LIQUIDITY REMOVAL",
+  VOLUME_SPIKE: "VOLUME SPIKE",
+  WHALE_BUY: "WHALE BUY",
+  DEX_BOOST: "DEX BOOST",
+  DEX_LISTING: "DEX LISTING",
+  SMART_MONEY_ENTRY: "SMART MONEY ENTRY",
 };
 
-function toAlertWithMetrics(alert: TokenAlert, metrics: {
-  mcValue?: number | null;
-  liquidityValue?: number | null;
-  holdersValue?: number | null;
-}): AlertWithMetrics {
-  return {
-    ...alert,
-    mcValue: typeof metrics.mcValue === "number" ? metrics.mcValue : null,
-    liquidityValue: typeof metrics.liquidityValue === "number" ? metrics.liquidityValue : null,
-    holdersValue: typeof metrics.holdersValue === "number" ? metrics.holdersValue : null,
-  };
+function parseMoneyValue(input?: string | null): number | null {
+  if (!input) return null;
+  const normalized = input.replace(/[$,\s]/g, "").toUpperCase();
+  if (!normalized) return null;
+
+  const suffix = normalized.slice(-1);
+  const base = Number(suffix.match(/[KMB]/) ? normalized.slice(0, -1) : normalized);
+  if (!Number.isFinite(base)) return null;
+
+  if (suffix === "K") return base * 1_000;
+  if (suffix === "M") return base * 1_000_000;
+  if (suffix === "B") return base * 1_000_000_000;
+  return base;
 }
 
-function isAlertTypeEnabled(type: TokenAlert["type"], filters?: AlertFilterSettings) {
+function getAgeLabel(alertedAt: Date): string {
+  const diffMs = Date.now() - alertedAt.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
+
+function isAlertEnabledBySettings(type: TokenAlert["type"], filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
-  if (type === "VOL_SPIKE" && filters.volumeSpikeEnabled === false) return false;
-  if (type === "DEX_BOOST" && filters.dexBoostEnabled === false) return false;
-  if (type === "NEW_LISTING" && filters.dexListingEnabled === false) return false;
-  if (type === "LIQ_ADD" && filters.whaleAlertEnabled === false) return false;
+  if (type === "VOLUME SPIKE" && filters.volumeSpikeEnabled === false) return false;
+  if (type === "WHALE BUY" && filters.whaleAlertEnabled === false) return false;
+  if (type === "DEX BOOST" && filters.dexBoostEnabled === false) return false;
+  if (type === "DEX LISTING" && filters.dexListingEnabled === false) return false;
   return true;
 }
 
-function passesNumericFilters(alert: AlertWithMetrics, filters?: AlertFilterSettings) {
+function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
 
-  if (typeof filters.minMarketCap === "number" && alert.mcValue !== null && alert.mcValue < filters.minMarketCap) {
-    return false;
-  }
+  const mcValue = parseMoneyValue(alert.mc);
+  const liquidityValue = parseMoneyValue(alert.liquidity);
 
-  if (typeof filters.maxMarketCap === "number" && alert.mcValue !== null && alert.mcValue > filters.maxMarketCap) {
-    return false;
-  }
-
-  if (typeof filters.minLiquidity === "number" && alert.liquidityValue !== null && alert.liquidityValue < filters.minLiquidity) {
-    return false;
-  }
-
-  if (typeof filters.minHolders === "number" && alert.holdersValue !== null && alert.holdersValue < filters.minHolders) {
-    return false;
-  }
+  if (typeof filters.minMarketCap === "number" && mcValue !== null && mcValue < filters.minMarketCap) return false;
+  if (typeof filters.maxMarketCap === "number" && mcValue !== null && mcValue > filters.maxMarketCap) return false;
+  if (typeof filters.minLiquidity === "number" && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
+  if (typeof filters.minHolders === "number" && alert.holders < filters.minHolders) return false;
 
   return true;
 }
 
-function sanitizeAlerts(alerts: AlertWithMetrics[]): TokenAlert[] {
-  const deduped = new Map<string, AlertWithMetrics>();
-
-  for (const alert of alerts) {
-    if (!alert.address) continue;
-    const key = `${alert.address}:${alert.type}`;
-    if (!deduped.has(key)) {
-      deduped.set(key, alert);
-    }
-  }
-
-  return Array.from(deduped.values()).map(({ mcValue, liquidityValue, holdersValue, ...rest }) => rest);
-}
-
-
-type PersistedAlertEvent = {
-  fingerprint: string;
-  address: string;
-  type: string;
-  name: string;
-  change: string;
-  trend: string;
-  mc: string;
-  vol: string;
-  liquidity: string;
-  holders: number;
-  imageUrl: string | null;
-  symbol: string | null;
-  dexUrl: string | null;
-  website: string | null;
-  twitter: string | null;
-  telegram: string | null;
-  pairAddress: string | null;
-  priceUsd: string | null;
-  alertedAt: Date;
-};
-
-function buildAlertFingerprint(alert: TokenAlert) {
-  return [alert.address || "unknown", alert.type || "signal", alert.change || "0"].join("|");
-}
-
-function persistedToTokenAlert(item: PersistedAlertEvent): TokenAlert {
-  const alertDate = new Date(item.alertedAt);
-  const now = new Date();
-  const diffMs = now.getTime() - alertDate.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffSecs = Math.floor((diffMs % 60000) / 1000);
-  
-  let ageLabel = "Just now";
-  if (diffMins > 0) ageLabel = `${diffMins}m ago`;
-  if (diffMins > 60) ageLabel = `${Math.floor(diffMins / 60)}h ago`;
-  
+function mapPersistedAlert(item: any): TokenAlert {
+  const typeLabel = TYPE_TO_LABEL[item.type] || "SMART MONEY ENTRY";
   return {
-    name: item.name,
-    type: (item.type as TokenAlert["type"]) || "VOL_SPIKE",
-    mc: item.mc,
-    vol: item.vol,
-    age: ageLabel,
-    change: item.change,
+    name: item.name || "Live Token",
+    type: typeLabel,
+    mc: item.mc || "Live",
+    vol: item.vol || "Live",
+    age: getAgeLabel(item.alertedAt),
+    change: item.change || "0%",
     trend: (item.trend as TokenAlert["trend"]) || "neutral",
     address: item.address,
-    holders: item.holders,
-    liquidity: item.liquidity,
+    holders: item.holders || 0,
+    liquidity: item.liquidity || "Live",
     imageUrl: item.imageUrl || undefined,
     symbol: item.symbol || undefined,
     dexUrl: item.dexUrl || undefined,
@@ -172,191 +139,35 @@ function persistedToTokenAlert(item: PersistedAlertEvent): TokenAlert {
     priceUsd: item.priceUsd || undefined,
     alertedAt: item.alertedAt.toISOString(),
     fingerprint: item.fingerprint,
+    riskScore: item.riskScore,
+    riskLevel: item.riskLevel,
   };
 }
 
-async function persistAlertSnapshots(alerts: TokenAlert[]): Promise<TokenAlert[]> {
-  if (alerts.length === 0) return [];
-
-  const fingerprints = alerts.map((alert) => buildAlertFingerprint(alert));
-  const now = new Date().toISOString();
-
-  try {
-    const existing = await prisma.alertEvent.findMany({
-      where: { fingerprint: { in: fingerprints } },
-    });
-
-    const existingSet = new Set(existing.map((item) => item.fingerprint));
-
-    const toCreate = alerts
-      .map((alert) => ({ alert, fingerprint: buildAlertFingerprint(alert) }))
-      .filter(({ fingerprint }) => !existingSet.has(fingerprint))
-      .map(({ alert, fingerprint }) => ({
-        fingerprint,
-        address: alert.address,
-        type: alert.type,
-        name: alert.name,
-        change: alert.change,
-        trend: alert.trend,
-        mc: alert.mc,
-        vol: alert.vol,
-        liquidity: alert.liquidity,
-        holders: alert.holders || 0,
-        imageUrl: alert.imageUrl || null,
-        symbol: alert.symbol || null,
-        dexUrl: alert.dexUrl || null,
-        website: alert.website || null,
-        twitter: alert.twitter || null,
-        telegram: alert.telegram || null,
-        pairAddress: alert.pairAddress || null,
-        priceUsd: alert.priceUsd || null,
-        alertedAt: new Date(),
-      }));
-
-    if (toCreate.length > 0) {
-      await prisma.alertEvent.createMany({ data: toCreate, skipDuplicates: true });
-    }
-
-    const persisted = await prisma.alertEvent.findMany({
-      where: { fingerprint: { in: fingerprints } },
-    });
-
-    const persistedMap = new Map(persisted.map((item) => [item.fingerprint, item]));
-
-    return alerts.map((alert) => {
-      const fingerprint = buildAlertFingerprint(alert);
-      const item = persistedMap.get(fingerprint);
-      if (!item) {
-        return {
-          ...alert,
-          fingerprint,
-          alertedAt: now,
-        };
-      }
-      return persistedToTokenAlert(item as PersistedAlertEvent);
-    });
-  } catch (error) {
-    console.error("Failed to persist alert snapshots - returning alerts with current timestamp:", error instanceof Error ? error.message : String(error));
-    return alerts.map((alert) => ({
-      ...alert,
-      fingerprint: buildAlertFingerprint(alert),
-      alertedAt: now,
-    }));
-  }
-}
-
-
 export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<TokenAlert[]> {
   try {
-    const requestOptions = { next: { revalidate: 10 } };
-    const responses = await Promise.allSettled([
-      fetch("https://api.dexscreener.com/token-boosts/top/v1/solana", requestOptions),
-      fetch("https://api.dexscreener.com/token-boosts/top/v1", requestOptions),
-      fetch("https://api.dexscreener.com/token-boosts/latest/v1", requestOptions),
-      fetch("https://api.dexscreener.com/latest/dex/tokens/So11111111111111111111111111111111111111112", requestOptions),
-    ]);
-
-    const extractList = async (result: PromiseSettledResult<Response>) => {
-      if (result.status !== "fulfilled" || !result.value.ok) return [] as any[];
-      const body = await result.value.json().catch(() => null);
-      return Array.isArray(body) ? body : Array.isArray(body?.pairs) ? body.pairs : [];
-    };
-
-    const [topByChain, topGlobal, latestBoosts, solPairs] = await Promise.all(responses.map(extractList));
-
-    const boostsRaw = [...topByChain, ...topGlobal, ...latestBoosts]
-      .filter(Boolean)
-      .filter((item: any) => !item.chainId || String(item.chainId).toLowerCase() === "solana");
-
-    const boostAlerts: AlertWithMetrics[] = boostsRaw.slice(0, 150).map((item: any) => {
-      const tokenAddress = String(item.tokenAddress || item.address || item.baseToken?.address || "");
-      const fdv = typeof item.fdv === "number" ? item.fdv : null;
-      const liquidity = typeof item.liquidity?.usd === "number" ? item.liquidity.usd : null;
-      const holders = typeof item.holders === "number" ? item.holders : typeof item.amount === "number" ? item.amount : null;
-      const priceChange24h = typeof item.priceChange?.h24 === "number" ? item.priceChange.h24 : 0;
-      const symbol = item.baseToken?.symbol || item.symbol || tokenAddress.slice(0, 4) || "SOL";
-      const tokenName = item.baseToken?.name || item.name || symbol || "Unknown Token";
-      
-      // Format market cap
-      const mcDisplay = fdv ? fdv >= 1000000 ? `$${(fdv / 1000000).toFixed(1)}M` : `$${(fdv / 1000).toFixed(0)}K` : "N/A";
-      // Format liquidity
-      const liqDisplay = liquidity ? liquidity >= 1000000 ? `$${(liquidity / 1000000).toFixed(1)}M` : `$${(liquidity / 1000).toFixed(0)}K` : "N/A";
-
-      return toAlertWithMetrics(
-        {
-          name: tokenName,
-          type: "DEX_BOOST",
-          mc: mcDisplay,
-          vol: item.volume?.h24 ? `$${(item.volume.h24 / 1000).toFixed(0)}K` : "N/A",
-          age: "New",
-          change: `${priceChange24h > 0 ? "+" : ""}${priceChange24h}%`,
-          trend: priceChange24h > 0 ? "up" : priceChange24h < 0 ? "down" : "neutral",
-          address: tokenAddress,
-          holders: holders ?? 0,
-          liquidity: liqDisplay,
-          imageUrl: item.baseToken?.logoURI || item.baseToken?.image || item.image || item.icon || "",
-          symbol: item.baseToken?.symbol || item.symbol || undefined,
-          dexUrl: item.url || undefined,
-          website: item?.info?.websites?.[0]?.url || undefined,
-          twitter: item?.info?.socials?.find((social: any) => social.type === "twitter")?.url || undefined,
-          telegram: item?.info?.socials?.find((social: any) => social.type === "telegram")?.url || undefined,
-          pairAddress: item.pairAddress || undefined,
-          priceUsd: item.priceUsd ? String(item.priceUsd) : undefined,
-        },
-        { mcValue: fdv, liquidityValue: liquidity, holdersValue: holders },
-      );
+    const rows = await prisma.alertEvent.findMany({
+      orderBy: { alertedAt: "desc" },
+      take: 200,
     });
 
-    const volumeAlerts: AlertWithMetrics[] = (Array.isArray(solPairs) ? solPairs : []).slice(0, 200).map((pair: any) => {
-      const fdv = typeof pair.fdv === "number" ? pair.fdv : null;
-      const liquidity = typeof pair.liquidity?.usd === "number" ? pair.liquidity.usd : null;
-      const tokenAddress = String(pair?.baseToken?.address || "");
-      const pairName = pair?.baseToken?.name || pair?.baseToken?.symbol || tokenAddress.slice(0, 4) || "Unknown";
-      const holders = typeof pair.holders === "number" ? pair.holders : typeof pair?.info?.holders === "number" ? pair.info.holders : 0;
-      
-      // Format market cap
-      const mcDisplay = fdv ? fdv >= 1000000 ? `$${(fdv / 1000000).toFixed(1)}M` : `$${(fdv / 1000).toFixed(0)}K` : "N/A";
-      // Format liquidity  
-      const liqDisplay = liquidity ? liquidity >= 1000000 ? `$${(liquidity / 1000000).toFixed(1)}M` : `$${(liquidity / 1000).toFixed(0)}K` : "N/A";
+    const mapped = rows.map(mapPersistedAlert);
 
-      return toAlertWithMetrics(
-        {
-          name: pairName,
-          type: "VOL_SPIKE",
-          mc: mcDisplay,
-          vol: pair?.volume?.h24 ? `$${(pair.volume.h24 / 1000).toFixed(0)}K` : "N/A",
-          age: "Live",
-          change: pair?.priceChange?.h24 ? `${pair.priceChange.h24 > 0 ? "+" : ""}${pair.priceChange.h24}%` : "0.0%",
-          trend: pair?.priceChange?.h24 > 0 ? "up" : pair?.priceChange?.h24 < 0 ? "down" : "neutral",
-          address: tokenAddress,
-          holders: holders,
-          liquidity: liqDisplay,
-          imageUrl: pair?.info?.imageUrl || pair?.baseToken?.logoURI || pair?.baseToken?.image || pair?.image || pair?.icon || "",
-          symbol: pair?.baseToken?.symbol || undefined,
-          dexUrl: pair?.url || undefined,
-          website: pair?.info?.websites?.[0]?.url || undefined,
-          twitter: pair?.info?.socials?.find((social: any) => social.type === "twitter")?.url || undefined,
-          telegram: pair?.info?.socials?.find((social: any) => social.type === "telegram")?.url || undefined,
-          pairAddress: pair?.pairAddress || undefined,
-          priceUsd: pair?.priceUsd ? String(pair.priceUsd) : undefined,
-        },
-        { mcValue: fdv, liquidityValue: liquidity, holdersValue: holders },
-      );
-    });
+    const filtered = mapped
+      .filter((alert) => isAlertEnabledBySettings(alert.type, filters))
+      .filter((alert) => passesNumericFilters(alert, filters));
 
-    const filtered = [...boostAlerts, ...volumeAlerts]
-      .filter((alert) => alert.address)
-      .filter((alert) => isAlertTypeEnabled(alert.type, filters) && passesNumericFilters(alert, filters));
-
-    const sanitized = sanitizeAlerts(filtered).slice(0, 100);
-    return await persistAlertSnapshots(sanitized);
-  } catch (error) {
-    console.error("Failed to fetch real DEX alerts:", error instanceof Error ? error.message : String(error));
-    if (error instanceof Error) {
-      console.error("Stack:", error.stack);
+    const deduped = new Map<string, TokenAlert>();
+    for (const alert of filtered) {
+      const key = `${alert.address}:${alert.type}`;
+      if (!deduped.has(key)) deduped.set(key, alert);
     }
+
+    return Array.from(deduped.values()).slice(0, 100);
+  } catch (error) {
+    console.error("Failed to read live blockchain alerts:", error instanceof Error ? error.message : String(error));
+    return [];
   }
-  return [];
 }
 
 export async function getWalletBalance(address: string) {

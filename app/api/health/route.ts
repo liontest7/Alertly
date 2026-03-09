@@ -73,17 +73,20 @@ export async function GET() {
     "ENCRYPTION_KEY",
     "SOLANA_RPC_URL",
     "INTERNAL_API_KEY",
-    "AUTH_SECRET",
-    "JWT_SECRET",
     "TELEGRAM_BOT_TOKEN",
     "ALERTLY_API_BASE_URL",
     "NEXT_PUBLIC_APP_URL",
   ] as const;
 
   const missingEnv = new Set(getMissingRequiredEnv(requiredEnv));
-  const envStatus = Object.fromEntries(
-    requiredEnv.map((name) => [name, !missingEnv.has(name)]),
-  ) as Record<(typeof requiredEnv)[number], boolean>;
+  const authSecretConfigured = Boolean(process.env.AUTH_SECRET || process.env.JWT_SECRET);
+
+  const envStatus = {
+    ...Object.fromEntries(
+      requiredEnv.map((name) => [name, !missingEnv.has(name)]),
+    ),
+    AUTH_SECRET_OR_JWT_SECRET: authSecretConfigured,
+  } as Record<(typeof requiredEnv)[number] | "AUTH_SECRET_OR_JWT_SECRET", boolean>;
 
   const checks = {
     api: "ok",

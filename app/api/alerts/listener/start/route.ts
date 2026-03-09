@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { startAlertListener, getAlertListener } from "@/lib/alert-listener";
+import { startAlertListener } from "@/lib/alert-listener";
 import { getListenerStatus } from "@/lib/listeners/blockchain-listener";
 
 /**
