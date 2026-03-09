@@ -298,11 +298,25 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
   const payload = await verifyToken(token);
   if (!payload) return null;
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: payload.user_id },
+    select: {
+      id: true,
+      walletAddress: true,
+      isBanned: true,
+      isFrozen: true,
+    },
+  }).catch(() => null);
+
+  if (dbUser?.isBanned || dbUser?.isFrozen) {
+    return null;
+  }
+
   const user = {
     id: payload.user_id,
     user_id: payload.user_id,
-    walletAddress: payload.wallet_address,
-    wallet_address: payload.wallet_address,
+    walletAddress: dbUser?.walletAddress || payload.wallet_address,
+    wallet_address: dbUser?.walletAddress || payload.wallet_address,
     vipStatus: payload.vip_status,
     vip_status: payload.vip_status,
   };

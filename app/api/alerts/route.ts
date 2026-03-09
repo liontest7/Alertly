@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getLiveAlerts } from "@/lib/blockchain/solana";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureAlertListenerStarted } from "@/lib/alert-listener";
 import {
   applyGuestAlertQuota,
   GUEST_DAILY_ALERT_LIMIT,
@@ -14,6 +15,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    try {
+      await ensureAlertListenerStarted();
+    } catch (error) {
+      console.error("Listener bootstrap failed, serving persisted alerts only:", error instanceof Error ? error.message : String(error));
+    }
+
     const session = await auth(req);
     const userId = session?.user?.id;
     const cookieStore = cookies();

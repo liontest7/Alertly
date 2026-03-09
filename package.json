@@ -10,7 +10,9 @@
     "start": "next start -p ${PORT:-10000} -H 0.0.0.0",
     "check:launch": "node scripts/prelaunch-check.mjs",
     "check:alerts-latency": "node scripts/alerts-latency-check.mjs",
-    "build:extension": "cd chrome-extension && npm run build"
+    "build:extension": "cd chrome-extension && npm run build",
+    "check:prod-smoke": "node scripts/prod-smoke-check.mjs",
+    "check:slo": "node scripts/slo-load-check.mjs"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",

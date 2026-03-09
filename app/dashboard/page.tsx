@@ -108,10 +108,29 @@ export default function DashboardPage() {
 
     fetchAlerts()
 
-    const alertsInterval = setInterval(fetchAlerts, 5000)
+    let stream: EventSource | null = null;
+    try {
+      stream = new EventSource('/api/alerts/stream');
+      stream.addEventListener('alerts', (event) => {
+        try {
+          const payload = JSON.parse((event as MessageEvent).data);
+          if (Array.isArray(payload)) {
+            setAlerts(payload);
+            setLoading(false);
+          }
+        } catch {
+          // ignore invalid stream payload
+        }
+      });
+    } catch {
+      // fallback remains polling below
+    }
+
+    const alertsInterval = setInterval(fetchAlerts, 10000)
     const metricsInterval = setInterval(fetchMetrics, 15000)
 
     return () => {
+      if (stream) stream.close();
       clearInterval(alertsInterval)
       clearInterval(metricsInterval)
     }

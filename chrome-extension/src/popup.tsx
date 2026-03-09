@@ -47,11 +47,16 @@ const Popup = () => {
   const [authenticated, setAuthenticated] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [baseUrl, setBaseUrl] = React.useState(DEFAULT_ALERTLY_BASE_URL);
+  const [streamStatus, setStreamStatus] = React.useState<"live" | "connecting" | "offline">("offline");
 
   React.useEffect(() => {
+    let mounted = true;
+    let stream: EventSource | null = null;
+
     async function load() {
       try {
         const resolvedBaseUrl = await getStoredBaseUrl();
+        if (!mounted) return;
         setBaseUrl(resolvedBaseUrl);
 
         const syncRes = await fetch(`${resolvedBaseUrl}/api/extension/sync`, {
@@ -60,8 +65,11 @@ const Popup = () => {
         const sync = await syncRes.json();
 
         const canUseFeed = sync?.authenticated || sync?.guestEnabled;
+        if (!mounted) return;
+
         if (!canUseFeed) {
           setAuthenticated(false);
+          setStreamStatus("offline");
           return;
         }
 
@@ -73,23 +81,60 @@ const Popup = () => {
 
         if (alertRes.ok) {
           const data = await alertRes.json();
-          setAlerts(Array.isArray(data) ? data : []);
+          if (mounted) {
+            setAlerts(Array.isArray(data) ? data : []);
+          }
         }
+
+        setStreamStatus("connecting");
+        stream = new EventSource(`${resolvedBaseUrl}/api/alerts/stream`, { withCredentials: true });
+        stream.addEventListener("alerts", (event) => {
+          try {
+            const payload = JSON.parse((event as MessageEvent).data);
+            if (Array.isArray(payload) && mounted) {
+              setAlerts(payload);
+              setStreamStatus("live");
+            }
+          } catch {
+            // ignore malformed stream event
+          }
+        });
+
+        stream.addEventListener("heartbeat", () => {
+          if (mounted) setStreamStatus("live");
+        });
+
+        stream.onerror = () => {
+          if (mounted) setStreamStatus("offline");
+        };
       } catch {
-        setAuthenticated(false);
+        if (mounted) {
+          setAuthenticated(false);
+          setStreamStatus("offline");
+        }
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     load();
+
+    return () => {
+      mounted = false;
+      if (stream) {
+        stream.close();
+      }
+    };
   }, []);
 
   return (
     <div style={{ width: 340, padding: 16, backgroundColor: "#050505", color: "#fff", fontFamily: "Inter, sans-serif" }}>
       <h1 style={{ fontSize: 18, margin: 0, marginBottom: 6, color: "#8b5cf6" }}>Alertly Command Feed</h1>
-      <p style={{ margin: 0, marginBottom: 12, color: "#9ca3af", fontSize: 12 }}>
+      <p style={{ margin: 0, marginBottom: 8, color: "#9ca3af", fontSize: 12 }}>
         Real-time Solana signals synced with your dashboard profile.
+      </p>
+      <p style={{ margin: 0, marginBottom: 12, color: streamStatus === "live" ? "#22c55e" : streamStatus === "connecting" ? "#f59e0b" : "#ef4444", fontSize: 11 }}>
+        Stream: {streamStatus === "live" ? "LIVE" : streamStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
       </p>
 
       <div style={{ ...cardStyle, marginBottom: 10 }}>

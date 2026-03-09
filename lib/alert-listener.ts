@@ -10,7 +10,9 @@ export class AlertListener {
   private isRunning: boolean = false;
 
   async start() {
-    if (this.isRunning) {
+    const status = getListenerStatus();
+    if (this.isRunning || status.running) {
+      this.isRunning = true;
       console.log("Alert listener already running");
       return;
     }
@@ -20,21 +22,23 @@ export class AlertListener {
 
     try {
       await startBlockchainListener();
-      
+
       // Update listener status in database (graceful fallback if table doesn't exist yet)
       try {
+        const runtimeStatus = getListenerStatus();
         await prisma.listenerStatus.upsert({
           where: { name: "blockchain-listener" },
           create: {
             name: "blockchain-listener",
             running: true,
-            subscriptions: 0,
+            subscriptions: runtimeStatus.subscriptions,
           },
           update: {
             running: true,
+            subscriptions: runtimeStatus.subscriptions,
           },
         });
-      } catch (dbError) {
+      } catch {
         console.warn("ListenerStatus table not yet migrated, continuing without DB status");
       }
     } catch (error) {
@@ -45,19 +49,20 @@ export class AlertListener {
   }
 
   async stop() {
-    if (!this.isRunning) return;
+    const status = getListenerStatus();
+    if (!this.isRunning && !status.running) return;
 
     try {
       await stopBlockchainListener();
-      
+
       // Graceful DB update
       try {
         await prisma.listenerStatus.upsert({
           where: { name: "blockchain-listener" },
-          create: { name: "blockchain-listener", running: false },
-          update: { running: false },
+          create: { name: "blockchain-listener", running: false, subscriptions: 0 },
+          update: { running: false, subscriptions: 0 },
         });
-      } catch (dbError) {
+      } catch {
         console.warn("ListenerStatus table not yet migrated");
       }
 
@@ -86,4 +91,19 @@ export function getAlertListener(): AlertListener {
 export async function startAlertListener() {
   const listener = getAlertListener();
   await listener.start();
+}
+
+let listenerStartPromise: Promise<void> | null = null;
+
+export async function ensureAlertListenerStarted() {
+  const status = getListenerStatus();
+  if (status.running) return;
+
+  if (!listenerStartPromise) {
+    listenerStartPromise = startAlertListener().finally(() => {
+      listenerStartPromise = null;
+    });
+  }
+
+  await listenerStartPromise;
 }

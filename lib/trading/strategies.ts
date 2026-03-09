@@ -31,10 +31,10 @@ function parseMoney(value: string): number | null {
 }
 
 function isTypeEnabled(alertType: TokenAlert["type"], config: AutoTradeConfig): boolean {
-  if (alertType === "VOL_SPIKE" && config.volumeSpikeEnabled === false) return false;
-  if (alertType === "DEX_BOOST" && config.dexBoostEnabled === false) return false;
-  if (alertType === "NEW_LISTING" && config.dexListingEnabled === false) return false;
-  if (alertType === "LIQ_ADD" && config.whaleAlertEnabled === false) return false;
+  if (alertType === "VOLUME SPIKE" && config.volumeSpikeEnabled === false) return false;
+  if (alertType === "DEX BOOST" && config.dexBoostEnabled === false) return false;
+  if (alertType === "DEX LISTING" && config.dexListingEnabled === false) return false;
+  if (alertType === "WHALE BUY" && config.whaleAlertEnabled === false) return false;
   return true;
 }
 

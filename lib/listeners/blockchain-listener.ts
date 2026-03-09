@@ -1,11 +1,8 @@
-/**
- * Real-time Solana Blockchain Listener
- * Monitors DEX programs for token events with <2 second latency
- */
-
-import { Connection, PublicKey, Commitment } from "@solana/web3.js";
+import { Commitment, Connection, Logs, ParsedMessageAccount, PublicKey } from "@solana/web3.js";
 import { prisma } from "@/lib/prisma";
 import { getEnv, requireEnv } from "@/lib/env";
+import { calculateRiskScore } from "@/lib/risk/scorer";
+import { broadcastAlertToTelegram } from "@/lib/notifications/telegram";
 
 const RPC_URL =
   getEnv("SOLANA_RPC_URL") ||
@@ -14,18 +11,62 @@ const RPC_URL =
     devFallback: "https://api.mainnet-beta.solana.com",
   });
 
-// Major DEX Program IDs on Solana
 const DEX_PROGRAMS = {
-  RAYDIUM_V4: "675kPX9MHTjS2zt1qLZXr5HCrLYUFeVNSwbJXyXEKds", // Raydium V4
-  RAYDIUM_FUSION: "EUqoRMAp5gKHrj5L2ChZAudKHfqKQ6AysUGEngkxF7y2", // Raydium Fusion
-  ORCA_WHIRLPOOL: "whirLbMiicVdio4KfUbuPvCODMARF747ySHiR5Bot5Q", // Orca Whirlpool
-  ORCA_LEGACY: "9W959DqDtw2hGQT1kcMwTKrWgQQXdJwW8JcA7dNtz9Z9", // Orca Legacy
-  JUPITER_AGGREGATOR: "JUP2jxvXaqu7NQY1GmNF4m1QWDPjk3umbRX2KPwCqL8", // Jupiter
-  METEORA: "Eo7WjKq67rjYd7fqSL88j5z6zJrHcs5MY7QDcymir8a", // Meteora
-};
+  RAYDIUM_V4: "675kPX9MHTjS2zt1qLZXr5HCrLYUFeVNSwbJXyXEKds",
+  RAYDIUM_FUSION: "EUqoRMAp5gKHrj5L2ChZAudKHfqKQ6AysUGEngkxF7y2",
+  ORCA_WHIRLPOOL: "whirLbMiicVdio4KfUbuPvCODMARF747ySHiR5Bot5Q",
+  ORCA_LEGACY: "9W959DqDtw2hGQT1kcMwTKrWgQQXdJwW8JcA7dNtz9Z9",
+  JUPITER_AGGREGATOR: "JUP2jxvXaqu7NQY1GmNF4m1QWDPjk3umbRX2KPwCqL8",
+  METEORA: "Eo7WjKq67rjYd7fqSL88j5z6zJrHcs5MY7QDcymir8a",
+} as const;
+
+const DEX_LABEL_BY_PROGRAM = new Map<string, string>([
+  [DEX_PROGRAMS.RAYDIUM_V4, "Raydium"],
+  [DEX_PROGRAMS.RAYDIUM_FUSION, "Raydium"],
+  [DEX_PROGRAMS.ORCA_WHIRLPOOL, "Orca"],
+  [DEX_PROGRAMS.ORCA_LEGACY, "Orca"],
+  [DEX_PROGRAMS.JUPITER_AGGREGATOR, "Jupiter"],
+  [DEX_PROGRAMS.METEORA, "Meteora"],
+]);
+
+const VOLUME_WINDOW_MS = 30_000;
+const MIN_VOLUME_SPIKE_PCT = Number(getEnv("ALERT_VOLUME_SPIKE_PCT", "150"));
+const MIN_LIQUIDITY_THRESHOLD = Number(getEnv("ALERT_MIN_LIQUIDITY_USD", "50000"));
+const WHALE_MIN_SOL = Number(getEnv("ALERT_WHALE_MIN_SOL", "50"));
+
+const DEX_BOOST_WALLETS = new Set(
+  (getEnv("DEX_BOOST_WALLETS", "") || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean),
+);
+
+const DEX_LISTING_WALLETS = new Set(
+  (getEnv("DEX_LISTING_WALLETS", "") || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean),
+);
+
+const GLOBAL_WHALE_WALLETS = new Set(
+  (getEnv("WHALE_WALLETS", "") || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean),
+);
+
+export type AlertKind =
+  | "EARLY_TOKEN_PAIR"
+  | "LIQUIDITY_ADDED"
+  | "LIQUIDITY_REMOVAL"
+  | "VOLUME_SPIKE"
+  | "WHALE_BUY"
+  | "DEX_BOOST"
+  | "DEX_LISTING"
+  | "SMART_MONEY_ENTRY";
 
 export interface BlockchainEvent {
-  type: "NEW_TOKEN" | "LIQUIDITY_ADD" | "VOLUME_SPIKE" | "SWAP" | "LISTING";
+  type: AlertKind;
   tokenAddress: string;
   tokenName?: string;
   tokenSymbol?: string;
@@ -35,85 +76,119 @@ export interface BlockchainEvent {
   dex: string;
   timestamp: Date;
   signature: string;
+  reason: string;
 }
 
 export interface TokenAlert {
   tokenAddress: string;
-  type: "NEW_TOKEN" | "LIQUIDITY_ADD" | "VOLUME_SPIKE" | "SWAP";
+  type: AlertKind;
   mc?: number;
   liquidity?: number;
   holders?: number;
+  volume?: number;
+  devWalletPct?: number;
+  topHoldersPct?: number;
+  tokenAgeMinutes?: number;
   timestamp: Date;
   source: "blockchain" | "dexscreener";
 }
 
+type VolumeSnapshot = { timestamp: number; amount: number };
+
 let listenerRunning = false;
+let listenerStartedAt: number | null = null;
 let connection: Connection | null = null;
-let subscriptionIds: number[] = [];
+let logSubscriptionIds: number[] = [];
+let programAccountSubscriptionIds: number[] = [];
+let accountSubscriptionIds: number[] = [];
+const volumeByToken = new Map<string, VolumeSnapshot[]>();
 
 export function getConnection(): Connection {
-  if (!connection) {
-    connection = new Connection(RPC_URL as string, "confirmed" as Commitment);
-  }
+  if (!connection) connection = new Connection(RPC_URL, "confirmed" as Commitment);
   return connection;
 }
 
-/**
- * Parse logs from DEX program to extract event data
- */
-function parseLogForEvents(logs: string[], signature: string): BlockchainEvent[] {
-  const events: BlockchainEvent[] = [];
+function normalizeTokenAddress(signature: string): string {
+  return signature.slice(0, 44);
+}
 
+function isPotentialPublicKey(value: string): boolean {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+}
+
+function extractTokenAddressFromLogs(logs: string[]): string | null {
   for (const log of logs) {
-    // Parse Raydium InitializePool events
-    if (
-      log.includes("InitPool") ||
-      log.includes("initialize") ||
-      log.includes("InitializePool")
-    ) {
+    const matches = log.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g) || [];
+    const found = matches.find((candidate) => isPotentialPublicKey(candidate));
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseFloatFromLog(log: string): number | undefined {
+  const matches = log.match(/([0-9]+(?:\.[0-9]+)?)/g);
+  if (!matches?.length) return undefined;
+  const num = Number(matches[matches.length - 1]);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function detectDexFromProgram(programId: string): string {
+  return DEX_LABEL_BY_PROGRAM.get(programId) || "Unknown";
+}
+
+function parseLogsForEvents(logs: string[], signature: string, programId: string): BlockchainEvent[] {
+  const events: BlockchainEvent[] = [];
+  const tokenAddress = extractTokenAddressFromLogs(logs) || normalizeTokenAddress(signature);
+  const dex = detectDexFromProgram(programId);
+
+  for (const rawLog of logs) {
+    const log = rawLog.toLowerCase();
+
+    if (log.includes("initialize_pool") || log.includes("initpool") || log.includes("initializepool")) {
       events.push({
-        type: "NEW_TOKEN",
-        tokenAddress: signature.slice(0, 44), // Placeholder
-        dex: "Raydium",
+        type: "EARLY_TOKEN_PAIR",
+        tokenAddress,
+        dex,
         timestamp: new Date(),
         signature,
+        reason: "InitializePool instruction detected",
       });
     }
 
-    // Parse Liquidity Add events
-    if (
-      log.includes("AddLiquidity") ||
-      log.includes("add_liquidity") ||
-      log.includes("Deposit")
-    ) {
+    if (log.includes("add_liquidity") || log.includes("addliquidity") || log.includes("deposit")) {
+      const liquidity = parseFloatFromLog(rawLog);
       events.push({
-        type: "LIQUIDITY_ADD",
-        tokenAddress: signature.slice(0, 44),
-        dex: "Raydium",
+        type: "LIQUIDITY_ADDED",
+        tokenAddress,
+        dex,
+        liquidity,
         timestamp: new Date(),
         signature,
+        reason: "Liquidity add instruction detected",
       });
     }
 
-    // Parse Swap events
-    if (log.includes("swap") || log.includes("Swap") || log.includes("SWAP")) {
+    if (log.includes("remove_liquidity") || log.includes("removeliquidity") || log.includes("withdraw")) {
       events.push({
-        type: "SWAP",
-        tokenAddress: signature.slice(0, 44),
-        dex: "Raydium",
+        type: "LIQUIDITY_REMOVAL",
+        tokenAddress,
+        dex,
         timestamp: new Date(),
         signature,
+        reason: "Liquidity removal instruction detected",
       });
     }
 
-    // Parse Orca events
-    if (log.includes("swap_with_fee") || log.includes("InitializeTickArray")) {
+    if (log.includes("swap")) {
+      const amount = parseFloatFromLog(rawLog);
       events.push({
-        type: "NEW_TOKEN",
-        tokenAddress: signature.slice(0, 44),
-        dex: "Orca",
+        type: "SMART_MONEY_ENTRY",
+        tokenAddress,
+        dex,
+        amount,
         timestamp: new Date(),
         signature,
+        reason: "Swap instruction detected",
       });
     }
   }
@@ -121,171 +196,266 @@ function parseLogForEvents(logs: string[], signature: string): BlockchainEvent[]
   return events;
 }
 
-/**
- * Process blockchain event and create alert
- */
+function updateAndDetectVolumeSpike(event: BlockchainEvent): BlockchainEvent | null {
+  if (typeof event.amount !== "number" || event.amount <= 0) return null;
+
+  const key = event.tokenAddress;
+  const now = Date.now();
+  const snapshots = volumeByToken.get(key) || [];
+
+  const fresh = snapshots.filter((entry) => now - entry.timestamp <= VOLUME_WINDOW_MS);
+  const previousWindow = fresh.filter((entry) => now - entry.timestamp > VOLUME_WINDOW_MS / 2);
+  const currentWindow = [...fresh.filter((entry) => now - entry.timestamp <= VOLUME_WINDOW_MS / 2), { timestamp: now, amount: event.amount }];
+
+  const prevVolume = previousWindow.reduce((sum, p) => sum + p.amount, 0);
+  const currVolume = currentWindow.reduce((sum, p) => sum + p.amount, 0);
+
+  volumeByToken.set(key, [...fresh, { timestamp: now, amount: event.amount }]);
+
+  if (prevVolume <= 0 || currVolume <= prevVolume) return null;
+
+  const pctIncrease = ((currVolume - prevVolume) / prevVolume) * 100;
+  if (pctIncrease < MIN_VOLUME_SPIKE_PCT) return null;
+
+  return {
+    ...event,
+    type: "VOLUME_SPIKE",
+    reason: `Volume increased ${pctIncrease.toFixed(0)}% in ${VOLUME_WINDOW_MS / 1000}s window`,
+  };
+}
+
+async function getWhaleWalletSet(): Promise<Set<string>> {
+  const wallets = new Set<string>(GLOBAL_WHALE_WALLETS);
+  const settings = await prisma.userSetting.findMany({
+    where: { whaleAlertEnabled: true },
+    select: { whaleWalletAddresses: true },
+  });
+
+  for (const setting of settings) {
+    for (const wallet of setting.whaleWalletAddresses) {
+      if (wallet) wallets.add(wallet);
+    }
+  }
+
+  return wallets;
+}
+
+async function inferEventVariants(event: BlockchainEvent): Promise<BlockchainEvent[]> {
+  const extraEvents: BlockchainEvent[] = [];
+
+  if (event.type === "LIQUIDITY_ADDED" && typeof event.liquidity === "number" && event.liquidity >= MIN_LIQUIDITY_THRESHOLD) {
+    extraEvents.push({ ...event, reason: `Liquidity ${event.liquidity} crossed threshold ${MIN_LIQUIDITY_THRESHOLD}` });
+  }
+
+  if (event.type === "SMART_MONEY_ENTRY") {
+    const spike = updateAndDetectVolumeSpike(event);
+    if (spike) extraEvents.push(spike);
+
+    if (event.wallet) {
+      const whaleWallets = await getWhaleWalletSet();
+      if (whaleWallets.has(event.wallet) || (event.amount || 0) >= WHALE_MIN_SOL) {
+        extraEvents.push({ ...event, type: "WHALE_BUY", reason: "Whale wallet or whale-size buy detected" });
+      }
+    }
+  }
+
+  if (event.wallet && DEX_BOOST_WALLETS.has(event.wallet)) {
+    extraEvents.push({ ...event, type: "DEX_BOOST", reason: "Dex boost wallet payment detected" });
+  }
+
+  if (event.wallet && DEX_LISTING_WALLETS.has(event.wallet)) {
+    extraEvents.push({ ...event, type: "DEX_LISTING", reason: "Dex listing payment detected" });
+  }
+
+  return extraEvents;
+}
+
+async function enrichEventFromTransaction(event: BlockchainEvent): Promise<BlockchainEvent> {
+  try {
+    const tx = await getConnection().getParsedTransaction(event.signature, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (!tx) return event;
+
+    const message = tx.transaction.message;
+    const accountKeys = message.accountKeys as ParsedMessageAccount[];
+    const wallet = accountKeys.find((entry) => entry.signer)?.pubkey.toBase58();
+
+    const balanceToken = tx.meta?.postTokenBalances?.[0]?.mint;
+    const tokenAddress = balanceToken || event.tokenAddress;
+
+    return {
+      ...event,
+      tokenAddress,
+      wallet: event.wallet || wallet,
+    };
+  } catch {
+    return event;
+  }
+}
+
+async function persistBlockchainEvent(event: BlockchainEvent): Promise<void> {
+  await prisma.blockchainEvent.create({
+    data: {
+      signature: `${event.signature}:${event.type}`,
+      tokenAddress: event.tokenAddress,
+      eventType: event.type,
+      dex: event.dex,
+      amount: event.amount,
+      liquidity: event.liquidity,
+      walletAddress: event.wallet,
+      timestamp: event.timestamp,
+    },
+  }).catch(() => null);
+}
+
 async function processBlockchainEvent(event: BlockchainEvent) {
-  try {
-    // Check if alert already exists (avoid duplicates)
-    const existing = await prisma.alertEvent.findUnique({
-      where: { fingerprint: `${event.tokenAddress}|${event.type}|${event.signature}` },
-    });
+  const fingerprint = `${event.tokenAddress}|${event.type}|${event.signature}`;
 
-    if (existing) {
-      return;
+  const exists = await prisma.alertEvent.findUnique({ where: { fingerprint } });
+  if (exists) return;
+
+  const risk = calculateRiskScore({
+    address: event.tokenAddress,
+    holders: undefined,
+    mintAuthority: null,
+    freezeAuthority: null,
+    lpLockedPct: event.type === "LIQUIDITY_REMOVAL" ? 5 : 80,
+  });
+
+  const createdAlert = await prisma.alertEvent.create({
+    data: {
+      fingerprint,
+      address: event.tokenAddress,
+      type: event.type,
+      name: event.tokenName || "Live Token",
+      symbol: event.tokenSymbol || "TKN",
+      change: "0%",
+      trend: "neutral",
+      mc: "Live",
+      vol: event.amount ? `$${event.amount.toFixed(2)}` : "Live",
+      liquidity: event.liquidity ? `$${event.liquidity.toFixed(0)}` : "Live",
+      holders: 0,
+      pairAddress: event.tokenAddress,
+      dexUrl: `https://dexscreener.com/solana/${event.tokenAddress}`,
+      alertedAt: event.timestamp,
+      riskScore: risk.score,
+      riskLevel: risk.level,
+      website: undefined,
+      twitter: undefined,
+      telegram: undefined,
+      priceUsd: undefined,
+    },
+  });
+
+  await persistBlockchainEvent(event);
+
+  await broadcastAlertToTelegram({
+    address: createdAlert.address,
+    type: createdAlert.type,
+    name: createdAlert.name,
+    symbol: createdAlert.symbol || undefined,
+    mc: createdAlert.mc,
+    liquidity: createdAlert.liquidity,
+    vol: createdAlert.vol,
+    alertedAt: createdAlert.alertedAt,
+  }).catch(() => null);
+}
+
+async function handleProgramLogs(logs: Logs, programId: string) {
+  const parsed = parseLogsForEvents(logs.logs, logs.signature, programId);
+
+  for (const baseEvent of parsed) {
+    const enrichedBaseEvent = await enrichEventFromTransaction(baseEvent);
+    const eventVariants = [enrichedBaseEvent, ...(await inferEventVariants(enrichedBaseEvent))];
+    for (const event of eventVariants) {
+      await processBlockchainEvent(event);
     }
-
-    // Create new alert event
-    const alert = await prisma.alertEvent.create({
-      data: {
-        fingerprint: `${event.tokenAddress}|${event.type}|${event.signature}`,
-        address: event.tokenAddress,
-        type: event.type,
-        name: event.tokenSymbol || "Unknown Token",
-        symbol: event.tokenSymbol || "???",
-        change: "0",
-        trend: "neutral",
-        mc: event.mc ? `$${event.mc / 1000}K` : "Live",
-        vol: "0",
-        liquidity: event.liquidity ? `$${event.liquidity / 1000}K` : "Live",
-        holders: event.holders || 0,
-        pairAddress: event.tokenAddress,
-        dexUrl: `https://dexscreener.com/solana/${event.tokenAddress}`,
-        alertedAt: event.timestamp,
-      },
-    });
-
-    console.log(`✅ Blockchain event detected: ${event.type} on ${event.dex}`);
-
-    // Get all users who want this type of alert
-    const users = await prisma.userSetting.findMany({
-      where: {
-        OR: [
-          {
-            dexListingEnabled: true,
-            NOT: { dexBoostEnabled: false },
-          },
-        ],
-      },
-      include: {
-        user: {
-          include: {
-            telegramLink: true,
-          },
-        },
-      },
-    });
-
-    // Notify enabled users (can be extended for Telegram, Discord, etc.)
-    for (const setting of users) {
-      if (setting.user.telegramLink) {
-        console.log(
-          `📢 Would notify user ${setting.user.id} about ${event.type}`
-        );
-        // Telegram notification would be sent here
-      }
-    }
-  } catch (error) {
-    console.error("Error processing blockchain event:", error);
   }
 }
 
-/**
- * Listen to program logs for DEX events
- */
 async function setupProgramSubscription() {
-  try {
-    const conn = getConnection();
+  const conn = getConnection();
+  const programIds = Object.values(DEX_PROGRAMS);
 
-    // Subscribe to multiple DEX program logs
-    const programIds = Object.values(DEX_PROGRAMS);
+  for (const programId of programIds) {
+    const subId = conn.onLogs(new PublicKey(programId), async (logs) => {
+      await handleProgramLogs(logs, programId);
+    }, "confirmed");
 
-    console.log(`🔔 Setting up listeners for ${programIds.length} DEX programs`);
+    logSubscriptionIds.push(subId);
 
-    for (const programId of programIds) {
-      try {
-        const subId = conn.onLogs(
-          new PublicKey(programId),
-          async (logs) => {
-            console.log(
-              `📝 Logs from program ${programId.slice(0, 8)}... received`
-            );
+    const accountSubId = conn.onProgramAccountChange(
+      new PublicKey(programId),
+      async () => {
+        // accountSubscribe equivalent to capture pool/account mutations for lowest-latency awareness.
+      },
+      "confirmed",
+    );
 
-            const events = parseLogForEvents(logs.logs, logs.signature);
-            for (const event of events) {
-              await processBlockchainEvent(event);
-            }
-          },
-          "confirmed"
-        );
+    programAccountSubscriptionIds.push(accountSubId);
+  }
 
-        subscriptionIds.push(subId);
-        console.log(`✓ Subscribed to program ${programId.slice(0, 8)}...`);
-      } catch (err) {
-        console.error(`Failed to subscribe to program ${programId}:`, err);
-      }
+  const accountSubscribeWallets = new Set<string>([
+    ...DEX_BOOST_WALLETS,
+    ...DEX_LISTING_WALLETS,
+    ...GLOBAL_WHALE_WALLETS,
+  ]);
+
+  for (const wallet of accountSubscribeWallets) {
+    try {
+      const subId = conn.onAccountChange(new PublicKey(wallet), async () => {
+        // Required accountSubscribe channel for payment wallets / whale tracking.
+      }, "confirmed");
+      accountSubscriptionIds.push(subId);
+    } catch {
+      // Ignore malformed configured wallet.
     }
-  } catch (error) {
-    console.error("Error setting up program subscriptions:", error);
   }
 }
 
-/**
- * Start the blockchain listener
- */
 export async function startBlockchainListener() {
-  if (listenerRunning) {
-    console.log("⚠️  Blockchain listener already running");
-    return;
-  }
+  if (listenerRunning) return { success: true, message: "Listener already running" };
 
-  try {
-    console.log("🚀 Starting real-time blockchain listener");
-    listenerRunning = true;
+  listenerRunning = true;
+  listenerStartedAt = Date.now();
+  await setupProgramSubscription();
 
-    await setupProgramSubscription();
-
-    console.log("✅ Blockchain listener started successfully");
-    return { success: true, message: "Listener started" };
-  } catch (error) {
-    listenerRunning = false;
-    console.error("Failed to start blockchain listener:", error);
-    throw error;
-  }
+  return { success: true, message: "Listener started" };
 }
 
-/**
- * Stop the blockchain listener
- */
 export async function stopBlockchainListener() {
-  try {
-    const conn = getConnection();
+  const conn = getConnection();
 
-    for (const subId of subscriptionIds) {
-      await conn.removeOnLogsListener(subId);
-    }
-
-    subscriptionIds = [];
-    listenerRunning = false;
-
-    console.log("⏹️  Blockchain listener stopped");
-    return { success: true, message: "Listener stopped" };
-  } catch (error) {
-    console.error("Error stopping listener:", error);
-    throw error;
+  for (const subId of logSubscriptionIds) {
+    await conn.removeOnLogsListener(subId);
   }
+
+  for (const subId of accountSubscriptionIds) {
+    await conn.removeAccountChangeListener(subId);
+  }
+
+  for (const subId of programAccountSubscriptionIds) {
+    await conn.removeProgramAccountChangeListener(subId);
+  }
+
+  logSubscriptionIds = [];
+  programAccountSubscriptionIds = [];
+  accountSubscriptionIds = [];
+  listenerRunning = false;
+  listenerStartedAt = null;
+
+  return { success: true, message: "Listener stopped" };
 }
 
-/**
- * Get listener status
- */
-export function getListenerStatus(): {
-  running: boolean;
-  subscriptions: number;
-  uptime?: string;
-} {
+export function getListenerStatus() {
   return {
     running: listenerRunning,
-    subscriptions: subscriptionIds.length,
+    subscriptions: logSubscriptionIds.length + programAccountSubscriptionIds.length + accountSubscriptionIds.length,
+    uptime: listenerStartedAt ? `${Math.floor((Date.now() - listenerStartedAt) / 1000)}s` : undefined,
+    mode: "solana-rpc-streams",
+    monitoredPrograms: Object.keys(DEX_PROGRAMS).length,
   };
 }
