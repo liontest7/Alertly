@@ -319,6 +319,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
     wallet_address: dbUser?.walletAddress || payload.wallet_address,
     vipStatus: payload.vip_status,
     vip_status: payload.vip_status,
+    isAdmin: getAdminWallets().includes(dbUser?.walletAddress || payload.wallet_address),
   };
   return { user };
 }

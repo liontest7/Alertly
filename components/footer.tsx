@@ -6,7 +6,7 @@ import { useAuthSession } from "@/components/providers";
 
 export function Footer() {
   const { user } = useAuthSession();
-  const isAdmin = user && siteConfig.adminWallets.includes(user.wallet_address);
+  const isAdmin = user && (user as any).isAdmin;
 
   return (
     <footer className="relative z-20 py-12 border-t border-zinc-900 bg-black">

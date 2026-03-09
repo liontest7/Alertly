@@ -28,6 +28,7 @@ export async function GET(req: Request) {
         wallet_address: session.user.walletAddress,
         vipStatus: session.user.vipStatus,
         vip_status: session.user.vipStatus,
+        isAdmin: (session.user as any).isAdmin || false,
       },
     }, {
       status: 200,

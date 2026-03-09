@@ -108,7 +108,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
 
     setUser(null);
-    await refreshSession();
+    // Remove the redundant await refreshSession() which might cause state flicker
   };
 
   useEffect(() => {

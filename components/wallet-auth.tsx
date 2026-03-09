@@ -148,7 +148,7 @@ export function WalletAuth() {
         }
       }
 
-      await refreshSession(true);
+      await refreshSession();
 
       toast({
         title: "Authenticated",
