@@ -1,38 +1,40 @@
 import { auth } from "@/lib/auth";
-import { siteConfig } from "@/lib/config";
+  import { siteConfig } from "@/lib/config";
 
-const DEFAULT_ADMIN_WALLETS = [
-  "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
-];
+  const DEFAULT_ADMIN_WALLETS = [
+    "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
+  ];
 
-export function getAdminWallets(): string[] {
-  const envWallets = (process.env.ADMIN_WALLETS || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
+  export function getAdminWallets(): string[] {
+    const envWallets = (process.env.ADMIN_WALLETS || "")
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
 
-  const configWallets = siteConfig.adminWallets || [];
+    const configWallets = (siteConfig.adminWallets || []).map(v => v.trim().toLowerCase());
 
-  return Array.from(new Set([...DEFAULT_ADMIN_WALLETS, ...configWallets, ...envWallets]));
-}
+    const defaultWallets = DEFAULT_ADMIN_WALLETS.map(v => v.trim().toLowerCase());
 
-export async function requireAdmin(request: Request) {
-  const session = await auth(request);
-  const wallet = session?.user?.walletAddress;
-  const adminWallets = getAdminWallets();
-
-  // DEBUG: Log the actual wallet being checked
-  console.log("ADMIN_ACCESS_CHECK:", { 
-    wallet, 
-    adminWallets, 
-    match: wallet ? adminWallets.includes(wallet) : false,
-    env: process.env.ADMIN_WALLETS,
-    cookie: request.headers.get("cookie")
-  });
-
-  if (!wallet || !adminWallets.includes(wallet)) {
-    return { ok: false as const, session: null };
+    return Array.from(new Set([...defaultWallets, ...configWallets, ...envWallets]));
   }
 
-  return { ok: true as const, session };
-}
+  export async function requireAdmin(request: Request) {
+    const session = await auth(request);
+    const wallet = session?.user?.walletAddress?.toLowerCase();
+    const adminWallets = getAdminWallets();
+
+    // DEBUG: Log the actual wallet being checked
+    console.log("ADMIN_ACCESS_CHECK:", { 
+      wallet, 
+      adminWallets, 
+      match: wallet ? adminWallets.includes(wallet) : false,
+      env: process.env.ADMIN_WALLETS
+    });
+
+    if (!wallet || !adminWallets.includes(wallet)) {
+      return { ok: false as const, session: null };
+    }
+
+    return { ok: true as const, session };
+  }
+  

@@ -341,7 +341,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
         wallet_address: payload.wallet_address,
         vipStatus: payload.vip_status,
         vip_status: payload.vip_status,
-        isAdmin: getAdminWallets().includes(payload.wallet_address),
+        isAdmin: getAdminWallets().map(w => w.toLowerCase()).includes(payload.wallet_address.toLowerCase()),
       };
       return { user };
   }
@@ -357,7 +357,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
     wallet_address: dbUser.walletAddress,
     vipStatus: payload.vip_status,
     vip_status: payload.vip_status,
-    isAdmin: getAdminWallets().includes(dbUser.walletAddress),
+    isAdmin: getAdminWallets().map(w => w.toLowerCase()).includes(dbUser.walletAddress.toLowerCase()),
   };
   
   return { user };
