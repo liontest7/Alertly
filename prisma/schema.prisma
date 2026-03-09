@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -183,18 +184,4 @@ model ListenerStatus {
   updatedAt     DateTime  @updatedAt
 
   @@index([running, updatedAt])
-}
-
-model prisma_migrations {
-  id                  Int       @id @default(dbgenerated("nextval('_prisma_migrations_id_seq'::regclass)"))
-  checksum            String    @unique @db.VarChar(64)
-  finished_at         DateTime? @db.Timestamp(6)
-  execution_time      BigInt
-  name                String    @db.VarChar(255)
-  logs                String?
-  rolled_back_at      DateTime? @db.Timestamp(6)
-  started_at          DateTime  @default(now()) @db.Timestamp(6)
-  applied_steps_count Int       @default(0)
-
-  @@map("_prisma_migrations")
 }
