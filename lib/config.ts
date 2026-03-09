@@ -42,6 +42,7 @@ export const siteConfig = {
   },
   adminWallets: [
     "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
+    "G1m8o9jP2N5n4L3m2K1j0H9g8F7e6D5c4B3a2Z1yX"
   ],
 };
 
