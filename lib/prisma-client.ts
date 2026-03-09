@@ -10,11 +10,9 @@ function createAdapter() {
     return undefined;
   }
 
-  const isLocal = connectionString.includes('localhost') || connectionString.includes('helium');
-
   return new PrismaPg(new pg.Pool({ 
     connectionString,
-    ssl: isLocal ? false : (connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false)
+    ssl: false
   }));
 }
 

@@ -13,12 +13,12 @@ export const prisma = (() => {
       throw new Error("DATABASE_URL is not set");
     }
 
-    const isLocal = connectionString.includes('localhost') || connectionString.includes('helium');
-    
+    // Always use simple pg.Pool for Replit/Helium environment to avoid pg-protocol errors
     const pool = new pg.Pool({ 
       connectionString,
-      ssl: isLocal ? false : (connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false)
+      ssl: false
     });
+    
     const adapter = new PrismaPg(pool);
     const client = new PrismaClient({ adapter });
 
