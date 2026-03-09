@@ -44,6 +44,7 @@ export const metadata: Metadata = {
 }
 
 import { Providers } from "@/components/providers"
+import { Footer } from "@/components/footer"
 import "@solana/wallet-adapter-react-ui/styles.css"
 
 export default function RootLayout({
@@ -54,7 +55,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <Providers>{children}</Providers>
+        <Providers>
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-grow">
+              {children}
+            </div>
+            <Footer />
+          </div>
+        </Providers>
       </body>
     </html>
   )

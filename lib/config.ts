@@ -40,6 +40,9 @@ export const siteConfig = {
     copyTrading: true,
     tokenGated: true,
   },
+  adminWallets: [
+    "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns",
+  ],
 };
 
 export type SiteConfig = typeof siteConfig;

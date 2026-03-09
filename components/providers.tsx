@@ -115,6 +115,40 @@ export function Providers({ children }: { children: React.ReactNode }) {
     refreshSession();
   }, [refreshSession]);
 
+  useEffect(() => {
+    // Persistent Alert Listener
+    const eventSource = new EventSource("/api/alerts/stream");
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const alert = JSON.parse(event.data);
+        const isTerminalPage = window.location.pathname.includes("/dashboard");
+        
+        if (isTerminalPage) {
+          // Play sound only in terminal
+          const audio = new Audio("/notification.mp3");
+          audio.play().catch(() => {});
+        } else {
+          // Show toast and notification if not in terminal
+          import("sonner").then(({ toast }) => {
+            toast.info(`New Alert: ${alert.name}`, {
+              description: `${alert.type} - ${alert.change} - MC: ${alert.mc}`,
+              action: {
+                label: "View",
+                onClick: () => window.location.href = "/dashboard"
+              },
+              duration: 10000
+            });
+          });
+        }
+      } catch (e) {
+        console.error("Alert stream error:", e);
+      }
+    };
+
+    return () => eventSource.close();
+  }, []);
+
   return (
     <WalletContextProvider>
       <AuthContext.Provider value={{ user, loading, refreshSession, logout }}>

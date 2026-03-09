@@ -30,11 +30,7 @@ export function throwIfMissingEnv(): void {
   const { valid, missing } = validateEnvironment();
 
   if (!valid) {
-    const error = `CRITICAL: Missing required environment variables:
-${missing.map((k) => `  - ${k}`).join("
-")}
-
-Add these secrets in the deployment secrets before running the app.`;
+    const error = `CRITICAL: Missing required environment variables: ${missing.join(", ")}. Add these secrets in the deployment secrets before running the app.`;
     console.error(error);
     throw new Error(error);
   }

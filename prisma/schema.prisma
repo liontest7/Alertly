@@ -7,34 +7,30 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  walletAddress String    @unique
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  vipLevel      Int       @default(0)
-  telegramId    String?   @unique
-  extensionId   String?   @unique
-  lastLogin     DateTime?
-  isBanned      Boolean   @default(false)
-  isFrozen      Boolean   @default(false)
-  adminNote     String?
-
-  walletConnections   WalletConnection[]
-  tradingWallet       TradingWallet?
+  id                  String               @id @default(cuid())
+  walletAddress       String               @unique
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  vipLevel            Int                  @default(0)
+  telegramId          String?              @unique
+  extensionId         String?              @unique
+  lastLogin           DateTime?
+  copyTraders         CopyTrader[]
   telegramLink        TelegramLink?
   telegramLinkRequest TelegramLinkRequest?
-  settings            UserSetting?
-  copyTraders         CopyTrader[]
   tradeExecutionLogs  TradeExecutionLog[]
+  tradingWallet       TradingWallet?
+  settings            UserSetting?
+  walletConnections   WalletConnection[]
 }
 
 model AuthNonce {
-  id        String   @id @default(cuid())
-  nonce     String   @unique
-  message   String   @unique
+  id        String    @id @default(cuid())
+  nonce     String    @unique
+  message   String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 }
 
 model WalletConnection {
@@ -42,8 +38,7 @@ model WalletConnection {
   userId        String
   walletAddress String   @unique
   createdAt     DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model TradingWallet {
@@ -52,8 +47,7 @@ model TradingWallet {
   walletAddress       String   @unique
   encryptedPrivateKey String
   createdAt           DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model TelegramLink {
@@ -61,8 +55,7 @@ model TelegramLink {
   userId     String   @unique
   telegramId String   @unique
   createdAt  DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model TelegramLinkRequest {
@@ -71,35 +64,33 @@ model TelegramLinkRequest {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model UserSetting {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  buyAmount    Float    @default(0.5)
-  maxBuyPerToken Float  @default(2.0)
-  slippage     Float    @default(10.0)
-  autoTrade    Boolean  @default(false)
-  minMarketCap Float    @default(10000)
-  maxMarketCap Float    @default(10000000)
-  minHolders   Int      @default(100)
-  minLiquidity Float    @default(50000)
-  takeProfit   Float    @default(50)
-  stopLoss     Float    @default(25)
-  trailingStop Boolean  @default(false)
-  autoSellMinutes Int    @default(0)
-  volumeSpikeEnabled Boolean @default(true)
-  volumeSpikeThreshold Int @default(50)
-  whaleAlertEnabled Boolean @default(true)
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  buyAmount            Float    @default(0.5)
+  maxBuyPerToken       Float    @default(2.0)
+  slippage             Float    @default(10.0)
+  autoTrade            Boolean  @default(false)
+  minMarketCap         Float    @default(10000)
+  maxMarketCap         Float    @default(10000000)
+  minHolders           Int      @default(100)
+  minLiquidity         Float    @default(50000)
+  takeProfit           Float    @default(50)
+  stopLoss             Float    @default(25)
+  trailingStop         Boolean  @default(false)
+  autoSellMinutes      Int      @default(0)
+  volumeSpikeEnabled   Boolean  @default(true)
+  volumeSpikeThreshold Int      @default(50)
+  whaleAlertEnabled    Boolean  @default(true)
   whaleWalletAddresses String[] @default([])
-  dexBoostEnabled Boolean @default(true)
-  dexListingEnabled Boolean @default(true)
-  sources      String[] @default(["Raydium", "Jupiter"])
-  selectedBoostLevel String? @default("Top Boost")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dexBoostEnabled      Boolean  @default(true)
+  dexListingEnabled    Boolean  @default(true)
+  sources              String[] @default(["Raydium", "Jupiter"])
+  selectedBoostLevel   String?  @default("Top Boost")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model CopyTrader {
@@ -110,8 +101,7 @@ model CopyTrader {
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([userId, traderAddress])
   @@index([userId])
@@ -129,38 +119,36 @@ model TradeExecutionLog {
   txSig        String?
   message      String?
   createdAt    DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([userId, createdAt])
   @@index([tokenAddress, createdAt])
 }
 
-
 model AlertEvent {
-  id            String   @id @default(cuid())
-  fingerprint   String   @unique
-  address       String
-  type          String
-  name          String
-  change        String
-  trend         String
-  mc            String
-  vol           String
-  liquidity     String
-  holders       Int
-  imageUrl      String?
-  symbol        String?
-  dexUrl        String?
-  website       String?
-  twitter       String?
-  telegram      String?
-  pairAddress   String?
-  priceUsd      String?
-  riskScore     Float    @default(5.0)
-  riskLevel     String   @default("MEDIUM")
-  alertedAt     DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  fingerprint String   @unique
+  address     String
+  type        String
+  name        String
+  change      String
+  trend       String
+  mc          String
+  vol         String
+  liquidity   String
+  holders     Int
+  imageUrl    String?
+  symbol      String?
+  dexUrl      String?
+  website     String?
+  twitter     String?
+  telegram    String?
+  pairAddress String?
+  priceUsd    String?
+  riskScore   Float    @default(5.0)
+  riskLevel   String   @default("MEDIUM")
+  alertedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([address, alertedAt])
   @@index([riskScore, createdAt])
@@ -184,15 +172,29 @@ model BlockchainEvent {
 }
 
 model ListenerStatus {
-  id              String   @id @default(cuid())
-  name            String   @unique
-  running         Boolean  @default(false)
-  subscriptions   Int      @default(0)
-  lastEventAt     DateTime?
-  errorsCount     Int      @default(0)
-  lastError       String?
-  uptime          Int      @default(0)
-  updatedAt       DateTime @updatedAt
+  id            String    @id @default(cuid())
+  name          String    @unique
+  running       Boolean   @default(false)
+  subscriptions Int       @default(0)
+  lastEventAt   DateTime?
+  errorsCount   Int       @default(0)
+  lastError     String?
+  uptime        Int       @default(0)
+  updatedAt     DateTime  @updatedAt
 
   @@index([running, updatedAt])
+}
+
+model prisma_migrations {
+  id                  Int       @id @default(dbgenerated("nextval('_prisma_migrations_id_seq'::regclass)"))
+  checksum            String    @unique @db.VarChar(64)
+  finished_at         DateTime? @db.Timestamp(6)
+  execution_time      BigInt
+  name                String    @db.VarChar(255)
+  logs                String?
+  rolled_back_at      DateTime? @db.Timestamp(6)
+  started_at          DateTime  @default(now()) @db.Timestamp(6)
+  applied_steps_count Int       @default(0)
+
+  @@map("_prisma_migrations")
 }

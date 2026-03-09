@@ -155,7 +155,6 @@ Test it as a guest in seconds, then connect your wallet to unlock VIP-level auto
       <HeroStats />
       <Capabilities />
       <TokenSection />
-      <Footer />
     </main>
   );
 }

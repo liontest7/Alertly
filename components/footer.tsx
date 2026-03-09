@@ -20,6 +20,11 @@ export function Footer() {
           </span>
         </div>
         <div className="flex gap-10 text-white text-sm items-center">
+          {siteConfig.adminWallets && siteConfig.adminWallets.length > 0 && (
+            <a href="/admin" className="hover:text-[#5100fd] transition-colors font-medium">
+              Admin
+            </a>
+          )}
           <a href="#" className="hover:text-[#5100fd] transition-colors">
             Privacy
           </a>
