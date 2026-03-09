@@ -7,7 +7,7 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+    serverComponentsExternalPackages: ['@prisma/client', 'pg', 'bcryptjs'],
   },
   devIndicators: {
     buildActivity: false,
@@ -22,6 +22,14 @@ const nextConfig = {
         crypto: false,
         stream: false,
         buffer: false,
+        net: false,
+        tls: false,
+      };
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        pg: false,
+        'pg-native': false,
+        '@prisma/client': false,
       };
     }
     return config;
