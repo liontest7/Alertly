@@ -5,6 +5,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { getEnv, requireEnv } from "@/lib/env";
 import * as nacl from "tweetnacl";
+import { getAdminWallets } from "@/lib/admin/access";
 
 const AUTH_COOKIE = "auth_token";
 const NONCE_TTL_MS = 5 * 60 * 1000;
@@ -319,7 +320,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
     wallet_address: dbUser?.walletAddress || payload.wallet_address,
     vipStatus: payload.vip_status,
     vip_status: payload.vip_status,
-    isAdmin: getAdminWallets().includes(dbUser?.walletAddress || payload.wallet_address),
+    isAdmin: (getAdminWallets() as string[]).includes(dbUser?.walletAddress || payload.wallet_address),
   };
   
   console.log("Auth session created:", { wallet: user.walletAddress, isAdmin: user.isAdmin });

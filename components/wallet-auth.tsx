@@ -158,6 +158,9 @@ export function WalletAuth() {
       // Force immediate redirect to dashboard if on landing page
       if (window.location.pathname === "/") {
         window.location.href = "/dashboard";
+      } else {
+        // Refresh page to ensure all components see the new session
+        window.location.reload();
       }
     } catch (error: any) {
       console.error("Auth error:", error);
@@ -215,19 +218,12 @@ export function WalletAuth() {
           return;
         }
         
-        // Final check: if user is on dashboard and session is invalid, 
-        // they will be redirected to "/" by the dashboard's own check.
-        // We only trigger auto-auth if they are already on the landing page or similar.
-        if (window.location.pathname === "/dashboard") {
-           return;
-        }
-        
-        // Removed automatic trigger of authenticate() to prevent loop
-        // console.log("WalletAuth: Triggering signature request...");
-        // authenticate();
+        // Automatically trigger authentication if not logged in
+        console.log("WalletAuth: Triggering signature request...");
+        authenticate();
       };
 
-      const timer = setTimeout(attemptAuth, 1000);
+      const timer = setTimeout(attemptAuth, 500);
       return () => clearTimeout(timer);
     } else if (!connected) {
       authAttemptedRef.current = false;
