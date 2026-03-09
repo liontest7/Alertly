@@ -37,7 +37,16 @@ export default function AdminPage() {
 
   const fetchOverview = async () => {
     const res = await fetch("/api/admin/overview", { cache: "no-store" });
-    if (!res.ok) throw new Error("Forbidden");
+    if (!res.ok) {
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Access denied details:", data);
+        setOverview(null);
+        setLoading(false);
+        return;
+      }
+      throw new Error("Failed to fetch overview");
+    }
     setOverview(await res.json());
   };
 

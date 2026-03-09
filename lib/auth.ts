@@ -321,5 +321,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
     vip_status: payload.vip_status,
     isAdmin: getAdminWallets().includes(dbUser?.walletAddress || payload.wallet_address),
   };
+  
+  console.log("Auth session created:", { wallet: user.walletAddress, isAdmin: user.isAdmin });
   return { user };
 }

@@ -21,7 +21,14 @@ export async function requireAdmin(request: Request) {
   const wallet = session?.user?.walletAddress;
   const adminWallets = getAdminWallets();
 
-  console.log("Admin check:", { wallet, adminWallets, hasAccess: wallet && adminWallets.includes(wallet) });
+  // DEBUG: Log the actual wallet being checked
+  console.log("ADMIN_ACCESS_CHECK:", { 
+    wallet, 
+    adminWallets, 
+    match: wallet ? adminWallets.includes(wallet) : false,
+    env: process.env.ADMIN_WALLETS,
+    cookie: request.headers.get("cookie")
+  });
 
   if (!wallet || !adminWallets.includes(wallet)) {
     return { ok: false as const, session: null };

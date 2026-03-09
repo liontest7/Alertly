@@ -45,7 +45,23 @@ async function checkJupiter(apiUrl?: string) {
 export async function GET(req: Request) {
   const access = await requireAdmin(req);
   if (!access.ok) {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    const token = getAuthTokenFromRequest(req);
+    const payload = token ? await verifyToken(token) : null;
+    
+    console.error("Admin Overview Access Denied Deep Check:", { 
+      walletFromAuth: access.session?.user?.walletAddress,
+      walletFromPayload: payload?.wallet_address,
+      allowed: getAdminWallets(),
+      hasToken: !!token
+    });
+
+    return NextResponse.json({ 
+      message: "Forbidden", 
+      debug: {
+        yourWallet: payload?.wallet_address || "not_found",
+        isAdmin: false
+      }
+    }, { status: 403 });
   }
 
   const now = new Date();
