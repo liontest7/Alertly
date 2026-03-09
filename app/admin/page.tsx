@@ -26,6 +26,8 @@ type AdminLogs = {
   failedTrades: Array<{ id: string; action: string; status: string; message?: string | null; createdAt: string }>;
 };
 
+import { Footer } from "@/components/footer";
+
 export default function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);

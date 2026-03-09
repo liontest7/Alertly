@@ -9,6 +9,7 @@ import { HeroStats } from "@/components/hero-stats";
 import { Capabilities } from "@/components/capabilities";
 import { TokenSection } from "@/components/token-section";
 import { Footer } from "@/components/footer";
+import { NotificationSystem } from "@/components/notification-system";
 import { useEffect, useState } from "react";
 import { useAuthSession } from "@/components/providers";
 

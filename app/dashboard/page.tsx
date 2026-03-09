@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
+import { Footer } from "@/components/footer";
+
 export default function DashboardPage() {
   const { user, loading: sessionLoading } = useAuthSession();
   const router = useRouter();
