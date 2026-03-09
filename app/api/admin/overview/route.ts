@@ -48,12 +48,15 @@ export async function GET(req: Request) {
   if (!access.ok) {
     const token = getAuthTokenFromRequest(req);
     const payload = token ? await verifyToken(token) : null;
+    const wallet = payload?.wallet_address;
+    const adminWallets = getAdminWallets();
     
     console.error("Admin Overview Access Denied Deep Check:", { 
       walletFromAuth: access.session?.user?.walletAddress,
-      walletFromPayload: payload?.wallet_address,
-      allowed: getAdminWallets(),
-      hasToken: !!token
+      walletFromPayload: wallet,
+      allowed: adminWallets,
+      hasToken: !!token,
+      match: wallet ? adminWallets.includes(wallet) : false
     });
 
     return NextResponse.json({ 

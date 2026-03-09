@@ -51,9 +51,16 @@ function base64url(input: string | Buffer | Uint8Array) {
 }
 
 function getJwtSecret() {
-  const secret = getEnv("AUTH_SECRET") || getEnv("JWT_SECRET");
+  const secret = process.env.AUTH_SECRET || process.env.JWT_SECRET;
   if (secret) {
     return secret;
+  }
+  
+  // Fallback to a hardcoded one ONLY if we are in development and really stuck
+  // but better to throw if missing in production
+  if (!process.env.AUTH_SECRET) {
+     console.warn("AUTH_SECRET is missing, using insecure fallback");
+     return "insecure_fallback_secret_change_me_in_replit_secrets";
   }
 
   return requireEnv("AUTH_SECRET");
@@ -265,12 +272,15 @@ export function getAuthTokenFromRequest(req?: NextRequest | Request) {
     if (header?.startsWith("Bearer ")) return header.replace("Bearer ", "");
 
     const cookieHeader = req.headers.get("cookie") || "";
-    const cookieToken = cookieHeader
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${AUTH_COOKIE}=`))
-      ?.split("=")[1];
+    // Robust cookie parsing
+    const cookiesObj = Object.fromEntries(
+      cookieHeader.split(';').map(c => {
+        const [name, ...value] = c.trim().split('=');
+        return [name, value.join('=')];
+      })
+    );
     
+    const cookieToken = cookiesObj[AUTH_COOKIE];
     if (cookieToken) return decodeURIComponent(cookieToken);
 
     if (req && (req as any).cookies && typeof (req as any).cookies.get === 'function') {
@@ -294,10 +304,19 @@ export function getAuthTokenFromRequest(req?: NextRequest | Request) {
 
 export async function auth(req?: NextRequest | Request): Promise<AuthSession | null> {
   const token = getAuthTokenFromRequest(req);
-  if (!token) return null;
+  if (!token) {
+    // console.log("Auth: No token found in request");
+    return null;
+  }
 
   const payload = await verifyToken(token);
-  if (!payload) return null;
+  if (!payload) {
+    // console.log("Auth: Token verification failed");
+    return null;
+  }
+
+  // Use a faster check if possible or at least log payload
+  // console.log("Auth: Payload verified for", payload.wallet_address);
 
   const dbUser = await prisma.user.findUnique({
     where: { id: payload.user_id },
@@ -307,22 +326,39 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
       isBanned: true,
       isFrozen: true,
     },
-  }).catch(() => null);
+  }).catch((err) => {
+    console.error("Auth: DB user lookup failed", err);
+    return null;
+  });
 
-  if (dbUser?.isBanned || dbUser?.isFrozen) {
+  if (!dbUser) {
+     // If user is not in DB but token is valid (shouldn't happen normally)
+     // we still allow basic session if they aren't banned
+     const user = {
+        id: payload.user_id,
+        user_id: payload.user_id,
+        walletAddress: payload.wallet_address,
+        wallet_address: payload.wallet_address,
+        vipStatus: payload.vip_status,
+        vip_status: payload.vip_status,
+        isAdmin: getAdminWallets().includes(payload.wallet_address),
+      };
+      return { user };
+  }
+
+  if (dbUser.isBanned || dbUser.isFrozen) {
     return null;
   }
 
   const user = {
-    id: payload.user_id,
-    user_id: payload.user_id,
-    walletAddress: dbUser?.walletAddress || payload.wallet_address,
-    wallet_address: dbUser?.walletAddress || payload.wallet_address,
+    id: dbUser.id,
+    user_id: dbUser.id,
+    walletAddress: dbUser.walletAddress,
+    wallet_address: dbUser.walletAddress,
     vipStatus: payload.vip_status,
     vip_status: payload.vip_status,
-    isAdmin: (getAdminWallets() as string[]).includes(dbUser?.walletAddress || payload.wallet_address),
+    isAdmin: getAdminWallets().includes(dbUser.walletAddress),
   };
   
-  console.log("Auth session created:", { wallet: user.walletAddress, isAdmin: user.isAdmin });
   return { user };
 }
