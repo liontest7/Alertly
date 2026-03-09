@@ -1,0 +1,2 @@
+-- This is a baseline migration for an existing database schema
+-- This file is intentionally empty as the schema already exists in production

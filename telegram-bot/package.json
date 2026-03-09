@@ -1,0 +1,13 @@
+{
+  "name": "alertly-bot",
+  "version": "1.0.0",
+  "main": "src/bot.ts",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "node-telegram-bot-api": "^0.64.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "typescript": "^5"
+  }
+}
