@@ -121,28 +121,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
     
     eventSource.onmessage = (event) => {
       try {
-        const alert = JSON.parse(event.data);
-        const isTerminalPage = window.location.pathname.includes("/dashboard");
-        
-        if (isTerminalPage) {
-          // Play sound only in terminal
-          const audio = new Audio("/notification.mp3");
-          audio.play().catch(() => {});
-        } else {
-          // Show toast and notification if not in terminal
-          import("sonner").then(({ toast }) => {
-            toast.info(`New Alert: ${alert.name}`, {
-              description: `${alert.type} - ${alert.change} - MC: ${alert.mc}`,
-              action: {
-                label: "View",
-                onClick: () => window.location.href = "/dashboard"
-              },
-              duration: 10000
+        const data = JSON.parse(event.data);
+        // data is either heartbeat or alerts array
+        if (Array.isArray(data)) {
+          const alert = data[0]; // Get the newest alert
+          if (!alert) return;
+          
+          const isTerminalPage = window.location.pathname.includes("/dashboard");
+          
+          if (isTerminalPage) {
+            // Play sound only in terminal
+            const audio = new Audio("/notification.mp3");
+            audio.play().catch(() => {});
+          } else {
+            // Show toast and notification if not in terminal
+            import("sonner").then(({ toast }) => {
+              toast.info(`New Alert: ${alert.name}`, {
+                description: `${alert.type} - MC: ${alert.mc}`,
+                action: {
+                  label: "View",
+                  onClick: () => window.location.href = "/dashboard"
+                },
+                duration: 10000
+              });
             });
-          });
+          }
         }
       } catch (e) {
-        console.error("Alert stream error:", e);
+        // Heartbeat or malformed JSON
       }
     };
 

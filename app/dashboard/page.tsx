@@ -111,9 +111,11 @@ export default function DashboardPage() {
     let stream: EventSource | null = null;
     try {
       stream = new EventSource('/api/alerts/stream');
-      stream.addEventListener('alerts', (event) => {
+      stream.onmessage = (event) => {
         try {
-          const payload = JSON.parse((event as MessageEvent).data);
+          const payload = JSON.parse(event.data);
+          // Only update alerts if it's an array (alerts event data)
+          // Heartbeats will be objects and fail Array.isArray
           if (Array.isArray(payload)) {
             setAlerts(payload);
             setLoading(false);
@@ -121,6 +123,19 @@ export default function DashboardPage() {
         } catch {
           // ignore invalid stream payload
         }
+      };
+      
+      // SSE events with named types (like 'alerts') come through onmessage 
+      // if not explicitly added via addEventListener, or we can use both.
+      // The current route.ts uses `sseEvent("alerts", ...)` which sends `event: alerts`
+      stream.addEventListener('alerts', (event: any) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (Array.isArray(payload)) {
+            setAlerts(payload);
+            setLoading(false);
+          }
+        } catch {}
       });
     } catch {
       // fallback remains polling below
