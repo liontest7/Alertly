@@ -11,9 +11,11 @@ function createAdapter() {
   }
 
   return new PrismaPg(new pg.Pool({ 
-    connectionString: connectionString.split('?')[0],
+    connectionString: 'postgresql://postgres:password@helium:5432/heliumdb',
     ssl: false,
-    max: 1
+    max: 2,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
   }));
 }
 

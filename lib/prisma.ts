@@ -13,11 +13,12 @@ export const prisma = (() => {
       throw new Error("DATABASE_URL is not set");
     }
 
-    // Always use simple pg.Pool for Replit/Helium environment to avoid pg-protocol errors
     const pool = new pg.Pool({ 
-      connectionString: connectionString.split('?')[0],
+      connectionString: 'postgresql://postgres:password@helium:5432/heliumdb',
       ssl: false,
-      max: 1
+      max: 2,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
     });
     
     const adapter = new PrismaPg(pool);

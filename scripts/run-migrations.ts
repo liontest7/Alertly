@@ -18,7 +18,7 @@ async function runMigrations() {
 
   try {
     const pool = new pg.Pool({ 
-      connectionString: databaseUrl.split('?')[0],
+      connectionString: 'postgresql://postgres:password@helium:5432/heliumdb',
       ssl: false
     });
     const adapter = new PrismaPg(pool);
