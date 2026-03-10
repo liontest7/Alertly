@@ -18,24 +18,43 @@ export const prisma = (() => {
       throw new Error(`DATABASE_URL must be a string, got ${typeof connectionString}`);
     }
 
-    // Strip whitespace
+    // Strip whitespace and validate
     const cleanConnectionString = connectionString.trim();
     if (!cleanConnectionString) {
       throw new Error("DATABASE_URL is empty after trimming");
     }
 
-    // Create pool with minimal, safe configuration
-    const pool = new pg.Pool({
-      connectionString: cleanConnectionString
+    // Validate URL format for Render/external databases
+    if (!cleanConnectionString.startsWith('postgres://') && !cleanConnectionString.startsWith('postgresql://')) {
+      throw new Error("Invalid DATABASE_URL format - must start with postgres:// or postgresql://");
+    }
+
+    // Create pool with explicit string configuration to avoid type issues
+    const poolConfig: pg.PoolConfig = {
+      connectionString: String(cleanConnectionString),
+      // Set reasonable defaults for external databases
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 30000
+    };
+
+    const pool = new pg.Pool(poolConfig);
+
+    // Handle pool errors gracefully without crashing
+    pool.on('error', (err: Error) => {
+      console.error('[Prisma Pool Error]', err.message);
     });
 
-    // Ensure pool errors don't crash the app
-    pool.on('error', (err) => {
-      console.error('Unexpected error on idle client in pool:', err);
+    pool.on('connect', () => {
+      console.log('[Prisma] Successfully connected to external database');
     });
 
     const adapter = new PrismaPg(pool);
-    const client = new PrismaClient({ adapter });
+    const client = new PrismaClient({ 
+      adapter,
+      errorFormat: 'minimal'
+    });
 
     if (process.env.NODE_ENV !== "production") {
       globalForPrisma.prisma = client;
