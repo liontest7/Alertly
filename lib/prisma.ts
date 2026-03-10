@@ -14,7 +14,11 @@ export const prisma = (() => {
     }
 
     const pool = new pg.Pool({ 
-      connectionString: connectionString.split('?')[0],
+      host: process.env.PGHOST || 'localhost',
+      port: parseInt(process.env.PGPORT || "5432"),
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || 'password',
+      database: process.env.PGDATABASE || 'heliumdb',
       ssl: false,
       max: 1,
       idleTimeoutMillis: 30000,
