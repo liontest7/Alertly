@@ -6,21 +6,23 @@ const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 function createAdapter() {
   const connectionString = process.env.DATABASE_URL;
+  
   if (!connectionString) {
+    console.warn("[Prisma] No DATABASE_URL found, Prisma will use default behavior");
     return undefined;
   }
 
-  return new PrismaPg(new pg.Pool({ 
-    host: process.env.PGHOST || 'localhost',
-    port: parseInt(process.env.PGPORT || "5432"),
-    user: process.env.PGUSER || 'postgres',
-    password: process.env.PGPASSWORD || 'password',
-    database: process.env.PGDATABASE || 'heliumdb',
-    ssl: false,
-    max: 1,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 30000,
-  }));
+  try {
+    return new PrismaPg(new pg.Pool({ 
+      connectionString,
+      max: 1,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 30000,
+    }));
+  } catch (error) {
+    console.error("[Prisma] Failed to create adapter:", error);
+    return undefined;
+  }
 }
 
 export const createPrismaClient = () => {
