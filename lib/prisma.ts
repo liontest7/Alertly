@@ -1,6 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import pg from "pg";
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -29,31 +27,12 @@ export const prisma = (() => {
       throw new Error("Invalid DATABASE_URL format - must start with postgres:// or postgresql://");
     }
 
-    // Create pool with explicit string configuration to avoid type issues
-    const poolConfig: pg.PoolConfig = {
-      connectionString: String(cleanConnectionString),
-      // Set reasonable defaults for external databases
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-      statement_timeout: 30000
-    };
-
-    const pool = new pg.Pool(poolConfig);
-
-    // Handle pool errors gracefully without crashing
-    pool.on('error', (err: Error) => {
-      console.error('[Prisma Pool Error]', err.message);
-    });
-
-    pool.on('connect', () => {
-      console.log('[Prisma] Successfully connected to external database');
-    });
-
-    const adapter = new PrismaPg(pool);
-    const client = new PrismaClient({ 
-      adapter,
-      errorFormat: 'minimal'
+    const client = new PrismaClient({
+      datasources: {
+        db: {
+          url: cleanConnectionString
+        }
+      }
     });
 
     if (process.env.NODE_ENV !== "production") {

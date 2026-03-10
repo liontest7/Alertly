@@ -1,0 +1,67 @@
+
+ ○ Compiling / ...
+ ✓ Compiled / in 5.8s
+ GET / 200 in 6918ms
+ ⚠ Cross origin request detected from 8073b980-3c96-4500-a4d4-cb672271a6d5-00-2fc658w49wu3i.sisko.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 1310ms
+🚀 Starting real-time alert listener
+Skipping invalid program ID: whirLbMiicVdio4KfUbuPvCODMARF747ySHiR5Bot5Q
+(node:8683) DeprecationWarning: Passing a custom Promise implementation to the Client/Pool constructor is deprecated and will be removed in pg@9.0.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ GET /api/auth/session 200 in 2008ms
+TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ ⨯ uncaughtException: TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ ⨯ uncaughtException: TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ GET /api/auth/session 200 in 141ms
+ GET /api/auth/session 200 in 162ms
+ GET /api/auth/session 200 in 124ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 114ms
+ GET /api/auth/session 200 in 112ms
+ GET /api/auth/session 200 in 122ms
+ GET /api/auth/session 200 in 116ms
+ GET /api/auth/session 200 in 120ms
+ GET /api/auth/session 200 in 127ms
+ GET /api/auth/session 200 in 87ms
+ GET /api/auth/session 200 in 120ms
