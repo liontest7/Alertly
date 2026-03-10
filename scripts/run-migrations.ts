@@ -14,11 +14,16 @@ async function runMigrations() {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
+  if (typeof databaseUrl !== 'string') {
+    throw new Error(`DATABASE_URL must be a string, got ${typeof databaseUrl}`);
+  }
+
   console.log("🔄 Running Prisma migrations...");
 
   try {
+    const cleanUrl = databaseUrl.trim();
     const pool = new pg.Pool({ 
-      connectionString: databaseUrl.split('?')[0],
+      connectionString: cleanUrl.split('?')[0],
       ssl: false
     });
     const adapter = new PrismaPg(pool);
