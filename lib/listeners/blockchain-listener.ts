@@ -422,11 +422,17 @@ async function setupProgramSubscription() {
 export async function startBlockchainListener() {
   if (listenerRunning) return { success: true, message: "Listener already running" };
 
-  listenerRunning = true;
-  listenerStartedAt = Date.now();
-  await setupProgramSubscription();
-
-  return { success: true, message: "Listener started" };
+  try {
+    listenerRunning = true;
+    listenerStartedAt = Date.now();
+    await setupProgramSubscription();
+    return { success: true, message: "Listener started" };
+  } catch (error) {
+    listenerRunning = false;
+    listenerStartedAt = null;
+    console.error("Listener startup error (non-fatal):", error instanceof Error ? error.message : error);
+    return { success: false, message: "Listener failed to start" };
+  }
 }
 
 export async function stopBlockchainListener() {

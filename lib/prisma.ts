@@ -13,14 +13,14 @@ export const prisma = (() => {
       throw new Error(`DATABASE_URL is not set or invalid. Got: ${typeof connectionString}`);
     }
 
-    const poolConfig: any = {
-      connectionString: String(connectionString).trim(),
+    const connStr = String(connectionString).trim();
+    const pool = new pg.Pool({ 
+      connectionString: connStr,
       max: 1,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 30000,
-    };
-
-    const pool = new pg.Pool(poolConfig);
+      Promise: undefined,
+    });
     
     const adapter = new PrismaPg(pool);
     const client = new PrismaClient({ adapter });
