@@ -1,0 +1,118 @@
+blems.
+ ⚠ See instructions if you need to configure Turbopack:
+  https://nextjs.org/docs/app/api-reference/next-config-js/turbo
+
+ ○ Compiling / ...
+ ✓ Compiled / in 5.1s
+ GET / 200 in 6006ms
+ ⚠ Cross origin request detected from 180bb41d-6664-4372-a406-19402cdf7205-00-p68491ci7o9j.pike.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /api/auth/session ...
+ ✓ Compiled /api/auth/session in 1147ms
+🚀 Starting real-time alert listener
+Skipping invalid program ID: whirLbMiicVdio4KfUbuPvCODMARF747ySHiR5Bot5Q
+(node:10174) DeprecationWarning: Passing a custom Promise implementation to the Client/Pool constructor is deprecated and will be removed in pg@9.0.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ GET /api/auth/session 200 in 1608ms
+TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ ⨯ uncaughtException: TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ ⨯ uncaughtException: TypeError [ERR_INVALID_ARG_TYPE]: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Object
+    at Function.byteLength (node:buffer:776:11)
+    at Writer.addCString (/home/runner/workspace/node_modules/pg-protocol/dist/buffer-writer.js:42:32)
+    at Object.startup (/home/runner/workspace/node_modules/pg-protocol/dist/serializer.js:10:32)
+    at Connection.startup (/home/runner/workspace/node_modules/pg/lib/connection.js:124:33)
+    at Connection.<anonymous> (/home/runner/workspace/node_modules/pg/lib/client.js:169:13)
+    at Connection.emit (node:events:524:28)
+    at Socket.<anonymous> (/home/runner/workspace/node_modules/pg/lib/connection.js:48:12)
+    at Object.onceWrapper (node:events:638:28)
+    at Socket.emit (node:events:536:35)
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1596:10)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+ GET /api/auth/session 200 in 130ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 150ms
+ GET /api/auth/session 200 in 128ms
+ GET /api/auth/session 200 in 86ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 99ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 94ms
+ GET /api/auth/session 200 in 115ms
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 113ms
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 106ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 103ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 93ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 91ms
+ GET /api/auth/session 200 in 94ms
+ GET /api/auth/session 200 in 91ms
+ GET /api/auth/session 200 in 98ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 95ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 84ms
+ GET /api/auth/session 200 in 93ms
+ GET /api/auth/session 200 in 72ms
+ GET /api/auth/session 200 in 85ms
+ GET /api/auth/session 200 in 70ms
+ GET /api/auth/session 200 in 83ms
+ GET /api/auth/session 200 in 82ms
+ GET /api/auth/session 200 in 97ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 96ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 72ms
+ GET /api/auth/session 200 in 68ms
+ GET /api/auth/session 200 in 92ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 108ms
+ GET /api/auth/session 200 in 79ms
+ GET /api/auth/session 200 in 90ms
+ GET /api/auth/session 200 in 102ms
+ GET /api/auth/session 200 in 101ms
+ GET /api/auth/session 200 in 94ms
+^C

@@ -14,11 +14,11 @@ export const prisma = (() => {
     }
 
     const pool = new pg.Pool({ 
-      connectionString: 'postgresql://postgres:password@helium:5432/heliumdb',
+      connectionString: connectionString.split('?')[0],
       ssl: false,
-      max: 2,
+      max: 1,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 30000,
     });
     
     const adapter = new PrismaPg(pool);
