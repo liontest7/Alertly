@@ -9,19 +9,31 @@ export const prisma = (() => {
 
   try {
     const connectionString = process.env.DATABASE_URL;
-    if (!connectionString || typeof connectionString !== 'string') {
-      throw new Error(`DATABASE_URL is not set or invalid. Got: ${typeof connectionString}`);
+    if (!connectionString) {
+      throw new Error("DATABASE_URL environment variable is not set");
     }
 
-    const connStr = String(connectionString).trim();
-    const pool = new pg.Pool({ 
-      connectionString: connStr,
-      max: 1,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 30000,
-      Promise: undefined,
+    // Ensure connectionString is a valid string
+    if (typeof connectionString !== 'string') {
+      throw new Error(`DATABASE_URL must be a string, got ${typeof connectionString}`);
+    }
+
+    // Strip whitespace
+    const cleanConnectionString = connectionString.trim();
+    if (!cleanConnectionString) {
+      throw new Error("DATABASE_URL is empty after trimming");
+    }
+
+    // Create pool with minimal, safe configuration
+    const pool = new pg.Pool({
+      connectionString: cleanConnectionString
     });
-    
+
+    // Ensure pool errors don't crash the app
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle client in pool:', err);
+    });
+
     const adapter = new PrismaPg(pool);
     const client = new PrismaClient({ adapter });
 
@@ -31,7 +43,7 @@ export const prisma = (() => {
 
     return client;
   } catch (error) {
-    console.error("Prisma init error:", error);
+    console.error("Failed to initialize Prisma client:", error instanceof Error ? error.message : error);
     throw error;
   }
 })();
