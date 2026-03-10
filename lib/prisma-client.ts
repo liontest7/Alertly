@@ -14,7 +14,7 @@ function createAdapter() {
     host: process.env.PGHOST || 'localhost',
     port: parseInt(process.env.PGPORT || "5432"),
     user: process.env.PGUSER || 'postgres',
-    password: String(process.env.PGPASSWORD || 'password'),
+    password: process.env.PGPASSWORD || 'password',
     database: process.env.PGDATABASE || 'heliumdb',
     ssl: false,
     max: 1,
