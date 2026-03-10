@@ -11,8 +11,9 @@ function createAdapter() {
   }
 
   return new PrismaPg(new pg.Pool({ 
-    connectionString,
-    ssl: false
+    connectionString: connectionString.split('?')[0],
+    ssl: false,
+    max: 1
   }));
 }
 

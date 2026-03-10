@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
 
 /**
  * Run database migrations - ensures schema is up to date
@@ -16,7 +17,11 @@ async function runMigrations() {
   console.log("🔄 Running Prisma migrations...");
 
   try {
-    const adapter = new PrismaPg({ connectionString: databaseUrl });
+    const pool = new pg.Pool({ 
+      connectionString: databaseUrl.split('?')[0],
+      ssl: false
+    });
+    const adapter = new PrismaPg(pool);
     const client = new PrismaClient({ adapter });
 
     await client.$executeRaw`SELECT 1`;

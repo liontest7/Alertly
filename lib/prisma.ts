@@ -15,8 +15,9 @@ export const prisma = (() => {
 
     // Always use simple pg.Pool for Replit/Helium environment to avoid pg-protocol errors
     const pool = new pg.Pool({ 
-      connectionString,
-      ssl: false
+      connectionString: connectionString.split('?')[0],
+      ssl: false,
+      max: 1
     });
     
     const adapter = new PrismaPg(pool);
