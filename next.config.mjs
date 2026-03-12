@@ -7,8 +7,17 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'pg', 'bcryptjs'],
+    serverComponentsExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'pg', 'pg-native', 'bcryptjs'],
+    turbo: {
+      resolveAlias: {
+        pg: { browser: './lib/browser-empty.js' },
+        'pg-native': { browser: './lib/browser-empty.js' },
+        '@prisma/client': { browser: './lib/browser-empty.js' },
+        '@prisma/adapter-pg': { browser: './lib/browser-empty.js' },
+      },
+    },
   },
+  allowedDevOrigins: ['*.pike.replit.dev', '*.sisko.replit.dev', '*.replit.dev'],
   devIndicators: {
     buildActivity: false,
   },
