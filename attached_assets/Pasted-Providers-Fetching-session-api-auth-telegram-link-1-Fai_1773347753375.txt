@@ -1,0 +1,332 @@
+Providers: Fetching session...
+api/auth/telegram-link:1  Failed to load resource: the server responded with a status of 401 ()הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: Object
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+api/auth/telegram-link:1  Failed to load resource: the server responded with a status of 401 ()הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: {authenticated: false}
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+telegram-link:1  Failed to load resource: the server responded with a status of 401 ()הסבר על השגיאה
+lPNOw-zNDQj1PPHS:1  Failed to load resource: the server responded with a status of 404 ()הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: {authenticated: false}
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+telegram-link:1  Failed to load resource: the server responded with a status of 401 ()הסבר על השגיאה
+qlerfYcgFOPIkhf4:1  Failed to load resource: the server responded with a status of 404 ()הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: {authenticated: false}
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+page-5c519fc4d2d392bf.js:1  GET https://alertly-5zmw.onrender.com/api/auth/telegram-link 401 (Unauthorized)
+(אנונימית) @ page-5c519fc4d2d392bf.js:1
+aW @ fd9d1056-bb01ff989b0918d5.js:1
+oe @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+id @ fd9d1056-bb01ff989b0918d5.js:1
+nb @ fd9d1056-bb01ff989b0918d5.js:1
+(אנונימית) @ fd9d1056-bb01ff989b0918d5.js:1
+is @ fd9d1056-bb01ff989b0918d5.js:1
+o1 @ fd9d1056-bb01ff989b0918d5.js:1
+oZ @ fd9d1056-bb01ff989b0918d5.js:1
+M @ 117-aa178a45af95fc84.js:1הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: {authenticated: false}
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+page-5c519fc4d2d392bf.js:1  GET https://alertly-5zmw.onrender.com/api/auth/telegram-link 401 (Unauthorized)
+(אנונימית) @ page-5c519fc4d2d392bf.js:1
+aW @ fd9d1056-bb01ff989b0918d5.js:1
+oe @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+or @ fd9d1056-bb01ff989b0918d5.js:1
+ol @ fd9d1056-bb01ff989b0918d5.js:1
+id @ fd9d1056-bb01ff989b0918d5.js:1
+nb @ fd9d1056-bb01ff989b0918d5.js:1
+(אנונימית) @ fd9d1056-bb01ff989b0918d5.js:1
+is @ fd9d1056-bb01ff989b0918d5.js:1
+o1 @ fd9d1056-bb01ff989b0918d5.js:1
+oZ @ fd9d1056-bb01ff989b0918d5.js:1
+M @ 117-aa178a45af95fc84.js:1הסבר על השגיאה
+956-79da08c01964bb77.js:1 Session data received: {authenticated: false}
+956-79da08c01964bb77.js:1 No authenticated user found in session
+layout-ee69b09659c83503.js:1 Navbar: Wallet connected, checking session...
+956-79da08c01964bb77.js:1 Providers: Fetching session...
+fd9d1056-bb01ff989b0918d5.js:1  GET https://alertly-5zmw.onrender.com/lPNOw-zNDQj1PPHS 404 (Not Found)

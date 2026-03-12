@@ -39,26 +39,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const refreshSession = useCallback(async () => {
     if (refreshingRef.current) return;
-
     refreshingRef.current = true;
-    
-    // Only show loading on initial load or if we don't have a user
-    if (!user) {
+
+    if (!initializedRef.current) {
       setLoading(true);
     }
 
     try {
-      console.log("Providers: Fetching session...");
       const res = await fetch("/api/auth/session", {
         credentials: "include",
         cache: "no-store",
-        headers: { 
-          "Accept": "application/json",
-          "Cache-Control": "no-cache"
-        }
+        headers: {
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+        },
       });
 
       if (!res.ok) {
@@ -75,29 +73,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json();
-      console.log("Session data received:", data);
 
       if (data?.authenticated && data.user) {
-        const userData = {
+        setUser({
           user_id: String(data.user.id || data.user.user_id),
           wallet_address: String(data.user.walletAddress || data.user.wallet_address),
           vip_status: Boolean(data.user.vipStatus || data.user.vip_status),
           isAdmin: Boolean(data.user.isAdmin),
-        };
-        console.log("Setting user state:", userData);
-        setUser(userData);
+        });
       } else {
-        console.log("No authenticated user found in session");
         setUser(null);
       }
-    } catch (error) {
-      console.error("Session refresh error:", error);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
+      initializedRef.current = true;
       refreshingRef.current = false;
     }
-  }, [user]);
+  }, []);
 
   const logout = async () => {
     try {
@@ -105,12 +99,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         method: "POST",
         credentials: "include",
       });
-    } catch (e) {
-      console.error("Logout error:", e);
-    }
-
+    } catch {}
     setUser(null);
-    // Remove the redundant await refreshSession() which might cause state flicker
   };
 
   useEffect(() => {

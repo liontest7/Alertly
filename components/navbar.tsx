@@ -17,7 +17,7 @@ export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
-  const { user, loading, refreshSession } = useAuthSession();
+  const { user, loading } = useAuthSession();
   const { setVisible } = useWalletModal();
   const { connected, publicKey, wallet, select, wallets, disconnect } = useWallet();
   const [isClient, setIsClient] = useState(false);
@@ -61,15 +61,6 @@ export function Navbar() {
     }
   }, [wallet, connected, loading, user, isClient, toast]);
 
-  // Auto-login when wallet is connected but user is not authenticated
-  useEffect(() => {
-    if (isClient && connected && publicKey && !user && !loading) {
-      console.log("Navbar: Wallet connected, checking session...");
-      refreshSession().catch((err) => {
-        console.error("Auto-login failed:", err);
-      });
-    }
-  }, [connected, publicKey, user, loading, refreshSession, isClient]);
 
   const handleLaunchTerminal = async () => {
     if (loading) {
