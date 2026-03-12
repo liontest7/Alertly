@@ -42,6 +42,7 @@ export default function OnboardingPage() {
     minHolders: 1,
     volumeSpikeEnabled: true,
     volumeSpikeThreshold: 50,
+    volumeSpikeWindowSeconds: 60,
     whaleAlertEnabled: true,
     whaleMinSolBalance: 500,
     dexBoostEnabled: true,
@@ -97,6 +98,7 @@ export default function OnboardingPage() {
           minHolders: settings.minHolders,
           volumeSpikeEnabled: settings.volumeSpikeEnabled,
           volumeSpikeThreshold: settings.volumeSpikeThreshold,
+          volumeSpikeWindowSeconds: settings.volumeSpikeWindowSeconds,
           whaleAlertEnabled: settings.whaleAlertEnabled,
           whaleMinSolBalance: settings.whaleMinSolBalance,
           dexBoostEnabled: settings.dexBoostEnabled,
@@ -124,7 +126,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center p-4 md:p-8 font-sans selection:bg-[#5100fd]/40">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(81,0,253,0.05),transparent_50%)] pointer-events-none" />
       
-      <Card className="max-w-xl w-full bg-[#080808] border-zinc-900/50 p-8 md:p-12 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95vh] relative z-10 backdrop-blur-3xl border">
+      <Card className="max-w-3xl w-full bg-[#080808] border-zinc-900/50 p-8 md:p-12 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95vh] relative z-10 backdrop-blur-3xl border">
         {step === 1 && (
           <div className="space-y-10 py-4 text-center">
             <div className="flex items-center justify-center mb-8">
@@ -205,7 +207,32 @@ export default function OnboardingPage() {
                               type="number" 
                               placeholder="e.g., 50"
                             />
-                            <p className="text-[9px] text-zinc-500 mt-1">Alert when volume spikes by this % in 60 seconds</p>
+                            <p className="text-[9px] text-zinc-500 mt-1">Alert when volume spikes by this % in the time window below</p>
+                          </div>
+                          <div>
+                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Time Window:</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { label: "30s", value: 30 },
+                                { label: "60s", value: 60 },
+                                { label: "5 min", value: 300 },
+                                { label: "10 min", value: 600 },
+                              ].map(opt => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => setSettings({...settings, volumeSpikeWindowSeconds: opt.value})}
+                                  className={`px-4 py-2 rounded-xl border text-[11px] font-black transition-all ${
+                                    settings.volumeSpikeWindowSeconds === opt.value
+                                      ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]'
+                                      : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                            <p className="text-[9px] text-zinc-500 mt-1">Detection window for volume change</p>
                           </div>
                         </div>
                       </div>

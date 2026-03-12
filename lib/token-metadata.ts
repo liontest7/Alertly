@@ -53,10 +53,14 @@ function parsePair(pair: any): TokenMeta {
   const vol24h = pair?.volume?.h24 ?? null;
   const change24h = pair?.priceChange?.h24 ?? 0;
 
+  const fallbackImageUrl = base.address
+    ? `https://dd.dexscreener.com/ds-data/tokens/solana/${base.address}.png`
+    : null;
+
   return {
     name: base.name || "Unknown Token",
     symbol: base.symbol || "???",
-    imageUrl: info?.imageUrl || null,
+    imageUrl: info?.imageUrl || fallbackImageUrl,
     mc: formatUsd(mc),
     liquidity: formatUsd(liq),
     priceUsd: pair?.priceUsd ? `$${Number(pair.priceUsd).toPrecision(4)}` : null,

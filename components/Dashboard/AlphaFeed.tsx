@@ -174,18 +174,17 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
             return (
               <div key={`${token.address}-${i}`} className="group p-5 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
                 {/* Token Logo */}
-                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-lg overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0">
-                  {token.imageUrl ? (
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-lg overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0 relative">
+                  <span className="absolute inset-0 flex items-center justify-center text-lg font-black text-[#5100fd]">
+                    {isLoading ? "·" : (displayPrimary)?.[0]?.toUpperCase() || "?"}
+                  </span>
+                  {token.imageUrl && (
                     <img 
                       src={token.imageUrl} 
                       alt={displayPrimary} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).remove(); }} 
                     />
-                  ) : (
-                    <span className="text-lg font-black text-[#5100fd]">
-                      {(displayPrimary)?.[0]?.toUpperCase() || "?"}
-                    </span>
                   )}
                 </div>
                 

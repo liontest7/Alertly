@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { Zap, Settings, Shield, Target } from "lucide-react"
+import { Zap, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -58,17 +58,6 @@ export function QuickSettingsCard({ settings, onToggle }: { settings: any, onTog
         <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" onClick={() => router.push('/onboarding')} />
       </div>
 
-      <div className="pt-4 border-t border-zinc-900 space-y-4">
-        <div className="flex items-center justify-between text-[10px] font-black text-white uppercase tracking-widest">
-          <div className="flex items-center gap-2"><Target className="w-3 h-3 text-[#5100fd]" /> Active Trackers</div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <StatusIndicator active={settings.volumeSpikeEnabled} label="Vol" />
-            <StatusIndicator active={settings.whaleAlertEnabled} label="Whl" />
-            <StatusIndicator active={settings.dexBoostEnabled} label="Bst" />
-            <StatusIndicator active={settings.dexListingEnabled} label="Lst" />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

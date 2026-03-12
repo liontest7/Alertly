@@ -15,6 +15,7 @@ export const DEFAULT_USER_SETTINGS = {
   autoSellMinutes: 0,
   volumeSpikeEnabled: true,
   volumeSpikeThreshold: 50,
+  volumeSpikeWindowSeconds: 60,
   whaleAlertEnabled: true,
   whaleMinSolBalance: 500,
   whaleWalletAddresses: [],

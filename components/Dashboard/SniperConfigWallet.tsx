@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card"
-import { Zap, Settings, Target, Wallet, Key, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
+import { Zap, Settings, Wallet, Key, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
@@ -12,15 +12,6 @@ function MiniSetting({ label, value, color = "text-white", onClick }: { label: s
     >
       <p className="text-[9px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">{label}</p>
       <p className={`text-sm font-black ${color}`}>{value}</p>
-    </div>
-  )
-}
-
-function StatusIndicator({ active, label }: { active: boolean, label?: string }) {
-  return (
-    <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-800">
-      <span className="text-[8px] font-black text-zinc-400 uppercase tracking-wider">{label}</span>
-      <div className={`w-2 h-2 rounded-full ${active ? 'bg-[#5100fd] shadow-[0_0_10px_#5100fd]' : 'bg-zinc-700'}`} />
     </div>
   )
 }
@@ -118,22 +109,6 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
           <MiniSetting label="Slippage" value={`${settings.slippage}%`} onClick={() => router.push('/onboarding')} />
           <MiniSetting label="Stop Loss" value={`-${settings.stopLoss}%`} color="text-red-500" onClick={() => router.push('/onboarding')} />
           <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" onClick={() => router.push('/onboarding')} />
-        </div>
-      </div>
-
-      {/* Active Trackers */}
-      <div className="pt-4 border-t border-zinc-900 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Target className="w-3 h-3 text-[#5100fd]" />
-            <span className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Active Filters</span>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <StatusIndicator active={settings.volumeSpikeEnabled} label="Vol" />
-            <StatusIndicator active={settings.whaleAlertEnabled} label="Whl" />
-            <StatusIndicator active={settings.dexBoostEnabled} label="Bst" />
-            <StatusIndicator active={settings.dexListingEnabled} label="Lst" />
-          </div>
         </div>
       </div>
 
