@@ -15,7 +15,10 @@ function createPrismaClient() {
     throw new Error("Invalid DATABASE_URL format - must start with postgres:// or postgresql://");
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  const adapter = new PrismaPg({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+  });
   return new PrismaClient({ adapter } as any);
 }
 
