@@ -26,6 +26,7 @@ type SettingsPayload = {
   volumeSpikeEnabled?: boolean;
   volumeSpikeThreshold?: number;
   whaleAlertEnabled?: boolean;
+  whaleMinSolBalance?: number;
   whaleWalletAddresses?: string[];
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
@@ -51,6 +52,7 @@ function sanitizeSettings(input: SettingsPayload) {
   if (typeof input.volumeSpikeEnabled === "boolean") output.volumeSpikeEnabled = input.volumeSpikeEnabled;
   if (typeof input.volumeSpikeThreshold === "number" && input.volumeSpikeThreshold > 0) output.volumeSpikeThreshold = input.volumeSpikeThreshold;
   if (typeof input.whaleAlertEnabled === "boolean") output.whaleAlertEnabled = input.whaleAlertEnabled;
+  if (typeof input.whaleMinSolBalance === "number" && input.whaleMinSolBalance >= 0) output.whaleMinSolBalance = input.whaleMinSolBalance;
   if (Array.isArray(input.whaleWalletAddresses)) {
     output.whaleWalletAddresses = input.whaleWalletAddresses.filter((value) => typeof value === "string");
   }
@@ -111,6 +113,7 @@ export async function POST(req: Request) {
   if (
     typeof sanitized.minMarketCap === "number" &&
     typeof sanitized.maxMarketCap === "number" &&
+    sanitized.maxMarketCap > 0 &&
     sanitized.maxMarketCap < sanitized.minMarketCap
   ) {
     return NextResponse.json({ message: "maxMarketCap must be greater than minMarketCap" }, { status: 400 });
@@ -127,7 +130,7 @@ export async function POST(req: Request) {
     create: {
       userId: session.user.id,
       ...sanitized,
-      sources: sanitized.sources ?? ["Raydium", "Jupiter"],
+      sources: sanitized.sources ?? DEFAULT_USER_SETTINGS.sources,
     },
     update: sanitized,
   });

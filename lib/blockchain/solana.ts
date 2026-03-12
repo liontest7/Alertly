@@ -2,6 +2,7 @@ import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, VersionedTransaction 
 import { getEnv, requireEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { decryptKey } from "@/lib/blockchain/keys";
+import { getAlerts, StoredAlert } from "@/lib/alert-store";
 
 const RPC_ENDPOINT =
   getEnv("SOLANA_RPC_URL") ||
@@ -15,17 +16,17 @@ const JUPITER_API_URL = getEnv("JUPITER_API_URL", "https://lite-api.jup.ag/swap/
 const connection = new Connection(RPC_ENDPOINT, "confirmed");
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
+export type TokenAlertType =
+  | "EARLY TOKEN PAIR"
+  | "VOLUME SPIKE"
+  | "WHALE BUY"
+  | "DEX BOOST"
+  | "DEX LISTING"
+  | "SMART MONEY ENTRY";
+
 export interface TokenAlert {
   name: string;
-  type:
-    | "EARLY TOKEN PAIR"
-    | "LIQUIDITY ADDED"
-    | "LIQUIDITY REMOVAL"
-    | "VOLUME SPIKE"
-    | "WHALE BUY"
-    | "DEX BOOST"
-    | "DEX LISTING"
-    | "SMART MONEY ENTRY";
+  type: TokenAlertType;
   mc: string;
   vol: string;
   age: string;
@@ -46,6 +47,10 @@ export interface TokenAlert {
   fingerprint?: string;
   riskScore?: number;
   riskLevel?: string;
+  wallet?: string;
+  walletBalance?: number;
+  buyAmountSol?: number;
+  dex?: string;
 }
 
 export interface AlertFilterSettings {
@@ -59,10 +64,8 @@ export interface AlertFilterSettings {
   dexListingEnabled?: boolean;
 }
 
-const TYPE_TO_LABEL: Record<string, TokenAlert["type"]> = {
+const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
   EARLY_TOKEN_PAIR: "EARLY TOKEN PAIR",
-  LIQUIDITY_ADDED: "LIQUIDITY ADDED",
-  LIQUIDITY_REMOVAL: "LIQUIDITY REMOVAL",
   VOLUME_SPIKE: "VOLUME SPIKE",
   WHALE_BUY: "WHALE BUY",
   DEX_BOOST: "DEX BOOST",
@@ -73,7 +76,7 @@ const TYPE_TO_LABEL: Record<string, TokenAlert["type"]> = {
 function parseMoneyValue(input?: string | null): number | null {
   if (!input) return null;
   const normalized = input.replace(/[$,\s]/g, "").toUpperCase();
-  if (!normalized) return null;
+  if (!normalized || normalized === "N/A") return null;
 
   const suffix = normalized.slice(-1);
   const base = Number(suffix.match(/[KMB]/) ? normalized.slice(0, -1) : normalized);
@@ -93,7 +96,7 @@ function getAgeLabel(alertedAt: Date): string {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
-function isAlertEnabledBySettings(type: TokenAlert["type"], filters?: AlertFilterSettings): boolean {
+function isAlertEnabledBySettings(type: TokenAlertType, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
   if (type === "VOLUME SPIKE" && filters.volumeSpikeEnabled === false) return false;
   if (type === "WHALE BUY" && filters.whaleAlertEnabled === false) return false;
@@ -102,44 +105,33 @@ function isAlertEnabledBySettings(type: TokenAlert["type"], filters?: AlertFilte
   return true;
 }
 
-function isValidUrl(url?: string): boolean {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
 
   const mcValue = parseMoneyValue(alert.mc);
   const liquidityValue = parseMoneyValue(alert.liquidity);
 
-  if (typeof filters.minMarketCap === "number" && mcValue !== null && mcValue < filters.minMarketCap) return false;
-  if (typeof filters.maxMarketCap === "number" && mcValue !== null && mcValue > filters.maxMarketCap) return false;
-  if (typeof filters.minLiquidity === "number" && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
-  if (typeof filters.minHolders === "number" && filters.minHolders > 0 && alert.holders > 0 && alert.holders < filters.minHolders) return false;
+  if (typeof filters.minMarketCap === "number" && filters.minMarketCap > 0 && mcValue !== null && mcValue < filters.minMarketCap) return false;
+  if (typeof filters.maxMarketCap === "number" && filters.maxMarketCap > 0 && mcValue !== null && mcValue > filters.maxMarketCap) return false;
+  if (typeof filters.minLiquidity === "number" && filters.minLiquidity > 0 && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
 
   return true;
 }
 
-function mapPersistedAlert(item: any): TokenAlert {
+function mapStoredAlert(item: StoredAlert): TokenAlert {
   const typeLabel = TYPE_TO_LABEL[item.type] || "SMART MONEY ENTRY";
   return {
-    name: item.name || "Live Token",
-    type: typeLabel,
-    mc: item.mc || "Live",
-    vol: item.vol || "Live",
+    name: item.name,
+    type: typeLabel as TokenAlertType,
+    mc: item.mc || "N/A",
+    vol: item.vol || "N/A",
     age: getAgeLabel(item.alertedAt),
     change: item.change || "0%",
-    trend: (item.trend as TokenAlert["trend"]) || "neutral",
+    trend: (item.trend === "up" ? "up" : item.trend === "down" ? "down" : "neutral") as "up" | "down" | "neutral",
     address: item.address,
     holders: item.holders || 0,
-    liquidity: item.liquidity || "Live",
-    imageUrl: isValidUrl(item.imageUrl) ? item.imageUrl : undefined,
+    liquidity: item.liquidity || "N/A",
+    imageUrl: item.imageUrl || undefined,
     symbol: item.symbol || undefined,
     dexUrl: item.dexUrl || undefined,
     website: item.website || undefined,
@@ -151,17 +143,17 @@ function mapPersistedAlert(item: any): TokenAlert {
     fingerprint: item.fingerprint,
     riskScore: item.riskScore,
     riskLevel: item.riskLevel,
+    wallet: item.wallet,
+    walletBalance: item.walletBalance,
+    buyAmountSol: item.buyAmountSol,
+    dex: item.dex,
   };
 }
 
 export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<TokenAlert[]> {
   try {
-    const rows = await prisma.alertEvent.findMany({
-      orderBy: { alertedAt: "desc" },
-      take: 200,
-    });
-
-    const mapped = rows.map(mapPersistedAlert);
+    const stored = getAlerts();
+    const mapped = stored.map(mapStoredAlert);
 
     const filtered = mapped
       .filter((alert) => isAlertEnabledBySettings(alert.type, filters))
@@ -175,7 +167,7 @@ export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<Toke
 
     return Array.from(deduped.values()).slice(0, 100);
   } catch (error) {
-    console.error("Failed to read live blockchain alerts:", error instanceof Error ? error.message : String(error));
+    console.error("Failed to read live alerts:", error instanceof Error ? error.message : String(error));
     return [];
   }
 }

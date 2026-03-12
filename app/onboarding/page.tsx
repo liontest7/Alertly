@@ -38,16 +38,15 @@ export default function OnboardingPage() {
     maxSlippage: 10,
     takeProfit: 50,
     stopLoss: 25,
-    minLiquidity: 50000,
+    minLiquidity: 0,
+    minHolders: 1,
     volumeSpikeEnabled: true,
     volumeSpikeThreshold: 50,
     whaleAlertEnabled: true,
-    whaleWalletAddresses: [] as string[],
+    whaleMinSolBalance: 500,
     dexBoostEnabled: true,
     dexListingEnabled: true,
-    alertPairs: ["SOL"],
-    minWhaleBuy: 5000,
-    boostLevels: ["Level 3", "Top Boost"]
+    boostLevels: ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"]
   })
 
   useEffect(() => {
@@ -66,7 +65,10 @@ export default function OnboardingPage() {
           setSettings(prev => ({
             ...prev,
             ...data,
-            maxSlippage: data.slippage ?? prev.maxSlippage
+            maxSlippage: data.slippage ?? prev.maxSlippage,
+            boostLevels: data.selectedBoostLevel === "all"
+              ? ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"]
+              : (data.selectedBoostLevel ? [data.selectedBoostLevel] : prev.boostLevels),
           }));
         }
       })
@@ -76,6 +78,9 @@ export default function OnboardingPage() {
   const handleComplete = async () => {
     localStorage.setItem('onboarding_completed', 'true');
     localStorage.setItem('alertly_config', JSON.stringify(settings));
+
+    const allBoostLevels = ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"];
+    const allSelected = allBoostLevels.every(l => settings.boostLevels.includes(l));
 
     try {
       await fetch('/api/settings', {
@@ -89,13 +94,14 @@ export default function OnboardingPage() {
           takeProfit: settings.takeProfit,
           stopLoss: settings.stopLoss,
           minLiquidity: settings.minLiquidity,
+          minHolders: settings.minHolders,
           volumeSpikeEnabled: settings.volumeSpikeEnabled,
           volumeSpikeThreshold: settings.volumeSpikeThreshold,
           whaleAlertEnabled: settings.whaleAlertEnabled,
-          whaleWalletAddresses: settings.whaleWalletAddresses,
+          whaleMinSolBalance: settings.whaleMinSolBalance,
           dexBoostEnabled: settings.dexBoostEnabled,
           dexListingEnabled: settings.dexListingEnabled,
-          selectedBoostLevel: settings.boostLevels.includes("Top Boost") ? "Top Boost" : (settings.boostLevels[0] || "Level 3"),
+          selectedBoostLevel: allSelected ? "all" : (settings.boostLevels[0] || "all"),
         })
       });
       router.push("/dashboard")
@@ -103,15 +109,6 @@ export default function OnboardingPage() {
       console.error("Failed to save onboarding settings", err);
       router.push("/dashboard")
     }
-  }
-
-  const togglePair = (pair: string) => {
-    setSettings(prev => ({
-      ...prev,
-      alertPairs: prev.alertPairs.includes(pair) 
-        ? prev.alertPairs.filter(p => p !== pair)
-        : [...prev.alertPairs, pair]
-    }))
   }
 
   const toggleBoostLevel = (level: string) => {
@@ -180,6 +177,7 @@ export default function OnboardingPage() {
                   <Target className="w-3.5 h-3.5" /> Intelligence Monitors
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Volume Spikes */}
                   <div className="space-y-4">
                     <MonitorToggle 
                       label="Volume Spikes" 
@@ -190,26 +188,16 @@ export default function OnboardingPage() {
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Alert on Pairs (Solana only):</Label>
+                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Alert on Pairs:</Label>
                             <div className="flex flex-wrap gap-2">
-                              {["SOL", "USDC", "USDT"].map(pair => (
-                                <button 
-                                  key={pair} 
-                                  type="button" 
-                                  onClick={() => togglePair(pair)}
-                                  className={`px-4 py-2 rounded-xl border text-[11px] font-black transition-all ${
-                                    settings.alertPairs.includes(pair)
-                                    ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]'
-                                    : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
-                                  }`}
-                                >
-                                  {pair}
-                                </button>
-                              ))}
+                              <span className="px-4 py-2 rounded-xl border text-[11px] font-black bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]">
+                                SOL
+                              </span>
                             </div>
+                            <p className="text-[9px] text-zinc-500 mt-1">Solana network only</p>
                           </div>
                           <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Volume Spike Threshold (%):</Label>
+                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Spike Threshold (%):</Label>
                             <Input 
                               className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-black rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all" 
                               value={settings.volumeSpikeThreshold}
@@ -217,11 +205,14 @@ export default function OnboardingPage() {
                               type="number" 
                               placeholder="e.g., 50"
                             />
+                            <p className="text-[9px] text-zinc-500 mt-1">Alert when volume spikes by this % in 60 seconds</p>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
+
+                  {/* Whale Movement */}
                   <div className="space-y-4">
                     <MonitorToggle 
                       label="Whale Movement" 
@@ -232,28 +223,22 @@ export default function OnboardingPage() {
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Min Buy Amount ($):</Label>
+                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Min SOL in Wallet:</Label>
                             <Input 
                               className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-black rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all" 
-                              value={settings.minWhaleBuy}
-                              onChange={(e) => setSettings({...settings, minWhaleBuy: parseInt(e.target.value) || 0})}
+                              value={settings.whaleMinSolBalance}
+                              onChange={(e) => setSettings({...settings, whaleMinSolBalance: parseInt(e.target.value) || 0})}
                               type="number" 
-                              placeholder="e.g., 5000"
+                              placeholder="e.g., 500"
                             />
-                          </div>
-                          <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Whale Wallet Addresses (one per line):</Label>
-                            <textarea 
-                              className="w-full h-20 bg-zinc-800 border border-zinc-700 text-xs text-white font-mono rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all p-2"
-                              value={settings.whaleWalletAddresses.join('\n')}
-                              onChange={(e) => setSettings({...settings, whaleWalletAddresses: e.target.value.split('\n').filter(a => a.trim())})}
-                              placeholder="Enter wallet addresses to track..."
-                            />
+                            <p className="text-[9px] text-zinc-500 mt-1">Alert when wallet holds this much SOL and buys a meme coin</p>
                           </div>
                         </div>
                       </div>
                     )}
                   </div>
+
+                  {/* DEX Boosts */}
                   <div className="space-y-4">
                     <MonitorToggle 
                       label="DEX Boosts" 
@@ -262,7 +247,7 @@ export default function OnboardingPage() {
                     />
                     {settings.dexBoostEnabled && (
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
-                        <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Boost Packages:</Label>
+                        <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Boost Levels:</Label>
                         <div className="flex flex-wrap gap-2">
                           {["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"].map(level => (
                             <button 
@@ -279,12 +264,15 @@ export default function OnboardingPage() {
                             </button>
                           ))}
                         </div>
+                        <p className="text-[9px] text-zinc-500">All levels selected by default</p>
                       </div>
                     )}
                   </div>
+
+                  {/* DEX Listings */}
                   <div className="space-y-4">
                     <MonitorToggle 
-                      label="New Listings" 
+                      label="DEX Listings" 
                       active={settings.dexListingEnabled} 
                       onToggle={() => setSettings({...settings, dexListingEnabled: !settings.dexListingEnabled})} 
                     />
@@ -292,18 +280,11 @@ export default function OnboardingPage() {
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-white uppercase tracking-wider block">Listing Options:</Label>
-                          <p className="text-[9px] text-zinc-400 leading-relaxed">Monitor projects that pay for DEX featured listings and boosts. Not new token launches.</p>
+                          <p className="text-[9px] text-zinc-400 leading-relaxed">Monitor new DEX paid listings on Solana. Alert on new token pair creation.</p>
                           <div className="flex flex-wrap gap-2 pt-2">
-                            {["Paid"].map(opt => (
-                              <button 
-                                key={opt} 
-                                type="button" 
-                                disabled
-                                className="px-3 py-1.5 rounded-lg border border-[#5100fd]/40 bg-[#5100fd]/10 text-[10px] font-black text-[#5100fd]"
-                              >
-                                {opt}
-                              </button>
-                            ))}
+                            <span className="px-3 py-1.5 rounded-lg border border-[#5100fd]/40 bg-[#5100fd]/10 text-[10px] font-black text-[#5100fd]">
+                              All Paid Listings
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -312,22 +293,31 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              {/* Advanced Filters */}
+              {/* Filtering Engine */}
               <div className="space-y-5">
                 <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
                   <Shield className="w-3.5 h-3.5" /> Filtering Engine
                 </Label>
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-3">
                     <Label className="text-white uppercase text-[10px] font-black tracking-widest">Min Liquidity ($)</Label>
-                    <div className="relative group">
-                      <Input 
-                        type="number" 
-                        value={settings.minLiquidity} 
-                        onChange={(e) => setSettings({...settings, minLiquidity: parseInt(e.target.value) || 0})}
-                        className="bg-zinc-900 border border-zinc-800 rounded-2xl h-14 text-base font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-inner"
-                      />
-                    </div>
+                    <Input 
+                      type="number" 
+                      value={settings.minLiquidity} 
+                      onChange={(e) => setSettings({...settings, minLiquidity: parseInt(e.target.value) || 0})}
+                      className="bg-zinc-900 border border-zinc-800 rounded-2xl h-12 text-base font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-inner"
+                    />
+                    <p className="text-[9px] text-zinc-500">Default: 0 (show all)</p>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-white uppercase text-[10px] font-black tracking-widest">Min Holders</Label>
+                    <Input 
+                      type="number" 
+                      value={settings.minHolders} 
+                      onChange={(e) => setSettings({...settings, minHolders: parseInt(e.target.value) || 1})}
+                      className="bg-zinc-900 border border-zinc-800 rounded-2xl h-12 text-base font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-inner"
+                    />
+                    <p className="text-[9px] text-zinc-500">Default: 1 (show all)</p>
                   </div>
                 </div>
               </div>
@@ -446,7 +436,7 @@ export default function OnboardingPage() {
                 <Bell className="w-5 h-5 text-[#5100fd] shrink-0 mt-1" />
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-white uppercase tracking-wider">Sync Notifications</p>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">Alerts will be sent to your Web Dashboard and Telegram Bot simultaneously.</p>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">Alerts are delivered in real-time to your Web Dashboard, Telegram Bot, and Browser Extension simultaneously. Nothing is stored — only connected users receive alerts.</p>
                 </div>
               </div>
             </div>
@@ -463,7 +453,7 @@ export default function OnboardingPage() {
                 onClick={handleComplete}
                 className="flex-[2] bg-[#5100fd] hover:bg-[#6610ff] h-16 rounded-2xl font-black text-white text-base shadow-[0_20px_40px_rgba(81,0,253,0.3)] transition-all hover:scale-[1.01] active:scale-[0.98]"
               >
-                SAVE & START TRADING
+                SAVE & START
               </Button>
             </div>
           </div>

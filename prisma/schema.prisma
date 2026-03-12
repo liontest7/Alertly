@@ -86,11 +86,12 @@ model UserSetting {
   volumeSpikeEnabled   Boolean  @default(true)
   volumeSpikeThreshold Int      @default(50)
   whaleAlertEnabled    Boolean  @default(true)
+  whaleMinSolBalance   Float    @default(500)
   whaleWalletAddresses String[] @default([])
   dexBoostEnabled      Boolean  @default(true)
   dexListingEnabled    Boolean  @default(true)
-  sources              String[] @default(["Raydium", "Jupiter"])
-  selectedBoostLevel   String?  @default("Top Boost")
+  sources              String[] @default(["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"])
+  selectedBoostLevel   String?  @default("all")
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 

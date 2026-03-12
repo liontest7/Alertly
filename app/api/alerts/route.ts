@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     try {
       await ensureAlertListenerStarted();
     } catch (error) {
-      console.error("Listener bootstrap failed, serving persisted alerts only:", error instanceof Error ? error.message : String(error));
+      console.error("Listener bootstrap failed:", error instanceof Error ? error.message : String(error));
     }
 
     const session = await auth(req);

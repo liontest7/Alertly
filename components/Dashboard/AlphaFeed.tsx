@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Settings, Loader2, Volume2, VolumeX, Zap } from "lucide-react"
+import { Loader2, Volume2, VolumeX, Zap, ExternalLink } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
@@ -18,6 +18,20 @@ function FilterChip({ label, active = false, onClick }: { label: string, active?
   )
 }
 
+const TYPE_COLORS: Record<string, string> = {
+  "DEX BOOST": "bg-[#5100fd] text-white",
+  "DEX LISTING": "bg-blue-600 text-white",
+  "VOLUME SPIKE": "bg-purple-600 text-white",
+  "WHALE BUY": "bg-orange-500 text-white",
+  "EARLY TOKEN PAIR": "bg-green-600 text-white",
+  "SMART MONEY ENTRY": "bg-zinc-700 text-white",
+}
+
+function shortAddr(addr?: string) {
+  if (!addr) return ""
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
 export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], loading: boolean, settings: any, user: any }) {
   const router = useRouter();
   const [executing, setExecuting] = useState<string | null>(null);
@@ -25,35 +39,27 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
   const [lastAlertCount, setLastAlertCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<string>('All');
   
-  // Play notification sound when new alerts arrive
   useEffect(() => {
     if (alerts.length > lastAlertCount && soundEnabled && lastAlertCount > 0) {
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         const now = audioContext.currentTime;
-        
-        // Create a simple beep sound
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        
         osc.connect(gain);
         gain.connect(audioContext.destination);
-        
         osc.frequency.setValueAtTime(800, now);
         osc.frequency.setValueAtTime(600, now + 0.1);
-        
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        
         osc.start(now);
         osc.stop(now + 0.1);
-      } catch (e) {
-        // Fallback to audio file
+      } catch {
         try {
           const audio = new Audio('/notification.mp3');
           audio.volume = 0.3;
           audio.play().catch(() => {});
-        } catch (err) {}
+        } catch {}
       }
     }
     setLastAlertCount(alerts.length);
@@ -67,20 +73,23 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
 
   const filteredAlerts = activeFilter === 'All' 
     ? alerts 
-    : alerts.filter(a => a.type?.includes(activeFilter));
+    : alerts.filter(a => {
+        const type = (a.type || "").toUpperCase();
+        const filter = activeFilter.toUpperCase();
+        return type.includes(filter);
+      });
 
   const handleQuickBuy = async (token: any) => {
     if (!user) {
       alert("Please connect your wallet to execute trades.");
       return;
     }
-    const tokenName = token.name || token.token
     if (!token.address) {
       alert("This alert does not include a valid token address.")
       return
     }
-
-    setExecuting(tokenName)
+    const tokenName = token.name || token.symbol || shortAddr(token.address)
+    setExecuting(token.address)
     try {
       const res = await fetch('/api/trade', {
         method: 'POST',
@@ -98,8 +107,8 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
       } else {
         alert(`Trade failed: ${data.message}`)
       }
-    } catch (err) {
-      alert("Trade execution failed. Check console for details.")
+    } catch {
+      alert("Trade execution failed.")
     } finally {
       setExecuting(null)
     }
@@ -148,110 +157,158 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
               <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">No alerts for this filter</p>
             </div>
           ) : filteredAlerts.map((token: any, i: number) => {
-            const name = token.name || token.token || 'Unknown Token'
+            const isLoading = token.name === "Loading...";
+            const name = token.name && token.name !== "Unknown Token" && !isLoading ? token.name : null;
+            const symbol = token.symbol;
+            const displayName = name || symbol || shortAddr(token.address);
+            const typeColor = TYPE_COLORS[token.type?.toUpperCase()] || "bg-zinc-800 text-white";
+            const isWhale = token.type === "WHALE BUY";
+
             return (
-            <div key={`${token.address}-${i}`} className="group p-6 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 md:gap-6 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
-              <div className="w-14 h-14 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-lg overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0">
-                {token.imageUrl ? (
-                  <img src={token.imageUrl} alt={name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-lg font-black text-[#5100fd]">{name?.[0]?.toUpperCase() || 'T'}</span>
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 md:gap-3 mb-2 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div>
-                      <span className="text-sm md:text-lg font-black text-white truncate tracking-tight">{name}</span>
-                      {token.symbol && <span className="text-[9px] md:text-[10px] text-zinc-400 ml-1">({token.symbol})</span>}
+              <div key={`${token.address}-${i}`} className="group p-5 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
+                {/* Token Logo */}
+                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-lg overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0">
+                  {token.imageUrl ? (
+                    <img 
+                      src={token.imageUrl} 
+                      alt={displayName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
+                    />
+                  ) : (
+                    <span className="text-lg font-black text-[#5100fd]">
+                      {(symbol || displayName)?.[0]?.toUpperCase() || "?"}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      {isLoading ? (
+                        <span className="inline-block h-4 w-24 rounded bg-zinc-800 animate-pulse" />
+                      ) : (
+                        <span className="text-base font-black text-white truncate tracking-tight">
+                          {symbol ? symbol : displayName}
+                        </span>
+                      )}
+                      {!isLoading && symbol && name && name !== symbol && (
+                        <span className="text-[9px] text-zinc-500 truncate">{name}</span>
+                      )}
+                    </div>
+                    <span className={`text-[9px] px-2.5 py-0.5 rounded-md font-black uppercase tracking-tighter shadow-sm whitespace-nowrap ${typeColor}`}>
+                      {token.type}
+                    </span>
+                    <span className="text-[9px] text-zinc-500 font-black whitespace-nowrap tracking-widest ml-auto">
+                      {token.alertedAt ? new Date(token.alertedAt).toLocaleTimeString() : "Live"}
+                    </span>
+                  </div>
+
+                  {/* Token Metrics */}
+                  <div className="flex items-center gap-3 text-[9px] flex-wrap mb-1">
+                    <div className="flex flex-col">
+                      <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest">MC</span>
+                      <span className="text-white font-black">{token.mc && token.mc !== "N/A" ? token.mc : "—"}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest">Liquidity</span>
+                      <span className="text-white font-black">{token.liquidity && token.liquidity !== "N/A" ? token.liquidity : "—"}</span>
+                    </div>
+                    {token.vol && token.vol !== "N/A" && (
+                      <div className="flex flex-col">
+                        <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest">Vol 24h</span>
+                        <span className="text-green-400 font-black">{token.vol}</span>
+                      </div>
+                    )}
+                    {token.priceUsd && (
+                      <div className="flex flex-col">
+                        <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest">Price</span>
+                        <span className="text-zinc-300 font-black">{token.priceUsd}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-col">
+                      <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest">CA</span>
+                      <span className="text-zinc-500 font-mono">{shortAddr(token.address)}</span>
                     </div>
                   </div>
-                  <span className={`text-[9px] md:text-[10px] px-2.5 md:px-3 py-1 rounded-md font-black uppercase tracking-tighter shadow-lg whitespace-nowrap ${
-                    token.type === 'DEX BOOST' ? 'bg-[#5100fd] text-white' :
-                    token.type === 'DEX LISTING' ? 'bg-blue-600 text-white' :
-                    token.type === 'VOL SPIKE' ? 'bg-purple-600 text-white' :
-                    token.type === 'WHALE ALERT' ? 'bg-orange-600 text-white' :
-                    token.type === 'LIQUIDITY ADDED' ? 'bg-cyan-600 text-white' :
-                    'bg-zinc-800 text-white'
-                  }`}>
-                    {token.type}
-                    {token.dexLevel && <span className="ml-1 text-[8px] font-bold">Lv{token.dexLevel}</span>}
-                  </span>
-                  <span className="text-[8px] md:text-[10px] text-zinc-400 font-black whitespace-nowrap tracking-widest">{token.alertedAt ? new Date(token.alertedAt).toLocaleTimeString() : "Live"}</span>
-                </div>
-                <div className="flex items-center gap-3 md:gap-4 text-[8px] md:text-[10px] flex-wrap">
-                  <div className="flex flex-col">
-                    <span className="text-[6px] md:text-[7px] text-zinc-500 uppercase font-black tracking-widest">MC</span>
-                    <span className="text-white font-black">{token.mc && token.mc !== "-" && token.mc !== "Loading" ? token.mc : "N/A"}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[6px] md:text-[7px] text-zinc-500 uppercase font-black tracking-widest">Liquidity</span>
-                    <span className="text-white font-black">{token.liquidity && token.liquidity !== "-" && token.liquidity !== "Loading" ? token.liquidity : "N/A"}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[6px] md:text-[7px] text-zinc-500 uppercase font-black tracking-widest">Holders</span>
-                    <span className="text-[#5100fd] font-black">{typeof token.holders === 'number' && token.holders > 0 ? token.holders.toLocaleString() : "N/A"}</span>
-                  </div>
-                  {token.vol && token.vol !== "-" && <div className="flex flex-col">
-                    <span className="text-[6px] md:text-[7px] text-zinc-500 uppercase font-black tracking-widest">Vol 24h</span>
-                    <span className="text-green-400 font-black">{token.vol}</span>
-                  </div>}
-                </div>
-              </div>
 
-              <div className="text-right hidden md:flex flex-col items-end flex-shrink-0">
-                 <span className={`text-lg font-black block leading-none ${token.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                   {token.change || "0%"}
-                 </span>
-                 <span className="text-[9px] text-zinc-500 uppercase font-black tracking-tighter">24H</span>
-              </div>
+                  {/* Whale-specific info */}
+                  {isWhale && (token.walletBalance || token.wallet) && (
+                    <div className="flex items-center gap-3 text-[9px] mt-1 bg-orange-500/10 rounded-lg px-2 py-1 border border-orange-500/20">
+                      {token.wallet && (
+                        <span className="text-orange-400 font-mono">
+                          🐳 {shortAddr(token.wallet)}
+                        </span>
+                      )}
+                      {token.walletBalance && (
+                        <span className="text-orange-300 font-black">
+                          {Number(token.walletBalance).toFixed(0)} SOL
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-right hidden md:flex flex-col items-end flex-shrink-0 gap-1">
+                  <span className={`text-base font-black block leading-none ${
+                    token.change?.startsWith("+") ? 'text-green-500' : 
+                    token.change?.startsWith("-") ? 'text-red-500' : 'text-zinc-500'
+                  }`}>
+                    {token.change || "—"}
+                  </span>
+                  <span className="text-[8px] text-zinc-600 uppercase font-black tracking-tighter">24H</span>
+                  {token.dexUrl && (
+                    <a 
+                      href={token.dexUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-[8px] text-zinc-600 hover:text-[#5100fd] transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
               
-              <div className="flex gap-2 flex-shrink-0">
-                <Button 
-                  size="lg"
-                  onClick={(e) => { e.stopPropagation(); handleQuickBuy(token); }}
-                  disabled={executing === name}
-                  className="bg-[#5100fd] hover:bg-[#4100cc] h-9 md:h-11 px-3 md:px-6 text-[9px] md:text-[10px] font-black rounded-lg text-white shadow-[0_0_20px_rgba(81,0,253,0.4)]"
-                >
-                  {executing === name ? <Loader2 className="w-3 h-3 animate-spin" /> : "BUY"}
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={(e) => { e.stopPropagation(); token.address && router.push(`/token/${token.address}`); }}
-                  className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 h-9 md:h-11 px-3 md:px-6 text-[9px] md:text-[10px] font-black rounded-lg text-white"
-                >
-                  VIEW
-                </Button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button 
+                    size="lg"
+                    onClick={(e) => { e.stopPropagation(); handleQuickBuy(token); }}
+                    disabled={executing === token.address}
+                    className="bg-[#5100fd] hover:bg-[#4100cc] h-9 px-4 text-[9px] font-black rounded-lg text-white shadow-[0_0_20px_rgba(81,0,253,0.4)]"
+                  >
+                    {executing === token.address ? <Loader2 className="w-3 h-3 animate-spin" /> : "BUY"}
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={(e) => { e.stopPropagation(); token.address && router.push(`/token/${token.address}`); }}
+                    className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 h-9 px-4 text-[9px] font-black rounded-lg text-white"
+                  >
+                    VIEW
+                  </Button>
+                </div>
               </div>
-            </div>
-          )})}
-          <div className="flex flex-wrap gap-2 px-6 pb-6 border-t border-zinc-900/50 pt-4">
-            <FilterChip 
-              label="All" 
-              active={activeFilter === 'All'}
-              onClick={() => setActiveFilter('All')}
-            />
-            <FilterChip 
-              label="Boost" 
-              active={activeFilter === 'DEX BOOST'}
-              onClick={() => setActiveFilter('DEX BOOST')}
-            />
-            <FilterChip 
-              label="Volume Spike" 
-              active={activeFilter === 'VOL SPIKE'}
-              onClick={() => setActiveFilter('VOL SPIKE')}
-            />
-            <FilterChip 
-              label="Whale Alert" 
-              active={activeFilter === 'WHALE ALERT'}
-              onClick={() => setActiveFilter('WHALE ALERT')}
-            />
-            <FilterChip 
-              label="Dex Listing" 
-              active={activeFilter === 'DEX LISTING'}
-              onClick={() => setActiveFilter('DEX LISTING')}
-            />
+            )
+          })}
+          
+          {/* Filter chips */}
+          <div className="flex flex-wrap gap-2 px-6 pb-5 border-t border-zinc-900/50 pt-4">
+            {[
+              { key: "All", label: "All" },
+              { key: "DEX BOOST", label: "Boost" },
+              { key: "DEX LISTING", label: "Listing" },
+              { key: "VOLUME SPIKE", label: "Vol Spike" },
+              { key: "WHALE BUY", label: "Whale" },
+              { key: "EARLY TOKEN PAIR", label: "New Pair" },
+              { key: "SMART MONEY ENTRY", label: "Smart Money" },
+            ].map(f => (
+              <FilterChip 
+                key={f.key}
+                label={f.label}
+                active={activeFilter === f.key}
+                onClick={() => setActiveFilter(f.key)}
+              />
+            ))}
           </div>
         </div>
       </Card>

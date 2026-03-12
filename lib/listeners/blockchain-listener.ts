@@ -1,8 +1,9 @@
-import { Commitment, Connection, Logs, ParsedMessageAccount, PublicKey } from "@solana/web3.js";
-import { prisma } from "@/lib/prisma";
+import { Commitment, Connection, LAMPORTS_PER_SOL, Logs, ParsedMessageAccount, PublicKey } from "@solana/web3.js";
 import { getEnv, requireEnv } from "@/lib/env";
 import { calculateRiskScore } from "@/lib/risk/scorer";
 import { broadcastAlertToTelegram } from "@/lib/notifications/telegram";
+import { pushAlert } from "@/lib/alert-store";
+import { getTokenMeta, prefetchTokenMeta } from "@/lib/token-metadata";
 
 const MAX_ENRICH_PER_SECOND = 3;
 let enrichTokens = MAX_ENRICH_PER_SECOND;
@@ -50,10 +51,9 @@ const DEX_LABEL_BY_PROGRAM = new Map<string, string>([
   [DEX_PROGRAMS.PUMP_FUN, "Pump.fun"],
 ]);
 
-const VOLUME_WINDOW_MS = 30_000;
-const MIN_VOLUME_SPIKE_PCT = Number(getEnv("ALERT_VOLUME_SPIKE_PCT", "150"));
-const MIN_LIQUIDITY_THRESHOLD = Number(getEnv("ALERT_MIN_LIQUIDITY_USD", "50000"));
-const WHALE_MIN_SOL = Number(getEnv("ALERT_WHALE_MIN_SOL", "50"));
+const VOLUME_WINDOW_MS = 60_000;
+const DEFAULT_VOLUME_SPIKE_PCT = Number(getEnv("ALERT_VOLUME_SPIKE_PCT", "50"));
+const DEFAULT_WHALE_MIN_SOL = Number(getEnv("ALERT_WHALE_MIN_SOL_BALANCE", "500"));
 
 const DEX_BOOST_WALLETS = new Set(
   (getEnv("DEX_BOOST_WALLETS", "") || "")
@@ -69,17 +69,8 @@ const DEX_LISTING_WALLETS = new Set(
     .filter(Boolean),
 );
 
-const GLOBAL_WHALE_WALLETS = new Set(
-  (getEnv("WHALE_WALLETS", "") || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean),
-);
-
 export type AlertKind =
   | "EARLY_TOKEN_PAIR"
-  | "LIQUIDITY_ADDED"
-  | "LIQUIDITY_REMOVAL"
   | "VOLUME_SPIKE"
   | "WHALE_BUY"
   | "DEX_BOOST"
@@ -94,24 +85,11 @@ export interface BlockchainEvent {
   amount?: number;
   liquidity?: number;
   wallet?: string;
+  walletBalance?: number;
   dex: string;
   timestamp: Date;
   signature: string;
   reason: string;
-}
-
-export interface TokenAlert {
-  tokenAddress: string;
-  type: AlertKind;
-  mc?: number;
-  liquidity?: number;
-  holders?: number;
-  volume?: number;
-  devWalletPct?: number;
-  topHoldersPct?: number;
-  tokenAgeMinutes?: number;
-  timestamp: Date;
-  source: "blockchain" | "dexscreener";
 }
 
 type VolumeSnapshot = { timestamp: number; amount: number };
@@ -129,18 +107,35 @@ export function getConnection(): Connection {
   return connection;
 }
 
-function normalizeTokenAddress(signature: string): string {
-  return signature.slice(0, 44);
-}
+const KNOWN_PROGRAM_IDS = new Set([
+  "ComputeBudget111111111111111111111111111111",
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+  "11111111111111111111111111111111",
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bC3",
+  "SysvarRent111111111111111111111111111111111",
+  "SysvarC1ock11111111111111111111111111111111",
+  "SysvarS1otHashes111111111111111111111111111",
+  "Sysvar1nstructions1111111111111111111111111",
+  "Vote111111111111111111111111111111111111111",
+  "BPFLoaderUpgradeab1e11111111111111111111111",
+  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr",
+  ...Object.values(DEX_PROGRAMS),
+]);
 
 function isPotentialPublicKey(value: string): boolean {
-  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) return false;
+  if (/[A-Z]{6,}/.test(value)) return false;
+  if (/(.)\1{5,}/.test(value)) return false;
+  return true;
 }
 
 function extractTokenAddressFromLogs(logs: string[]): string | null {
   for (const log of logs) {
     const matches = log.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/g) || [];
-    const found = matches.find((candidate) => isPotentialPublicKey(candidate));
+    const found = matches.find(
+      (candidate) => isPotentialPublicKey(candidate) && !KNOWN_PROGRAM_IDS.has(candidate),
+    );
     if (found) return found;
   }
   return null;
@@ -159,7 +154,7 @@ function detectDexFromProgram(programId: string): string {
 
 function parseLogsForEvents(logs: string[], signature: string, programId: string): BlockchainEvent[] {
   const events: BlockchainEvent[] = [];
-  const tokenAddress = extractTokenAddressFromLogs(logs) || normalizeTokenAddress(signature);
+  const tokenAddress = extractTokenAddressFromLogs(logs) || signature.slice(0, 44);
   const dex = detectDexFromProgram(programId);
 
   for (const rawLog of logs) {
@@ -173,30 +168,6 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
         timestamp: new Date(),
         signature,
         reason: "InitializePool instruction detected",
-      });
-    }
-
-    if (log.includes("add_liquidity") || log.includes("addliquidity") || log.includes("deposit")) {
-      const liquidity = parseFloatFromLog(rawLog);
-      events.push({
-        type: "LIQUIDITY_ADDED",
-        tokenAddress,
-        dex,
-        liquidity,
-        timestamp: new Date(),
-        signature,
-        reason: "Liquidity add instruction detected",
-      });
-    }
-
-    if (log.includes("remove_liquidity") || log.includes("removeliquidity") || log.includes("withdraw")) {
-      events.push({
-        type: "LIQUIDITY_REMOVAL",
-        tokenAddress,
-        dex,
-        timestamp: new Date(),
-        signature,
-        reason: "Liquidity removal instruction detected",
       });
     }
 
@@ -217,7 +188,7 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
   return events;
 }
 
-function updateAndDetectVolumeSpike(event: BlockchainEvent): BlockchainEvent | null {
+function updateAndDetectVolumeSpike(event: BlockchainEvent, thresholdPct: number): BlockchainEvent | null {
   if (typeof event.amount !== "number" || event.amount <= 0) return null;
 
   const key = event.tokenAddress;
@@ -226,7 +197,10 @@ function updateAndDetectVolumeSpike(event: BlockchainEvent): BlockchainEvent | n
 
   const fresh = snapshots.filter((entry) => now - entry.timestamp <= VOLUME_WINDOW_MS);
   const previousWindow = fresh.filter((entry) => now - entry.timestamp > VOLUME_WINDOW_MS / 2);
-  const currentWindow = [...fresh.filter((entry) => now - entry.timestamp <= VOLUME_WINDOW_MS / 2), { timestamp: now, amount: event.amount }];
+  const currentWindow = [
+    ...fresh.filter((entry) => now - entry.timestamp <= VOLUME_WINDOW_MS / 2),
+    { timestamp: now, amount: event.amount },
+  ];
 
   const prevVolume = previousWindow.reduce((sum, p) => sum + p.amount, 0);
   const currVolume = currentWindow.reduce((sum, p) => sum + p.amount, 0);
@@ -236,46 +210,42 @@ function updateAndDetectVolumeSpike(event: BlockchainEvent): BlockchainEvent | n
   if (prevVolume <= 0 || currVolume <= prevVolume) return null;
 
   const pctIncrease = ((currVolume - prevVolume) / prevVolume) * 100;
-  if (pctIncrease < MIN_VOLUME_SPIKE_PCT) return null;
+  if (pctIncrease < thresholdPct) return null;
 
   return {
     ...event,
     type: "VOLUME_SPIKE",
-    reason: `Volume increased ${pctIncrease.toFixed(0)}% in ${VOLUME_WINDOW_MS / 1000}s window`,
+    reason: `Volume increased ${pctIncrease.toFixed(0)}% in ${VOLUME_WINDOW_MS / 1000}s`,
   };
 }
 
-async function getWhaleWalletSet(): Promise<Set<string>> {
-  const wallets = new Set<string>(GLOBAL_WHALE_WALLETS);
-  const settings = await prisma.userSetting.findMany({
-    where: { whaleAlertEnabled: true },
-    select: { whaleWalletAddresses: true },
-  });
-
-  for (const setting of settings) {
-    for (const wallet of setting.whaleWalletAddresses) {
-      if (wallet) wallets.add(wallet);
-    }
+async function getWalletSolBalance(wallet: string): Promise<number> {
+  try {
+    const balance = await getConnection().getBalance(new PublicKey(wallet));
+    return balance / LAMPORTS_PER_SOL;
+  } catch {
+    return 0;
   }
-
-  return wallets;
 }
 
 async function inferEventVariants(event: BlockchainEvent): Promise<BlockchainEvent[]> {
   const extraEvents: BlockchainEvent[] = [];
 
-  if (event.type === "LIQUIDITY_ADDED" && typeof event.liquidity === "number" && event.liquidity >= MIN_LIQUIDITY_THRESHOLD) {
-    extraEvents.push({ ...event, reason: `Liquidity ${event.liquidity} crossed threshold ${MIN_LIQUIDITY_THRESHOLD}` });
-  }
+  const thresholdPct = DEFAULT_VOLUME_SPIKE_PCT;
 
   if (event.type === "SMART_MONEY_ENTRY") {
-    const spike = updateAndDetectVolumeSpike(event);
+    const spike = updateAndDetectVolumeSpike(event, thresholdPct);
     if (spike) extraEvents.push(spike);
 
-    if (event.wallet) {
-      const whaleWallets = await getWhaleWalletSet();
-      if (whaleWallets.has(event.wallet) || (event.amount || 0) >= WHALE_MIN_SOL) {
-        extraEvents.push({ ...event, type: "WHALE_BUY", reason: "Whale wallet or whale-size buy detected" });
+    if (event.wallet && canEnrich()) {
+      const balance = await getWalletSolBalance(event.wallet);
+      if (balance >= DEFAULT_WHALE_MIN_SOL) {
+        extraEvents.push({
+          ...event,
+          type: "WHALE_BUY",
+          walletBalance: balance,
+          reason: `Whale wallet: ${balance.toFixed(0)} SOL balance`,
+        });
       }
     }
   }
@@ -291,8 +261,7 @@ async function inferEventVariants(event: BlockchainEvent): Promise<BlockchainEve
   return extraEvents;
 }
 
-async function enrichEventFromTransaction(event: BlockchainEvent): Promise<BlockchainEvent> {
-  if (!canEnrich()) return event;
+async function enrichEventFromTransaction(event: BlockchainEvent): Promise<BlockchainEvent | null> {
   enrichConcurrent++;
   try {
     const tx = await getConnection().getParsedTransaction(event.signature, {
@@ -300,88 +269,126 @@ async function enrichEventFromTransaction(event: BlockchainEvent): Promise<Block
       maxSupportedTransactionVersion: 0,
     });
 
-    if (!tx) return event;
+    if (!tx) return null;
 
     const message = tx.transaction.message;
     const accountKeys = message.accountKeys as ParsedMessageAccount[];
     const wallet = accountKeys.find((entry) => entry.signer)?.pubkey.toBase58();
 
-    const balanceToken = tx.meta?.postTokenBalances?.[0]?.mint;
-    const tokenAddress = balanceToken || event.tokenAddress;
+    const balances = tx.meta?.postTokenBalances || [];
+    const nativeSolMint = "So11111111111111111111111111111111111111112";
+    const mint = balances.find((b) => b.mint && b.mint !== nativeSolMint)?.mint || balances[0]?.mint;
+
+    if (!mint) return null;
 
     return {
       ...event,
-      tokenAddress,
+      tokenAddress: mint,
       wallet: event.wallet || wallet,
     };
   } catch {
-    return event;
+    return null;
   } finally {
     enrichConcurrent--;
   }
 }
 
-async function persistBlockchainEvent(event: BlockchainEvent): Promise<void> {
-  await prisma.blockchainEvent.create({
-    data: {
-      signature: `${event.signature}:${event.type}`,
-      tokenAddress: event.tokenAddress,
-      eventType: event.type,
-      dex: event.dex,
-      amount: event.amount,
-      liquidity: event.liquidity,
-      walletAddress: event.wallet,
-      timestamp: event.timestamp,
-    },
-  }).catch(() => null);
+const recentFingerprints = new Map<string, number>();
+const FINGERPRINT_COOLDOWN_MS = 60_000;
+
+function isCooldownActive(fingerprint: string): boolean {
+  const last = recentFingerprints.get(fingerprint);
+  if (!last) return false;
+  if (Date.now() - last < FINGERPRINT_COOLDOWN_MS) return true;
+  recentFingerprints.delete(fingerprint);
+  return false;
 }
 
 async function processBlockchainEvent(event: BlockchainEvent) {
+  if (KNOWN_PROGRAM_IDS.has(event.tokenAddress)) return;
+
+  const addrLen = event.tokenAddress.length;
+  if (addrLen < 32 || addrLen > 44) return;
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(event.tokenAddress)) return;
+
   const fingerprint = `${event.tokenAddress}|${event.type}`;
+  if (isCooldownActive(fingerprint)) return;
+  recentFingerprints.set(fingerprint, Date.now());
 
   const risk = calculateRiskScore({
     address: event.tokenAddress,
     holders: undefined,
     mintAuthority: null,
     freezeAuthority: null,
-    lpLockedPct: event.type === "LIQUIDITY_REMOVAL" ? 5 : 80,
+    lpLockedPct: 80,
   });
 
+  const pairAddress = event.tokenAddress;
+
   const alertData = {
+    fingerprint,
     address: event.tokenAddress,
     type: event.type,
-    name: event.tokenName || "Live Token",
-    symbol: event.tokenSymbol || "TKN",
+    name: "Loading...",
+    symbol: null as string | null,
     change: "0%",
-    trend: "neutral",
-    mc: "Live",
-    vol: event.amount ? `$${event.amount.toFixed(2)}` : "Live",
-    liquidity: event.liquidity ? `$${event.liquidity.toFixed(0)}` : "Live",
+    trend: "neutral" as string,
+    mc: "N/A",
+    vol: "N/A",
+    liquidity: "N/A",
     holders: 0,
-    pairAddress: event.tokenAddress,
-    dexUrl: `https://dexscreener.com/solana/${event.tokenAddress}`,
+    imageUrl: null as string | null,
+    dexUrl: `https://dexscreener.com/solana/${pairAddress}`,
     alertedAt: event.timestamp,
     riskScore: risk.score,
     riskLevel: risk.level,
+    pairAddress,
+    priceUsd: null as string | null,
+    website: null as string | null,
+    twitter: null as string | null,
+    telegram: null as string | null,
+    wallet: event.wallet,
+    buyAmountSol: event.amount,
+    walletBalance: event.walletBalance,
+    dex: event.dex,
   };
 
-  const createdAlert = await prisma.alertEvent.upsert({
-    where: { fingerprint },
-    create: { fingerprint, ...alertData },
-    update: { alertedAt: event.timestamp, vol: alertData.vol },
-  });
+  pushAlert(alertData);
 
-  await persistBlockchainEvent(event);
+  getTokenMeta(event.tokenAddress).then((meta) => {
+    const change = meta?.change24h || "0%";
+    pushAlert({
+      ...alertData,
+      name: meta?.name || "Unknown Token",
+      symbol: meta?.symbol || null,
+      imageUrl: meta?.imageUrl || null,
+      mc: meta?.mc || "N/A",
+      vol: meta?.volume24h || "N/A",
+      liquidity: meta?.liquidity || "N/A",
+      priceUsd: meta?.priceUsd || null,
+      change,
+      trend: (change.startsWith("+") ? "up" : change.startsWith("-") ? "down" : "neutral") as string,
+      pairAddress: meta?.pairAddress || pairAddress,
+      dexUrl: `https://dexscreener.com/solana/${meta?.pairAddress || pairAddress}`,
+      website: meta?.website || null,
+      twitter: meta?.twitter || null,
+      telegram: meta?.telegram || null,
+    });
 
-  await broadcastAlertToTelegram({
-    address: createdAlert.address,
-    type: createdAlert.type,
-    name: createdAlert.name,
-    symbol: createdAlert.symbol || undefined,
-    mc: createdAlert.mc,
-    liquidity: createdAlert.liquidity,
-    vol: createdAlert.vol,
-    alertedAt: createdAlert.alertedAt,
+    broadcastAlertToTelegram({
+      address: alertData.address,
+      type: alertData.type,
+      name: meta?.name || "Unknown Token",
+      symbol: meta?.symbol || undefined,
+      mc: meta?.mc || "N/A",
+      liquidity: meta?.liquidity || "N/A",
+      vol: meta?.volume24h || "N/A",
+      alertedAt: alertData.alertedAt,
+      wallet: alertData.wallet,
+      walletBalance: alertData.walletBalance,
+      buyAmountSol: alertData.buyAmountSol,
+      imageUrl: meta?.imageUrl || undefined,
+    }).catch(() => null);
   }).catch(() => null);
 }
 
@@ -389,7 +396,11 @@ async function handleProgramLogs(logs: Logs, programId: string) {
   const parsed = parseLogsForEvents(logs.logs, logs.signature, programId);
   if (parsed.length === 0) return;
 
+  if (!canEnrich()) return;
+
   const enriched = await enrichEventFromTransaction(parsed[0]);
+  if (!enriched) return;
+
   const enrichedTokenAddress = enriched.tokenAddress;
   const enrichedWallet = enriched.wallet;
 
@@ -397,7 +408,7 @@ async function handleProgramLogs(logs: Logs, programId: string) {
     const enrichedBase = { ...baseEvent, tokenAddress: enrichedTokenAddress, wallet: enrichedWallet };
     const eventVariants = [enrichedBase, ...(await inferEventVariants(enrichedBase))];
     for (const event of eventVariants) {
-      await processBlockchainEvent(event);
+      processBlockchainEvent(event).catch(() => null);
     }
   }
 }
@@ -425,42 +436,25 @@ async function setupProgramSubscription() {
     }
     try {
       const label = DEX_LABEL_BY_PROGRAM.get(programId) || programId.slice(0, 8);
-      const subId = conn.onLogs(new PublicKey(programId), async (logs) => {
-        txReceived++;
-        if (txReceived % 50 === 0) {
-          console.log(`[Listener] ${txReceived} txs received across all programs`);
-        }
-        await handleProgramLogs(logs, programId);
-      }, "confirmed");
-      logSubscriptionIds.push(subId);
-      subscribed++;
-
-      const accountSubId = conn.onProgramAccountChange(
+      const subId = conn.onLogs(
         new PublicKey(programId),
-        async () => {},
+        async (logs) => {
+          txReceived++;
+          if (txReceived % 50 === 0) {
+            console.log(`[Listener] ${txReceived} txs received across all programs`);
+          }
+          await handleProgramLogs(logs, programId);
+        },
         "confirmed",
       );
-      programAccountSubscriptionIds.push(accountSubId);
+      logSubscriptionIds.push(subId);
+      subscribed++;
       console.log(`[Listener] Subscribed to ${label} (${programId.slice(0, 8)}...)`);
     } catch (err) {
       console.warn(`Failed to subscribe to program ${programId}:`, err instanceof Error ? err.message : err);
     }
   }
   console.log(`[Listener] ${subscribed} program subscriptions active`);
-
-  const accountSubscribeWallets = new Set<string>();
-  [...DEX_BOOST_WALLETS, ...DEX_LISTING_WALLETS, ...GLOBAL_WHALE_WALLETS].forEach(w => {
-    if (isValidPublicKey(w)) accountSubscribeWallets.add(w);
-  });
-
-  for (const wallet of accountSubscribeWallets) {
-    try {
-      const subId = conn.onAccountChange(new PublicKey(wallet), async () => {}, "confirmed");
-      accountSubscriptionIds.push(subId);
-    } catch {
-      // Ignore malformed configured wallet.
-    }
-  }
 }
 
 export async function startBlockchainListener() {

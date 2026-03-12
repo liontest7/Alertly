@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAlerts } from "@/lib/alert-store";
 
 export const dynamic = "force-dynamic";
 
@@ -14,20 +14,17 @@ export async function GET(req: Request) {
   }
 
   try {
-    const events = await prisma.alertEvent.findMany({
-      where: { address },
-      orderBy: { alertedAt: "desc" },
-      take: limit,
-    });
+    const all = getAlerts();
+    const events = all
+      .filter((e) => e.address === address)
+      .slice(0, limit)
+      .map((e) => ({
+        ...e,
+        alertedAt: e.alertedAt.toISOString(),
+      }));
 
     return NextResponse.json({ address, events, count: events.length });
   } catch (error) {
-    return NextResponse.json({
-      address,
-      events: [],
-      count: 0,
-      message: "Alert events table unavailable. Run prisma migrate deploy/db push.",
-      error: error instanceof Error ? error.message : String(error),
-    }, { status: 503 });
+    return NextResponse.json({ address, events: [], count: 0 });
   }
 }

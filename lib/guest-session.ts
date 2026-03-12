@@ -46,7 +46,9 @@ function pickAllowedGuestSettings(input: GuestSettings): GuestSettings {
   if (typeof input.minHolders === "number" && input.minHolders >= 0) out.minHolders = Math.floor(input.minHolders);
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) out.minLiquidity = input.minLiquidity;
   if (typeof input.volumeSpikeEnabled === "boolean") out.volumeSpikeEnabled = input.volumeSpikeEnabled;
+  if (typeof (input as any).volumeSpikeThreshold === "number" && (input as any).volumeSpikeThreshold > 0) (out as any).volumeSpikeThreshold = (input as any).volumeSpikeThreshold;
   if (typeof input.whaleAlertEnabled === "boolean") out.whaleAlertEnabled = input.whaleAlertEnabled;
+  if (typeof (input as any).whaleMinSolBalance === "number" && (input as any).whaleMinSolBalance >= 0) (out as any).whaleMinSolBalance = (input as any).whaleMinSolBalance;
   if (typeof input.dexBoostEnabled === "boolean") out.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") out.dexListingEnabled = input.dexListingEnabled;
   if (Array.isArray(input.sources)) out.sources = input.sources.filter((v): v is string => typeof v === "string");
