@@ -5,10 +5,8 @@ export const ALERTLY_CONFIG = {
   BRAND_COLOR: '#5100fd',
   NETWORK: 'Solana Mainnet',
   ALERT_TYPES: [
-    'NEW TOKEN',
-    'LIQUIDITY ADDED',
     'VOLUME SPIKE',
-    'WHALE ALERT',
+    'WHALE BUY',
     'DEX BOOST',
     'DEX LISTING'
   ],

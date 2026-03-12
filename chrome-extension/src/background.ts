@@ -7,8 +7,12 @@ type AlertItem = {
   type?: string;
   change?: string;
   name?: string;
+  symbol?: string;
   mc?: string;
   vol?: string;
+  liquidity?: string;
+  wallet?: string;
+  walletBalance?: number;
 };
 
 function normalizeBaseUrl(input?: string | null) {
@@ -48,6 +52,25 @@ function createFingerprint(alert: AlertItem) {
   return [alert?.address || "unknown", alert?.type || "signal", alert?.change || "0"].join("|");
 }
 
+function getTokenDisplayName(alert: AlertItem): string {
+  if (alert.symbol && alert.symbol !== "???") return alert.symbol;
+  if (alert.name && alert.name !== "Unknown Token" && alert.name !== "Loading...") return alert.name;
+  if (alert.address) return `${alert.address.slice(0, 4)}…${alert.address.slice(-4)}`;
+  return "Unknown Token";
+}
+
+function buildNotificationMessage(alert: AlertItem): string {
+  const parts: string[] = [];
+  if (alert.type) parts.push(alert.type);
+  if (alert.mc && alert.mc !== "N/A") parts.push(`MC ${alert.mc}`);
+  if (alert.liquidity && alert.liquidity !== "N/A") parts.push(`Liq ${alert.liquidity}`);
+  if (alert.vol && alert.vol !== "N/A") parts.push(`Vol ${alert.vol}`);
+  if (alert.type === "WHALE BUY" && alert.walletBalance) {
+    parts.push(`${Math.round(alert.walletBalance)} SOL wallet`);
+  }
+  return parts.join(" • ") || "New Solana Alert";
+}
+
 async function checkAlerts() {
   try {
     const baseUrl = await getBaseUrl();
@@ -78,11 +101,13 @@ async function checkAlerts() {
 
     await setLastFingerprint(fingerprint);
 
+    const displayName = getTokenDisplayName(latest);
+
     chrome.notifications.create({
       type: "basic",
       iconUrl: "icon128.png",
-      title: `Alertly • ${latest.name || "Market Signal"}`,
-      message: `${latest.type || "Live Alert"} • MC ${latest.mc || "N/A"} • VOL ${latest.vol || "N/A"}`,
+      title: `Alertly • ${displayName}`,
+      message: buildNotificationMessage(latest),
       priority: 2,
     });
   } catch {

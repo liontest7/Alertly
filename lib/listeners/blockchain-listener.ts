@@ -69,16 +69,24 @@ const DEX_LISTING_WALLETS = new Set(
     .filter(Boolean),
 );
 
+const STABLECOIN_MINTS = new Set([
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+  "So11111111111111111111111111111111111111112",
+  "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+]);
+
 export type AlertKind =
-  | "EARLY_TOKEN_PAIR"
   | "VOLUME_SPIKE"
   | "WHALE_BUY"
   | "DEX_BOOST"
-  | "DEX_LISTING"
-  | "SMART_MONEY_ENTRY";
+  | "DEX_LISTING";
+
+type InternalEventKind = AlertKind | "_SWAP_INTERNAL";
 
 export interface BlockchainEvent {
-  type: AlertKind;
+  type: InternalEventKind;
   tokenAddress: string;
   tokenName?: string;
   tokenSymbol?: string;
@@ -160,21 +168,10 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
   for (const rawLog of logs) {
     const log = rawLog.toLowerCase();
 
-    if (log.includes("initialize_pool") || log.includes("initpool") || log.includes("initializepool")) {
-      events.push({
-        type: "EARLY_TOKEN_PAIR",
-        tokenAddress,
-        dex,
-        timestamp: new Date(),
-        signature,
-        reason: "InitializePool instruction detected",
-      });
-    }
-
     if (log.includes("swap")) {
       const amount = parseFloatFromLog(rawLog);
       events.push({
-        type: "SMART_MONEY_ENTRY",
+        type: "_SWAP_INTERNAL",
         tokenAddress,
         dex,
         amount,
@@ -190,6 +187,7 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
 
 function updateAndDetectVolumeSpike(event: BlockchainEvent, thresholdPct: number): BlockchainEvent | null {
   if (typeof event.amount !== "number" || event.amount <= 0) return null;
+  if (STABLECOIN_MINTS.has(event.tokenAddress)) return null;
 
   const key = event.tokenAddress;
   const now = Date.now();
@@ -233,19 +231,21 @@ async function inferEventVariants(event: BlockchainEvent): Promise<BlockchainEve
 
   const thresholdPct = DEFAULT_VOLUME_SPIKE_PCT;
 
-  if (event.type === "SMART_MONEY_ENTRY") {
-    const spike = updateAndDetectVolumeSpike(event, thresholdPct);
-    if (spike) extraEvents.push(spike);
+  if (event.type === "_SWAP_INTERNAL") {
+    if (!STABLECOIN_MINTS.has(event.tokenAddress)) {
+      const spike = updateAndDetectVolumeSpike(event, thresholdPct);
+      if (spike) extraEvents.push(spike);
 
-    if (event.wallet && canEnrich()) {
-      const balance = await getWalletSolBalance(event.wallet);
-      if (balance >= DEFAULT_WHALE_MIN_SOL) {
-        extraEvents.push({
-          ...event,
-          type: "WHALE_BUY",
-          walletBalance: balance,
-          reason: `Whale wallet: ${balance.toFixed(0)} SOL balance`,
-        });
+      if (event.wallet && canEnrich()) {
+        const balance = await getWalletSolBalance(event.wallet);
+        if (balance >= DEFAULT_WHALE_MIN_SOL) {
+          extraEvents.push({
+            ...event,
+            type: "WHALE_BUY",
+            walletBalance: balance,
+            reason: `Whale wallet: ${balance.toFixed(0)} SOL balance`,
+          });
+        }
       }
     }
   }
@@ -277,7 +277,7 @@ async function enrichEventFromTransaction(event: BlockchainEvent): Promise<Block
 
     const balances = tx.meta?.postTokenBalances || [];
     const nativeSolMint = "So11111111111111111111111111111111111111112";
-    const mint = balances.find((b) => b.mint && b.mint !== nativeSolMint)?.mint || balances[0]?.mint;
+    const mint = balances.find((b) => b.mint && b.mint !== nativeSolMint && !STABLECOIN_MINTS.has(b.mint))?.mint || null;
 
     if (!mint) return null;
 
@@ -305,13 +305,17 @@ function isCooldownActive(fingerprint: string): boolean {
 }
 
 async function processBlockchainEvent(event: BlockchainEvent) {
+  if (event.type === "_SWAP_INTERNAL") return;
+
   if (KNOWN_PROGRAM_IDS.has(event.tokenAddress)) return;
+  if (STABLECOIN_MINTS.has(event.tokenAddress)) return;
 
   const addrLen = event.tokenAddress.length;
   if (addrLen < 32 || addrLen > 44) return;
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(event.tokenAddress)) return;
 
-  const fingerprint = `${event.tokenAddress}|${event.type}`;
+  const alertType = event.type as AlertKind;
+  const fingerprint = `${event.tokenAddress}|${alertType}`;
   if (isCooldownActive(fingerprint)) return;
   recentFingerprints.set(fingerprint, Date.now());
 
@@ -328,7 +332,7 @@ async function processBlockchainEvent(event: BlockchainEvent) {
   const alertData = {
     fingerprint,
     address: event.tokenAddress,
-    type: event.type,
+    type: alertType,
     name: "Loading...",
     symbol: null as string | null,
     change: "0%",
@@ -356,38 +360,39 @@ async function processBlockchainEvent(event: BlockchainEvent) {
   pushAlert(alertData);
 
   getTokenMeta(event.tokenAddress).then((meta) => {
-    const change = meta?.change24h || "0%";
+    if (!meta) return;
+    const change = meta.change24h || "0%";
     pushAlert({
       ...alertData,
-      name: meta?.name || "Unknown Token",
-      symbol: meta?.symbol || null,
-      imageUrl: meta?.imageUrl || null,
-      mc: meta?.mc || "N/A",
-      vol: meta?.volume24h || "N/A",
-      liquidity: meta?.liquidity || "N/A",
-      priceUsd: meta?.priceUsd || null,
+      name: meta.name || "Unknown Token",
+      symbol: meta.symbol || null,
+      imageUrl: meta.imageUrl || null,
+      mc: meta.mc || "N/A",
+      vol: meta.volume24h || "N/A",
+      liquidity: meta.liquidity || "N/A",
+      priceUsd: meta.priceUsd || null,
       change,
       trend: (change.startsWith("+") ? "up" : change.startsWith("-") ? "down" : "neutral") as string,
-      pairAddress: meta?.pairAddress || pairAddress,
-      dexUrl: `https://dexscreener.com/solana/${meta?.pairAddress || pairAddress}`,
-      website: meta?.website || null,
-      twitter: meta?.twitter || null,
-      telegram: meta?.telegram || null,
+      pairAddress: meta.pairAddress || pairAddress,
+      dexUrl: `https://dexscreener.com/solana/${meta.pairAddress || pairAddress}`,
+      website: meta.website || null,
+      twitter: meta.twitter || null,
+      telegram: meta.telegram || null,
     });
 
     broadcastAlertToTelegram({
       address: alertData.address,
-      type: alertData.type,
-      name: meta?.name || "Unknown Token",
-      symbol: meta?.symbol || undefined,
-      mc: meta?.mc || "N/A",
-      liquidity: meta?.liquidity || "N/A",
-      vol: meta?.volume24h || "N/A",
+      type: alertType,
+      name: meta.name || "Unknown Token",
+      symbol: meta.symbol || undefined,
+      mc: meta.mc || "N/A",
+      liquidity: meta.liquidity || "N/A",
+      vol: meta.volume24h || "N/A",
       alertedAt: alertData.alertedAt,
       wallet: alertData.wallet,
       walletBalance: alertData.walletBalance,
       buyAmountSol: alertData.buyAmountSol,
-      imageUrl: meta?.imageUrl || undefined,
+      imageUrl: meta.imageUrl || undefined,
     }).catch(() => null);
   }).catch(() => null);
 }
@@ -406,7 +411,7 @@ async function handleProgramLogs(logs: Logs, programId: string) {
 
   for (const baseEvent of parsed) {
     const enrichedBase = { ...baseEvent, tokenAddress: enrichedTokenAddress, wallet: enrichedWallet };
-    const eventVariants = [enrichedBase, ...(await inferEventVariants(enrichedBase))];
+    const eventVariants = await inferEventVariants(enrichedBase);
     for (const event of eventVariants) {
       processBlockchainEvent(event).catch(() => null);
     }

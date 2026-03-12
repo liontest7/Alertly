@@ -43,7 +43,7 @@ export async function GET() {
         description: "Real-time blockchain listener monitoring DEX programs",
         features: [
           "Monitors Raydium, Orca, Jupiter, Meteora DEX programs",
-          "Detects new tokens, liquidity adds, volume spikes",
+          "Detects volume spikes, whale buys, DEX boosts and listings",
           "Target latency: <2 seconds",
           "Automatic risk scoring and filtering"
         ],

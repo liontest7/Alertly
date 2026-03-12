@@ -23,13 +23,19 @@ const TYPE_COLORS: Record<string, string> = {
   "DEX LISTING": "bg-blue-600 text-white",
   "VOLUME SPIKE": "bg-purple-600 text-white",
   "WHALE BUY": "bg-orange-500 text-white",
-  "EARLY TOKEN PAIR": "bg-green-600 text-white",
-  "SMART MONEY ENTRY": "bg-zinc-700 text-white",
 }
+
+const FILTER_CHIPS = [
+  { key: "All", label: "All" },
+  { key: "DEX BOOST", label: "DEX Boost" },
+  { key: "DEX LISTING", label: "DEX Listing" },
+  { key: "VOLUME SPIKE", label: "Vol Spike" },
+  { key: "WHALE BUY", label: "Whale" },
+]
 
 function shortAddr(addr?: string) {
   if (!addr) return ""
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+  return `${addr.slice(0, 4)}…${addr.slice(-4)}`
 }
 
 export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], loading: boolean, settings: any, user: any }) {
@@ -76,7 +82,7 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
     : alerts.filter(a => {
         const type = (a.type || "").toUpperCase();
         const filter = activeFilter.toUpperCase();
-        return type.includes(filter);
+        return type === filter;
       });
 
   const handleQuickBuy = async (token: any) => {
@@ -88,7 +94,7 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
       alert("This alert does not include a valid token address.")
       return
     }
-    const tokenName = token.name || token.symbol || shortAddr(token.address)
+    const tokenName = token.symbol || token.name || shortAddr(token.address)
     setExecuting(token.address)
     try {
       const res = await fetch('/api/trade', {
@@ -158,11 +164,12 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
             </div>
           ) : filteredAlerts.map((token: any, i: number) => {
             const isLoading = token.name === "Loading...";
-            const name = token.name && token.name !== "Unknown Token" && !isLoading ? token.name : null;
             const symbol = token.symbol;
-            const displayName = name || symbol || shortAddr(token.address);
-            const typeColor = TYPE_COLORS[token.type?.toUpperCase()] || "bg-zinc-800 text-white";
-            const isWhale = token.type === "WHALE BUY";
+            const name = !isLoading && token.name && token.name !== "Unknown Token" ? token.name : null;
+            const displayPrimary = symbol || name || shortAddr(token.address);
+            const displaySecondary = symbol && name && name !== symbol ? name : null;
+            const typeColor = TYPE_COLORS[(token.type || "").toUpperCase()] || "bg-zinc-800 text-white";
+            const isWhale = (token.type || "").toUpperCase() === "WHALE BUY";
 
             return (
               <div key={`${token.address}-${i}`} className="group p-5 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
@@ -171,13 +178,13 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
                   {token.imageUrl ? (
                     <img 
                       src={token.imageUrl} 
-                      alt={displayName} 
+                      alt={displayPrimary} 
                       className="w-full h-full object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} 
                     />
                   ) : (
                     <span className="text-lg font-black text-[#5100fd]">
-                      {(symbol || displayName)?.[0]?.toUpperCase() || "?"}
+                      {(displayPrimary)?.[0]?.toUpperCase() || "?"}
                     </span>
                   )}
                 </div>
@@ -188,12 +195,14 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
                       {isLoading ? (
                         <span className="inline-block h-4 w-24 rounded bg-zinc-800 animate-pulse" />
                       ) : (
-                        <span className="text-base font-black text-white truncate tracking-tight">
-                          {symbol ? symbol : displayName}
-                        </span>
-                      )}
-                      {!isLoading && symbol && name && name !== symbol && (
-                        <span className="text-[9px] text-zinc-500 truncate">{name}</span>
+                        <>
+                          <span className="text-base font-black text-white truncate tracking-tight">
+                            {displayPrimary}
+                          </span>
+                          {displaySecondary && (
+                            <span className="text-[9px] text-zinc-500 truncate">{displaySecondary}</span>
+                          )}
+                        </>
                       )}
                     </div>
                     <span className={`text-[9px] px-2.5 py-0.5 rounded-md font-black uppercase tracking-tighter shadow-sm whitespace-nowrap ${typeColor}`}>
@@ -293,15 +302,7 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
           
           {/* Filter chips */}
           <div className="flex flex-wrap gap-2 px-6 pb-5 border-t border-zinc-900/50 pt-4">
-            {[
-              { key: "All", label: "All" },
-              { key: "DEX BOOST", label: "Boost" },
-              { key: "DEX LISTING", label: "Listing" },
-              { key: "VOLUME SPIKE", label: "Vol Spike" },
-              { key: "WHALE BUY", label: "Whale" },
-              { key: "EARLY TOKEN PAIR", label: "New Pair" },
-              { key: "SMART MONEY ENTRY", label: "Smart Money" },
-            ].map(f => (
+            {FILTER_CHIPS.map(f => (
               <FilterChip 
                 key={f.key}
                 label={f.label}

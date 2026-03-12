@@ -21,10 +21,10 @@ const DEFAULT_USER_SETTINGS = {
   maxBuyPerToken: 2.0,
   slippage: 10.0,
   autoTrade: false,
-  minMarketCap: 10000,
-  maxMarketCap: 10000000,
-  minHolders: 100,
-  minLiquidity: 50000,
+  minMarketCap: 0,
+  maxMarketCap: 0,
+  minHolders: 1,
+  minLiquidity: 0,
   takeProfit: 50,
   stopLoss: 25,
   trailingStop: false,
@@ -32,11 +32,11 @@ const DEFAULT_USER_SETTINGS = {
   volumeSpikeEnabled: true,
   volumeSpikeThreshold: 50,
   whaleAlertEnabled: true,
-  whaleWalletAddresses: [],
+  whaleMinSolBalance: 500,
   dexBoostEnabled: true,
   dexListingEnabled: true,
-  sources: ["Raydium", "Jupiter"],
-  selectedBoostLevel: "Top Boost",
+  sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
+  selectedBoostLevel: "all",
 };
 
 const bot = new TelegramBot(token, { polling: true });
@@ -67,9 +67,22 @@ const mainMenu = {
       ],
       [
         { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
-        { text: "💎 Dex List", callback_data: "toggle_list" },
+        { text: "💎 Dex Listing", callback_data: "toggle_list" },
       ],
-      [{ text: "📦 Boost Levels", callback_data: "boost_levels" }],
+      [{ text: "📦 Boost Level Filter", callback_data: "boost_levels" }],
+      [{ text: "-- Filters --", callback_data: "none" }],
+      [
+        { text: "👥 Min Holders", callback_data: "set_min_holders" },
+        { text: "💧 Min Liquidity", callback_data: "set_min_liquidity" },
+      ],
+      [
+        { text: "📉 Min MC", callback_data: "set_min_mc" },
+        { text: "📈 Max MC", callback_data: "set_max_mc" },
+      ],
+      [
+        { text: "📊 Vol Spike %", callback_data: "set_vol_threshold" },
+        { text: "🐳 Min Whale SOL", callback_data: "set_whale_sol" },
+      ],
     ],
   },
 };
@@ -120,13 +133,25 @@ async function confirmLink(tokenValue: string, telegramId: string) {
   return res.json();
 }
 
+function formatBoostLevel(level: string): string {
+  if (!level || level === "all") return "All Levels";
+  return level;
+}
+
+function formatMc(val: number): string {
+  if (!val || val === 0) return "No limit";
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
+  return `$${val}`;
+}
+
 const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) => {
   try {
     const s = await fetchBotSettings(telegramId);
     const unlinkedNotice = isUnlinked ? "\n⚠️ *Account not linked yet* - /start to link your dashboard\n" : "";
 
-    // Format whale wallet addresses for display
-    const whaleWalletCount = Array.isArray(s.whaleWalletAddresses) ? s.whaleWalletAddresses.length : 0;
+    const whaleMinSol = s.whaleMinSolBalance ?? s.whaleMinSol ?? 500;
+    const volThreshold = s.volumeSpikeThreshold || 50;
 
     return `⚙️ *Alertly Control Center*${unlinkedNotice}
 *Trading Configuration*
@@ -143,18 +168,18 @@ const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) 
 
 *Active Alerts*
 🔊 Volume Spike: ${s.volumeSpikeEnabled ? "✅" : "❌"}
-   └ Threshold: ${s.volumeSpikeThreshold || 50}%
-🐋 Whale Wallet: ${s.whaleAlertEnabled ? "✅" : "❌"}
-   └ Tracked: ${whaleWalletCount} wallet(s)
+   └ Threshold: +${volThreshold}% / 60s
+🐋 Whale Alert: ${s.whaleAlertEnabled ? "✅" : "❌"}
+   └ Min Balance: ${whaleMinSol} SOL (all wallets)
 ⚡ Dex Boost: ${s.dexBoostEnabled ? "✅" : "❌"}
-   └ Level: ${s.selectedBoostLevel || "Top Boost"}
+   └ Level: ${formatBoostLevel(s.selectedBoostLevel || "all")}
 💎 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
-   └ Type: Paid Listings Only
 
 *Filters*
-💹 Market Cap: $${(s.minMarketCap / 1000).toFixed(0)}K - $${(s.maxMarketCap / 1000000).toFixed(0)}M
-💧 Min Liquidity: $${(s.minLiquidity / 1000).toFixed(0)}K
-👥 Min Holders: ${s.minHolders || 0}
+📉 Min MC: ${formatMc(s.minMarketCap || 0)}
+📈 Max MC: ${formatMc(s.maxMarketCap || 0)}
+💧 Min Liquidity: ${s.minLiquidity > 0 ? `$${(s.minLiquidity / 1000).toFixed(0)}K` : "No limit"}
+👥 Min Holders: ${s.minHolders || 1}
 
 Stay sharp. Stay early. Stay Alerty.`;
   } catch {
@@ -222,6 +247,11 @@ bot.on("callback_query", async (query) => {
   const telegramId = String(chatId);
   const data = query.data;
 
+  if (data === "none") {
+    bot.answerCallbackQuery(query.id);
+    return;
+  }
+
   try {
     const s = await fetchBotSettings(telegramId);
     let update: Record<string, any> = {};
@@ -250,6 +280,9 @@ bot.on("callback_query", async (query) => {
         reply_markup: {
           inline_keyboard: [
             [
+              { text: "✅ All Levels", callback_data: "boost_level_all" },
+            ],
+            [
               { text: "Level 1", callback_data: "boost_level_1" },
               { text: "Level 2", callback_data: "boost_level_2" },
             ],
@@ -264,7 +297,7 @@ bot.on("callback_query", async (query) => {
           ],
         },
       };
-      bot.editMessageText("Select boost levels to track:", {
+      bot.editMessageText("Select boost level to track (default: All Levels):", {
         chat_id: chatId,
         message_id: query.message!.message_id,
         ...boostMenu,
@@ -273,6 +306,7 @@ bot.on("callback_query", async (query) => {
       return;
     } else if (data?.startsWith("boost_level_")) {
       const levelMap: Record<string, string> = {
+        "boost_level_all": "all",
         "boost_level_1": "Level 1",
         "boost_level_2": "Level 2",
         "boost_level_3": "Level 3",
@@ -289,7 +323,7 @@ bot.on("callback_query", async (query) => {
           parse_mode: "Markdown",
           ...mainMenu,
         });
-        bot.answerCallbackQuery(query.id, { text: `Selected: ${level}` });
+        bot.answerCallbackQuery(query.id, { text: `Selected: ${formatBoostLevel(level)}` });
       }
       return;
     } else if (data === "back_menu") {
@@ -311,6 +345,12 @@ bot.on("callback_query", async (query) => {
         tp: "Enter Take Profit % (e.g., 50):",
         sl: "Enter Stop Loss % (e.g., 25):",
         autosell: "Enter Auto-Sell minutes (0 to disable):",
+        min_holders: "Enter Min Holders (e.g., 1, default 1 = show all):",
+        min_liquidity: "Enter Min Liquidity in USD (e.g., 0 = no filter, 5000 = $5K):",
+        min_mc: "Enter Min Market Cap in USD (e.g., 0 = no filter, 10000 = $10K):",
+        max_mc: "Enter Max Market Cap in USD (e.g., 0 = no filter, 1000000 = $1M):",
+        vol_threshold: "Enter Volume Spike threshold % (e.g., 50 = alert when volume +50% in 60s):",
+        whale_sol: "Enter Min Whale SOL balance (e.g., 500 = alert when wallet has 500+ SOL):",
       };
       
       const prompt = promptMap[field];
@@ -326,6 +366,12 @@ bot.on("callback_query", async (query) => {
               tp: "takeProfit",
               sl: "stopLoss",
               autosell: "autoSellMinutes",
+              min_holders: "minHolders",
+              min_liquidity: "minLiquidity",
+              min_mc: "minMarketCap",
+              max_mc: "maxMarketCap",
+              vol_threshold: "volumeSpikeThreshold",
+              whale_sol: "whaleMinSolBalance",
             };
             await updateBotSettings(telegramId, { [fieldMap[field]]: val });
             const newText = await getSettingsText(telegramId);

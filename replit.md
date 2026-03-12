@@ -5,6 +5,17 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
+## Latest Changes (March 12, 2026)
+- **Alert types cleaned up**: Removed EARLY_TOKEN_PAIR, SMART_MONEY_ENTRY, LIQUIDITY_ADDED, LIQUIDITY_REMOVAL from all layers
+- **Supported alert types**: VOLUME_SPIKE, WHALE_BUY, DEX_BOOST, DEX_LISTING only
+- **Stablecoin filter**: Volume spike and whale alerts now skip USDC/USDT/stable tokens
+- **Live Feed UI**: Shows ticker (symbol) as primary name, CA shortened to 4…4 chars, correct filter chips
+- **Telegram bot defaults**: Fixed to minHolders=1, minLiquidity=0, minMarketCap=0, selectedBoostLevel="all"
+- **Telegram bot**: Added Min Holders, Min Liquidity, Min/Max MC, Vol Spike %, Whale SOL settings buttons; Added "All Levels" boost option
+- **Whale alerts**: Fires on ALL wallets with >500 SOL - no specific wallet selection needed
+- **Chrome extension notifications**: Shows symbol/name, MC, Liquidity, Vol in notification
+- **All platforms synced**: Web dashboard, Telegram bot, Chrome extension all use same filters/defaults
+
 ---
 
 ## 🚀 SYSTEM STATUS - VERIFIED WORKING & FULLY OPERATIONAL

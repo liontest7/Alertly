@@ -17,12 +17,10 @@ const connection = new Connection(RPC_ENDPOINT, "confirmed");
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 export type TokenAlertType =
-  | "EARLY TOKEN PAIR"
   | "VOLUME SPIKE"
   | "WHALE BUY"
   | "DEX BOOST"
-  | "DEX LISTING"
-  | "SMART MONEY ENTRY";
+  | "DEX LISTING";
 
 export interface TokenAlert {
   name: string;
@@ -65,12 +63,10 @@ export interface AlertFilterSettings {
 }
 
 const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
-  EARLY_TOKEN_PAIR: "EARLY TOKEN PAIR",
   VOLUME_SPIKE: "VOLUME SPIKE",
   WHALE_BUY: "WHALE BUY",
   DEX_BOOST: "DEX BOOST",
   DEX_LISTING: "DEX LISTING",
-  SMART_MONEY_ENTRY: "SMART MONEY ENTRY",
 };
 
 function parseMoneyValue(input?: string | null): number | null {
@@ -118,11 +114,12 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   return true;
 }
 
-function mapStoredAlert(item: StoredAlert): TokenAlert {
-  const typeLabel = TYPE_TO_LABEL[item.type] || "SMART MONEY ENTRY";
+function mapStoredAlert(item: StoredAlert): TokenAlert | null {
+  const typeLabel = TYPE_TO_LABEL[item.type];
+  if (!typeLabel) return null;
   return {
     name: item.name,
-    type: typeLabel as TokenAlertType,
+    type: typeLabel,
     mc: item.mc || "N/A",
     vol: item.vol || "N/A",
     age: getAgeLabel(item.alertedAt),
@@ -153,7 +150,7 @@ function mapStoredAlert(item: StoredAlert): TokenAlert {
 export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<TokenAlert[]> {
   try {
     const stored = getAlerts();
-    const mapped = stored.map(mapStoredAlert);
+    const mapped = stored.map(mapStoredAlert).filter((a): a is TokenAlert => a !== null);
 
     const filtered = mapped
       .filter((alert) => isAlertEnabledBySettings(alert.type, filters))
