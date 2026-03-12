@@ -117,9 +117,9 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4 text-[11px] font-black text-zinc-400">
-              <span>Total: <span className="text-white">{alerts.length}</span></span>
+              <span>Total: <span className="text-white">{loading && alerts.length === 0 ? '...' : alerts.length}</span></span>
               <span>|</span>
-              <span>24h: <span className="text-[#5100fd]">{dailyAlerts}</span></span>
+              <span>24h: <span className="text-[#5100fd]">{loading && alerts.length === 0 ? '...' : dailyAlerts}</span></span>
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -132,10 +132,15 @@ export function AlphaFeed({ alerts, loading, settings, user }: { alerts: any[], 
         </div>
         
         <div className="max-h-[700px] overflow-y-auto divide-y divide-zinc-900/50 scrollbar-hide">
-          {alerts.length === 0 ? (
+          {loading && alerts.length === 0 ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-[#5100fd] mx-auto mb-4" />
               <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Scanning Solana Mainnet...</p>
+            </div>
+          ) : !loading && alerts.length === 0 ? (
+            <div className="p-12 text-center">
+              <Zap className="h-6 w-6 text-zinc-600 mx-auto mb-4" />
+              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">No alerts yet — listener is active</p>
             </div>
           ) : filteredAlerts.length === 0 ? (
             <div className="p-12 text-center">

@@ -4,6 +4,23 @@ import { getEnv, requireEnv } from "@/lib/env";
 import { calculateRiskScore } from "@/lib/risk/scorer";
 import { broadcastAlertToTelegram } from "@/lib/notifications/telegram";
 
+const MAX_ENRICH_PER_SECOND = 3;
+let enrichTokens = MAX_ENRICH_PER_SECOND;
+let lastEnrichRefill = Date.now();
+let enrichConcurrent = 0;
+const MAX_ENRICH_CONCURRENT = 2;
+
+function canEnrich(): boolean {
+  const now = Date.now();
+  const elapsed = (now - lastEnrichRefill) / 1000;
+  enrichTokens = Math.min(MAX_ENRICH_PER_SECOND, enrichTokens + elapsed * MAX_ENRICH_PER_SECOND);
+  lastEnrichRefill = now;
+  if (enrichConcurrent >= MAX_ENRICH_CONCURRENT) return false;
+  if (enrichTokens < 1) return false;
+  enrichTokens -= 1;
+  return true;
+}
+
 const RPC_URL =
   getEnv("SOLANA_RPC_URL") ||
   requireEnv("SOLANA_RPC_URL", {
@@ -13,20 +30,24 @@ const RPC_URL =
 
 const DEX_PROGRAMS = {
   RAYDIUM_V4: "675kPX9MHTjS2zt1qLZXr5HCrLYUFeVNSwbJXyXEKds",
+  RAYDIUM_CLMM: "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
   RAYDIUM_FUSION: "EUqoRMAp5gKHrj5L2ChZAudKHfqKQ6AysUGEngkxF7y2",
-  ORCA_WHIRLPOOL: "whirLbMiicVdio4KfUbuPvCODMARF747ySHiR5Bot5Q",
   ORCA_LEGACY: "9W959DqDtw2hGQT1kcMwTKrWgQQXdJwW8JcA7dNtz9Z9",
   JUPITER_AGGREGATOR: "JUP2jxvXaqu7NQY1GmNF4m1QWDPjk3umbRX2KPwCqL8",
+  JUPITER_V6: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
   METEORA: "Eo7WjKq67rjYd7fqSL88j5z6zJrHcs5MY7QDcymir8a",
+  PUMP_FUN: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
 } as const;
 
 const DEX_LABEL_BY_PROGRAM = new Map<string, string>([
   [DEX_PROGRAMS.RAYDIUM_V4, "Raydium"],
+  [DEX_PROGRAMS.RAYDIUM_CLMM, "Raydium"],
   [DEX_PROGRAMS.RAYDIUM_FUSION, "Raydium"],
-  [DEX_PROGRAMS.ORCA_WHIRLPOOL, "Orca"],
   [DEX_PROGRAMS.ORCA_LEGACY, "Orca"],
   [DEX_PROGRAMS.JUPITER_AGGREGATOR, "Jupiter"],
+  [DEX_PROGRAMS.JUPITER_V6, "Jupiter"],
   [DEX_PROGRAMS.METEORA, "Meteora"],
+  [DEX_PROGRAMS.PUMP_FUN, "Pump.fun"],
 ]);
 
 const VOLUME_WINDOW_MS = 30_000;
@@ -271,6 +292,8 @@ async function inferEventVariants(event: BlockchainEvent): Promise<BlockchainEve
 }
 
 async function enrichEventFromTransaction(event: BlockchainEvent): Promise<BlockchainEvent> {
+  if (!canEnrich()) return event;
+  enrichConcurrent++;
   try {
     const tx = await getConnection().getParsedTransaction(event.signature, {
       commitment: "confirmed",
@@ -293,6 +316,8 @@ async function enrichEventFromTransaction(event: BlockchainEvent): Promise<Block
     };
   } catch {
     return event;
+  } finally {
+    enrichConcurrent--;
   }
 }
 
@@ -312,10 +337,7 @@ async function persistBlockchainEvent(event: BlockchainEvent): Promise<void> {
 }
 
 async function processBlockchainEvent(event: BlockchainEvent) {
-  const fingerprint = `${event.tokenAddress}|${event.type}|${event.signature}`;
-
-  const exists = await prisma.alertEvent.findUnique({ where: { fingerprint } });
-  if (exists) return;
+  const fingerprint = `${event.tokenAddress}|${event.type}`;
 
   const risk = calculateRiskScore({
     address: event.tokenAddress,
@@ -325,29 +347,28 @@ async function processBlockchainEvent(event: BlockchainEvent) {
     lpLockedPct: event.type === "LIQUIDITY_REMOVAL" ? 5 : 80,
   });
 
-  const createdAlert = await prisma.alertEvent.create({
-    data: {
-      fingerprint,
-      address: event.tokenAddress,
-      type: event.type,
-      name: event.tokenName || "Live Token",
-      symbol: event.tokenSymbol || "TKN",
-      change: "0%",
-      trend: "neutral",
-      mc: "Live",
-      vol: event.amount ? `$${event.amount.toFixed(2)}` : "Live",
-      liquidity: event.liquidity ? `$${event.liquidity.toFixed(0)}` : "Live",
-      holders: 0,
-      pairAddress: event.tokenAddress,
-      dexUrl: `https://dexscreener.com/solana/${event.tokenAddress}`,
-      alertedAt: event.timestamp,
-      riskScore: risk.score,
-      riskLevel: risk.level,
-      website: undefined,
-      twitter: undefined,
-      telegram: undefined,
-      priceUsd: undefined,
-    },
+  const alertData = {
+    address: event.tokenAddress,
+    type: event.type,
+    name: event.tokenName || "Live Token",
+    symbol: event.tokenSymbol || "TKN",
+    change: "0%",
+    trend: "neutral",
+    mc: "Live",
+    vol: event.amount ? `$${event.amount.toFixed(2)}` : "Live",
+    liquidity: event.liquidity ? `$${event.liquidity.toFixed(0)}` : "Live",
+    holders: 0,
+    pairAddress: event.tokenAddress,
+    dexUrl: `https://dexscreener.com/solana/${event.tokenAddress}`,
+    alertedAt: event.timestamp,
+    riskScore: risk.score,
+    riskLevel: risk.level,
+  };
+
+  const createdAlert = await prisma.alertEvent.upsert({
+    where: { fingerprint },
+    create: { fingerprint, ...alertData },
+    update: { alertedAt: event.timestamp, vol: alertData.vol },
   });
 
   await persistBlockchainEvent(event);
@@ -366,52 +387,75 @@ async function processBlockchainEvent(event: BlockchainEvent) {
 
 async function handleProgramLogs(logs: Logs, programId: string) {
   const parsed = parseLogsForEvents(logs.logs, logs.signature, programId);
+  if (parsed.length === 0) return;
+
+  const enriched = await enrichEventFromTransaction(parsed[0]);
+  const enrichedTokenAddress = enriched.tokenAddress;
+  const enrichedWallet = enriched.wallet;
 
   for (const baseEvent of parsed) {
-    const enrichedBaseEvent = await enrichEventFromTransaction(baseEvent);
-    const eventVariants = [enrichedBaseEvent, ...(await inferEventVariants(enrichedBaseEvent))];
+    const enrichedBase = { ...baseEvent, tokenAddress: enrichedTokenAddress, wallet: enrichedWallet };
+    const eventVariants = [enrichedBase, ...(await inferEventVariants(enrichedBase))];
     for (const event of eventVariants) {
       await processBlockchainEvent(event);
     }
   }
 }
 
+function isValidPublicKey(address: string): boolean {
+  try {
+    new PublicKey(address);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+let txReceived = 0;
+
 async function setupProgramSubscription() {
   const conn = getConnection();
   const programIds = Object.values(DEX_PROGRAMS);
+  let subscribed = 0;
 
   for (const programId of programIds) {
-    if (!isPotentialPublicKey(programId)) {
+    if (!isValidPublicKey(programId)) {
       console.warn(`Skipping invalid program ID: ${programId}`);
       continue;
     }
-    const subId = conn.onLogs(new PublicKey(programId), async (logs) => {
-      await handleProgramLogs(logs, programId);
-    }, "confirmed");
+    try {
+      const label = DEX_LABEL_BY_PROGRAM.get(programId) || programId.slice(0, 8);
+      const subId = conn.onLogs(new PublicKey(programId), async (logs) => {
+        txReceived++;
+        if (txReceived % 50 === 0) {
+          console.log(`[Listener] ${txReceived} txs received across all programs`);
+        }
+        await handleProgramLogs(logs, programId);
+      }, "confirmed");
+      logSubscriptionIds.push(subId);
+      subscribed++;
 
-    logSubscriptionIds.push(subId);
-
-    const accountSubId = conn.onProgramAccountChange(
-      new PublicKey(programId),
-      async () => {
-        // accountSubscribe equivalent to capture pool/account mutations for lowest-latency awareness.
-      },
-      "confirmed",
-    );
-
-    programAccountSubscriptionIds.push(accountSubId);
+      const accountSubId = conn.onProgramAccountChange(
+        new PublicKey(programId),
+        async () => {},
+        "confirmed",
+      );
+      programAccountSubscriptionIds.push(accountSubId);
+      console.log(`[Listener] Subscribed to ${label} (${programId.slice(0, 8)}...)`);
+    } catch (err) {
+      console.warn(`Failed to subscribe to program ${programId}:`, err instanceof Error ? err.message : err);
+    }
   }
+  console.log(`[Listener] ${subscribed} program subscriptions active`);
 
   const accountSubscribeWallets = new Set<string>();
   [...DEX_BOOST_WALLETS, ...DEX_LISTING_WALLETS, ...GLOBAL_WHALE_WALLETS].forEach(w => {
-    if (isPotentialPublicKey(w)) accountSubscribeWallets.add(w);
+    if (isValidPublicKey(w)) accountSubscribeWallets.add(w);
   });
 
   for (const wallet of accountSubscribeWallets) {
     try {
-      const subId = conn.onAccountChange(new PublicKey(wallet), async () => {
-        // Required accountSubscribe channel for payment wallets / whale tracking.
-      }, "confirmed");
+      const subId = conn.onAccountChange(new PublicKey(wallet), async () => {}, "confirmed");
       accountSubscriptionIds.push(subId);
     } catch {
       // Ignore malformed configured wallet.

@@ -102,6 +102,16 @@ function isAlertEnabledBySettings(type: TokenAlert["type"], filters?: AlertFilte
   return true;
 }
 
+function isValidUrl(url?: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
 
@@ -111,7 +121,7 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   if (typeof filters.minMarketCap === "number" && mcValue !== null && mcValue < filters.minMarketCap) return false;
   if (typeof filters.maxMarketCap === "number" && mcValue !== null && mcValue > filters.maxMarketCap) return false;
   if (typeof filters.minLiquidity === "number" && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
-  if (typeof filters.minHolders === "number" && alert.holders < filters.minHolders) return false;
+  if (typeof filters.minHolders === "number" && filters.minHolders > 0 && alert.holders > 0 && alert.holders < filters.minHolders) return false;
 
   return true;
 }
@@ -129,7 +139,7 @@ function mapPersistedAlert(item: any): TokenAlert {
     address: item.address,
     holders: item.holders || 0,
     liquidity: item.liquidity || "Live",
-    imageUrl: item.imageUrl || undefined,
+    imageUrl: isValidUrl(item.imageUrl) ? item.imageUrl : undefined,
     symbol: item.symbol || undefined,
     dexUrl: item.dexUrl || undefined,
     website: item.website || undefined,

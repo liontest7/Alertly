@@ -41,26 +41,43 @@ export async function GET(req: Request) {
     start(controller) {
       let lastFingerprint = "";
 
-      const push = async () => {
-        const alerts = await getLiveAlerts(filters);
-        const top = alerts[0];
-        const fingerprint = top?.fingerprint || "";
+      let closed = false;
 
-        if (fingerprint && fingerprint !== lastFingerprint) {
-          lastFingerprint = fingerprint;
-          controller.enqueue(new TextEncoder().encode(sseEvent("alerts", alerts)));
-          return;
+      const safeEnqueue = (chunk: Uint8Array) => {
+        if (closed) return;
+        try {
+          controller.enqueue(chunk);
+        } catch {
+          closed = true;
         }
+      };
 
-        controller.enqueue(new TextEncoder().encode(sseEvent("heartbeat", { t: Date.now() })));
+      const push = async () => {
+        if (closed) return;
+        try {
+          const alerts = await getLiveAlerts(filters);
+          const top = alerts[0];
+          const fingerprint = top?.fingerprint || "";
+
+          if (fingerprint && fingerprint !== lastFingerprint) {
+            lastFingerprint = fingerprint;
+            safeEnqueue(new TextEncoder().encode(sseEvent("alerts", alerts)));
+            return;
+          }
+
+          safeEnqueue(new TextEncoder().encode(sseEvent("heartbeat", { t: Date.now() })));
+        } catch {
+          safeEnqueue(new TextEncoder().encode(sseEvent("heartbeat", { t: Date.now() })));
+        }
       };
 
       push();
       const interval = setInterval(push, 2000);
 
       req.signal.addEventListener("abort", () => {
+        closed = true;
         clearInterval(interval);
-        controller.close();
+        try { controller.close(); } catch { }
       });
     },
   });
