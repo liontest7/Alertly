@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "@/lib/auth-edge";
 
-const PROTECTED_PATHS = ["/profile", "/settings", "/telegram-link"];
+const PROTECTED_PATHS = ["/profile", "/settings", "/telegram-link", "/admin"];
 const AUTH_PATHS = ["/login", "/connect-wallet"];
 const PUBLIC_PATHS = ["/_next", "/api/startup-check", "/api/health", "/startup-error"];
 

@@ -7,9 +7,7 @@ import Link from "next/link";
 
 export function Footer() {
   const { user } = useAuthSession();
-  // Check if user is admin based on wallet address or isAdmin flag
-  const adminWallets = siteConfig.adminWallets || ["DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns"];
-  const isAdmin = user && ((user as any).isAdmin || adminWallets.includes(user.walletAddress));
+  const isAdmin = user?.isAdmin === true;
 
   return (
     <footer className="relative z-20 py-12 border-t border-zinc-900 bg-black w-full">

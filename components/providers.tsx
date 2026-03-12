@@ -17,6 +17,7 @@ type SessionUser = {
   user_id: string;
   wallet_address: string;
   vip_status: boolean;
+  isAdmin: boolean;
 };
 
 type AuthContextValue = {
@@ -80,7 +81,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         const userData = {
           user_id: String(data.user.id || data.user.user_id),
           wallet_address: String(data.user.walletAddress || data.user.wallet_address),
-          vip_status: Boolean(data.user.vipStatus || data.user.vip_status)
+          vip_status: Boolean(data.user.vipStatus || data.user.vip_status),
+          isAdmin: Boolean(data.user.isAdmin),
         };
         console.log("Setting user state:", userData);
         setUser(userData);
@@ -116,44 +118,46 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [refreshSession]);
 
   useEffect(() => {
-    // Persistent Alert Listener
-    const eventSource = new EventSource("/api/alerts/stream");
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        // data is either heartbeat or alerts array
-        if (Array.isArray(data)) {
-          const alert = data[0]; // Get the newest alert
-          if (!alert) return;
-          
-          const isTerminalPage = window.location.pathname.includes("/dashboard");
-          
-          if (isTerminalPage) {
-            // Play sound only in terminal
-            const audio = new Audio("/notification.mp3");
-            audio.play().catch(() => {});
-          } else {
-            // Show toast and notification if not in terminal
-            import("sonner").then(({ toast }) => {
-              toast.info(`New Alert: ${alert.name}`, {
-                description: `${alert.type} - MC: ${alert.mc}`,
-                action: {
-                  label: "View",
-                  onClick: () => window.location.href = "/dashboard"
-                },
-                duration: 10000
-              });
-            });
-          }
-        }
-      } catch (e) {
-        // Heartbeat or malformed JSON
-      }
+    if (!user) return;
+
+    let lastAlertId: string | null = null;
+    let eventSource: EventSource | null = null;
+
+    const handleAlert = (alertData: any[]) => {
+      const alert = alertData[0];
+      if (!alert || alert.id === lastAlertId) return;
+      lastAlertId = alert.id;
+
+      const audio = new Audio("/notification.mp3");
+      audio.play().catch(() => {});
     };
 
-    return () => eventSource.close();
-  }, []);
+    const connect = () => {
+      eventSource = new EventSource("/api/alerts/stream");
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data) && data.length > 0) handleAlert(data);
+        } catch {}
+      };
+
+      eventSource.addEventListener("alerts", (event: any) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data) && data.length > 0) handleAlert(data);
+        } catch {}
+      });
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+        setTimeout(connect, 5000);
+      };
+    };
+
+    connect();
+    return () => eventSource?.close();
+  }, [user]);
 
   return (
     <WalletContextProvider>

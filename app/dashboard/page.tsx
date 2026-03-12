@@ -1,6 +1,5 @@
 "use client"
 
-import { Navbar } from "@/components/navbar"
 import { StatCard } from "@/components/Dashboard/StatCard"
 import { SniperConfigWallet } from "@/components/Dashboard/SniperConfigWallet"
 import { ConnectionsCard } from "@/components/Dashboard/ConnectionsCard"
@@ -165,8 +164,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[#050505] text-white selection:bg-[#5100fd]/30">
-      <Navbar />
-
       <div className="container mx-auto px-6 pt-32 pb-12">
         <div className="flex flex-col gap-8">
           <div className="flex-1 space-y-8">
