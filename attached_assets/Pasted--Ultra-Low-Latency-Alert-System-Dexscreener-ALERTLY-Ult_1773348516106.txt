@@ -1,0 +1,328 @@
+⚡ Ultra-Low Latency Alert System
+זיהוי אירועים לפני Dexscreener ובזמן אמת.
+
+ALERTLY
+Ultra Real-Time Blockchain Monitoring System
+1. עיקרון המערכת
+
+המערכת לא מסתמכת על API של Dexscreener.
+
+במקום זאת היא מאזינה ישירות ל:
+
+• transaction logs
+• program instructions
+• liquidity pool events
+• swap events
+
+ממקורות:
+
+• Helius Labs WebSockets
+• Solana RPC Streams
+• Program logs
+
+כך ניתן לזהות:
+
+יצירת זוג מסחר
+
+הוספת liquidity
+
+swaps גדולים
+
+תשלומי promotion
+
+פעילות whales
+
+2. Real-Time Blockchain Listener
+
+זה השירות הכי חשוב במערכת.
+
+Solana Blockchain
+↓
+RPC WebSocket Stream
+↓
+Alertly Event Listener
+↓
+Event Parser
+↓
+Alert Engine
+
+Listener חייב להשתמש ב:
+
+programSubscribe
+logsSubscribe
+accountSubscribe
+
+של Solana RPC.
+
+3. Programs שצריך לעקוב אחריהם
+
+כדי לזהות אירועים מוקדם צריך לעקוב אחרי smart contracts של DEXים.
+
+DEXים מרכזיים:
+
+• Raydium
+• Orca
+• Meteora
+• Jupiter routes
+
+אם Listener מזהה:
+
+initialize_pool
+add_liquidity
+swap
+
+אפשר לזהות:
+
+✔ token חדש
+✔ liquidity חדש
+✔ volume spike
+
+לפני Dexscreener.
+
+4. Detecting NEW TOKEN לפני Dexscreener
+
+כאשר pair חדש נוצר:
+
+InitializePool instruction
+
+המערכת תזהה:
+
+token mint
+base token
+liquidity
+pool address
+
+ואז תיצור alert.
+
+Latency:
+
+1-2 seconds
+5. Detecting Liquidity Add
+
+אירוע:
+
+add_liquidity
+
+המערכת מזהה:
+
+amount token
+amount SOL
+liquidity USD
+
+אם liquidity מעל threshold:
+
+נשלחת התראה.
+
+6. Detecting Volume Spike מוקדם
+
+Dexscreener מחשב volume אחרי.
+
+המערכת שלך תחשב בזמן אמת.
+
+swap events
+↓
+volume aggregator
+↓
+compare last X seconds
+
+אם:
+
+volume increased X%
+
+alert.
+
+7. Detecting Whale Buys
+
+כאשר swap מתרחש:
+
+amount SOL
+wallet address
+
+אם:
+
+wallet ∈ whale list
+
+alert.
+
+8. Detecting Dex Boost לפני Dexscreener
+
+Boost ב-Dexscreener מתרחש כאשר פרויקט משלם promotion.
+
+יש 2 דרכים לזהות:
+
+דרך 1
+
+מעקב אחרי wallets של Dexscreener.
+
+דרך 2 (יותר טובה)
+
+monitoring:
+
+Dexscreener boost contract
+
+כאשר transaction מתבצע → alert.
+
+9. Detecting Dex Listing Payment
+
+כאשר פרויקט משלם על listing.
+
+Listener מזהה:
+
+payment transaction
+destination wallet
+metadata
+
+ואז:
+
+DEX LISTING ALERT
+10. Ultra Fast Alert Pipeline
+Blockchain Event
+↓
+Event Listener
+↓
+Event Parser
+↓
+Alert Engine
+↓
+Risk Engine
+↓
+Database
+↓
+WebSocket Broadcast
+↓
+Users
+
+Total latency target:
+
+< 1 second
+11. Alert Types (Final)
+
+המערכת תזהה:
+
+Early Token Pair
+
+token pair חדש.
+
+Liquidity Added
+
+הוספת liquidity.
+
+Volume Spike
+
+עלייה חדה בווליום.
+
+Whale Buy
+
+ארנק גדול קונה.
+
+Dex Boost
+
+Boost promotion.
+
+Dex Listing
+
+תשלום listing.
+
+Smart Money Entry
+
+כניסת wallets מסוימים.
+
+Liquidity Removal
+
+אפשרות rug.
+
+12. Risk Filters
+
+לפני alert.
+
+המערכת תבדוק:
+
+mint authority
+freeze authority
+lp locked
+top holders %
+dev wallet %
+13. Token Risk Score
+0-3 Safe
+4-6 Medium
+7-10 Dangerous
+14. Alert Data
+
+כל alert כולל:
+
+token name
+symbol
+contract
+market cap
+liquidity
+holders
+dev wallet %
+top holders %
+price
+volume
+token age
+alert reason
+15. Real-Time Delivery
+
+Alerts נשלחים דרך:
+
+WebSocket
+
+Clients:
+
+• Web dashboard
+• Telegram bot
+• Chrome extension
+
+16. Performance Targets
+
+Alert detection:
+
+0.5-2 seconds
+
+Trade execution:
+
+1-3 seconds
+17. Infrastructure Required
+
+Production system.
+
+Servers:
+
+Alert Listener Cluster
+Trading Engine
+WebSocket Server
+API Server
+Redis Queue
+PostgreSQL
+18. Scaling Strategy
+
+אם יש:
+
+10,000 users
+
+alerts עדיין בזמן אמת.
+
+כי:
+
+listeners
+workers
+broadcast
+
+נפרדים.
+
+19. Competitive Advantage
+
+המערכת תזהה:
+
+✔ liquidity events
+✔ whale buys
+✔ new tokens
+
+לפני Dexscreener.
+
+זה מאפשר:
+
+• כניסה מוקדמת למסחר
+• auto trading מהיר יותר
+• יתרון על רוב הבוטים.
