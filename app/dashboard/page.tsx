@@ -31,6 +31,7 @@ export default function DashboardPage() {
     tradeCount24h: 0,
     available: false,
   });
+  const [alertQuota, setAlertQuota] = useState<{ used: number; limit: number; mode: string } | null>(null);
 
   const [settings, setSettings] = useState<any>({
     autoTrade: false,
@@ -98,6 +99,14 @@ export default function DashboardPage() {
         if (!res.ok) throw new Error('API unstable');
         const data = await res.json()
         setAlerts(Array.isArray(data) ? data : [])
+        const mode = res.headers.get('X-Alert-Mode') || 'vip';
+        const used = parseInt(res.headers.get('X-Alert-Used') || '0');
+        const limit = parseInt(res.headers.get('X-Alert-Limit') || '50');
+        if (mode !== 'vip') {
+          setAlertQuota({ used, limit, mode });
+        } else {
+          setAlertQuota(null);
+        }
       } catch {
         setAlerts([])
       } finally {

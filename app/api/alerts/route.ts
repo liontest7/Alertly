@@ -66,15 +66,31 @@ export async function GET(req: Request) {
     if (!userId) {
       const quotaApplied = applyGuestAlertQuota(cookieStore, formattedAlerts);
       payload = quotaApplied.alerts as typeof formattedAlerts;
-      responseHeaders["X-Guest-Alert-Limit"] = String(GUEST_DAILY_ALERT_LIMIT);
-      responseHeaders["X-Guest-Alert-Used"] = String(quotaApplied.state.used);
-      responseHeaders["X-Guest-Mode"] = "true";
+      responseHeaders["X-Alert-Limit"] = String(GUEST_DAILY_ALERT_LIMIT);
+      responseHeaders["X-Alert-Used"] = String(quotaApplied.state.used);
+      responseHeaders["X-Alert-Mode"] = "guest";
 
       const response = NextResponse.json(payload, { headers: responseHeaders });
       setGuestAlertState(response, quotaApplied.state);
       return response;
     }
 
+    const isVip = session?.user?.vipStatus === true;
+    if (!isVip) {
+      const quotaApplied = applyGuestAlertQuota(cookieStore, formattedAlerts);
+      payload = quotaApplied.alerts as typeof formattedAlerts;
+      responseHeaders["X-Alert-Limit"] = String(GUEST_DAILY_ALERT_LIMIT);
+      responseHeaders["X-Alert-Used"] = String(quotaApplied.state.used);
+      responseHeaders["X-Alert-Mode"] = "free";
+      responseHeaders["X-Vip-Status"] = "false";
+
+      const response = NextResponse.json(payload, { headers: responseHeaders });
+      setGuestAlertState(response, quotaApplied.state);
+      return response;
+    }
+
+    responseHeaders["X-Alert-Mode"] = "vip";
+    responseHeaders["X-Vip-Status"] = "true";
     return NextResponse.json(payload, { headers: responseHeaders });
   } catch (error) {
     console.error("Alerts API error:", error instanceof Error ? error.message : String(error));

@@ -294,7 +294,7 @@ async function enrichEventFromTransaction(event: BlockchainEvent): Promise<Block
 }
 
 const recentFingerprints = new Map<string, number>();
-const FINGERPRINT_COOLDOWN_MS = 60_000;
+const FINGERPRINT_COOLDOWN_MS = 600_000;
 
 function isCooldownActive(fingerprint: string): boolean {
   const last = recentFingerprints.get(fingerprint);
