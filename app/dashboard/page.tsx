@@ -151,12 +151,15 @@ export default function DashboardPage() {
 
   const streamRef = useRef<EventSource | null>(null);
 
+  // Settings + metrics: fetch once on mount, independent of SSE
   useEffect(() => {
     fetchSettings();
     fetchMetrics();
+    const metricsInterval = setInterval(fetchMetrics, 15000);
+    return () => clearInterval(metricsInterval);
+  }, []);
 
-    setLoading(true);
-
+  useEffect(() => {
     if (streamRef.current) {
       streamRef.current.close();
       streamRef.current = null;
@@ -262,12 +265,9 @@ export default function DashboardPage() {
       setLoading(false);
     }
 
-    const metricsInterval = setInterval(fetchMetrics, 15000);
-
     return () => {
       if (stream) stream.close();
       streamRef.current = null;
-      clearInterval(metricsInterval);
     }
   }, [user, alertsEnabled])
 

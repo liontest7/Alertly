@@ -1,6 +1,6 @@
 "use client"
 
-import { Zap, Settings, Copy, Check, Eye, EyeOff, Download, Upload, Trash2, Info, RefreshCw } from "lucide-react"
+import { Zap, Settings, Copy, Check, Eye, EyeOff, Download, Upload, Trash2, Info, RefreshCw, Send } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import type { BrowserWallet } from "@/lib/browser-wallet"
@@ -44,6 +44,12 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
   const [generating, setGenerating] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [showSend, setShowSend] = useState(false)
+  const [sendTo, setSendTo] = useState("")
+  const [sendAmount, setSendAmount] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [sendTxId, setSendTxId] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [importKeyInput, setImportKeyInput] = useState("")
   const [importError, setImportError] = useState<string | null>(null)
@@ -114,6 +120,26 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
     setBalance(null)
     setShowRemoveConfirm(false)
     window.dispatchEvent(new CustomEvent("alertly:wallet-changed", { detail: null }))
+  }
+
+  async function handleSend() {
+    if (!wallet || !sendTo.trim() || !sendAmount) return
+    setSending(true)
+    setSendError(null)
+    setSendTxId(null)
+    try {
+      const lib = await walletLib()
+      const txId = await lib.sendSol(wallet, sendTo.trim(), parseFloat(sendAmount))
+      setSendTxId(txId)
+      setSendTo("")
+      setSendAmount("")
+      // Refresh balance
+      setTimeout(() => fetchBalance(wallet.address), 3000)
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : "Transaction failed")
+    } finally {
+      setSending(false)
+    }
   }
 
   function copyKey() {
@@ -284,6 +310,70 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
               <Download className="w-3 h-3" /> Export
             </button>
           </div>
+
+          {/* Send / Withdraw */}
+          <button
+            onClick={() => { setShowSend(v => !v); setSendError(null); setSendTxId(null) }}
+            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-zinc-900 border border-zinc-700 hover:border-[#5100fd]/60 text-zinc-300 hover:text-white text-[10px] font-bold py-2 transition-all"
+          >
+            <Send className="w-3 h-3" /> {showSend ? "Cancel Send" : "Send / Withdraw SOL"}
+          </button>
+
+          {/* Send form */}
+          {showSend && (
+            <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-3 space-y-2">
+              <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Send SOL</p>
+              <input
+                type="text"
+                value={sendTo}
+                onChange={e => { setSendTo(e.target.value); setSendError(null); setSendTxId(null) }}
+                placeholder="Recipient address"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-[11px] font-mono text-white focus:border-[#5100fd] outline-none"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={sendAmount}
+                  onChange={e => { setSendAmount(e.target.value); setSendError(null); setSendTxId(null) }}
+                  placeholder="Amount (SOL)"
+                  min="0"
+                  step="0.001"
+                  className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-[11px] text-white focus:border-[#5100fd] outline-none"
+                />
+                {balance !== null && (
+                  <button
+                    onClick={() => setSendAmount(Math.max(0, balance - 0.001).toFixed(4))}
+                    className="text-[9px] font-bold text-[#5100fd] hover:text-white px-2 transition-colors whitespace-nowrap"
+                  >
+                    MAX
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={handleSend}
+                disabled={sending || !sendTo.trim() || !sendAmount || parseFloat(sendAmount) <= 0}
+                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-[#5100fd] hover:bg-[#6a1aff] disabled:opacity-50 text-white text-[11px] font-bold py-2 transition-all"
+              >
+                {sending ? "Sending…" : <><Send className="w-3 h-3" /> Send</>}
+              </button>
+              {sendError && (
+                <p className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{sendError}</p>
+              )}
+              {sendTxId && (
+                <div className="text-[10px] text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2 space-y-1">
+                  <p className="font-bold">Sent!</p>
+                  <a
+                    href={`https://solscan.io/tx/${sendTxId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono break-all underline hover:text-green-300"
+                  >
+                    View on Solscan ↗
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Private key reveal */}
           {showKey && (

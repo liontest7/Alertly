@@ -106,6 +106,41 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
   return wallet
 }
 
+export async function sendSol(wallet: BrowserWallet, toAddress: string, amountSol: number): Promise<string> {
+  if (amountSol <= 0) throw new Error("Amount must be greater than 0")
+
+  const { Connection, PublicKey, Transaction, SystemProgram, Keypair, LAMPORTS_PER_SOL } = await import("@solana/web3.js")
+
+  const secretKey = base64ToUint8(wallet.privateKey)
+  const keypair = Keypair.fromSecretKey(secretKey)
+
+  const rpcUrl =
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SOLANA_RPC_URL) ||
+    "https://api.mainnet-beta.solana.com"
+  const connection = new Connection(rpcUrl, "confirmed")
+
+  const lamports = Math.round(amountSol * LAMPORTS_PER_SOL)
+
+  let toPubkey: PublicKey
+  try {
+    toPubkey = new PublicKey(toAddress)
+  } catch {
+    throw new Error("Invalid recipient address")
+  }
+
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey, lamports })
+  )
+  transaction.recentBlockhash = blockhash
+  transaction.feePayer = keypair.publicKey
+  transaction.sign(keypair)
+
+  const txId = await connection.sendRawTransaction(transaction.serialize())
+  await connection.confirmTransaction({ signature: txId, blockhash, lastValidBlockHeight })
+  return txId
+}
+
 export async function getWalletBalanceSol(address: string): Promise<number> {
   try {
     const { Connection, PublicKey, LAMPORTS_PER_SOL } = await import("@solana/web3.js")
