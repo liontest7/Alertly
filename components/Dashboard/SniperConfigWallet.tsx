@@ -1,20 +1,7 @@
-import { Card } from "@/components/ui/card"
-import { Zap, Settings, Wallet, Key, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Zap, Settings, Key, ArrowDownCircle, ArrowUpCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-function MiniSetting({ label, value, color = "text-white", onClick }: { label: string, value: string, color?: string, onClick?: () => void }) {
-  return (
-    <div 
-      onClick={onClick}
-      className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all group cursor-pointer"
-    >
-      <p className="text-[9px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">{label}</p>
-      <p className={`text-sm font-black ${color}`}>{value}</p>
-    </div>
-  )
-}
 
 export function SniperConfigWallet({ settings, onToggle, user }: { settings: any, onToggle: () => void, user: any }) {
   const router = useRouter();
@@ -42,8 +29,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
       const data = await res.json();
       if (res.ok) setTradingWallet(data);
       else setWalletError(data?.message || "Failed to create wallet");
-    } catch (err) {
-      console.error(err);
+    } catch {
       setWalletError("Network error");
     } finally {
       setLoading(false);
@@ -68,8 +54,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
       } else {
         setWalletError(data?.message || "Failed to import wallet");
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       setWalletError("Network error");
     } finally {
       setLoading(false);
@@ -77,22 +62,22 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
   };
 
   return (
-    <div className="space-y-6 p-6 bg-zinc-950">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-5 p-5 bg-zinc-950">
+
+      {/* Header — title + icon-only settings + toggle, all on one line */}
+      <div className="flex items-center justify-between">
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-[#5100fd]" /> Sniper Configuration
         </h3>
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+        <div className="flex items-center gap-2.5">
+          <button
             onClick={() => router.push('/onboarding?page=trading')}
-            className="h-9 px-4 text-[10px] font-black text-white hover:bg-[#5100fd] uppercase tracking-widest bg-zinc-900 border border-zinc-800 rounded-lg shadow-lg transition-all"
+            title="Settings"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-[#5100fd] hover:border-[#5100fd] transition-all"
           >
-            <Settings className="w-3 h-3 mr-1.5" /> SETTINGS
-          </Button>
-          <button 
+            <Settings className="w-3.5 h-3.5 text-white" />
+          </button>
+          <button
             onClick={onToggle}
             className={`w-12 h-6 rounded-full flex items-center px-1 transition-all shadow-2xl ${settings.autoTrade ? 'bg-[#5100fd]' : 'bg-zinc-800'}`}
           >
@@ -101,39 +86,8 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
         </div>
       </div>
 
-      {/* Trading Parameters */}
-      <div>
-        <p className="text-[8px] text-zinc-500 uppercase font-black tracking-widest mb-3">Trading Parameters</p>
-        <div className="grid grid-cols-2 gap-2">
-          <MiniSetting label="Entry Size" value={`${settings.buyAmount} SOL`} onClick={() => router.push('/onboarding')} />
-          <MiniSetting label="Slippage" value={`${settings.slippage}%`} onClick={() => router.push('/onboarding')} />
-          <MiniSetting label="Stop Loss" value={`-${settings.stopLoss}%`} color="text-red-500" onClick={() => router.push('/onboarding')} />
-          <MiniSetting label="Take Profit" value={`+${settings.takeProfit}%`} color="text-green-500" onClick={() => router.push('/onboarding')} />
-        </div>
-      </div>
-
-      {/* Wallet Section */}
-      <div className="pt-4 border-t border-zinc-900 space-y-4">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-3.5 h-3.5 text-[#5100fd]" />
-          <h4 className="text-xs font-black text-white uppercase tracking-widest">Sniper Wallet</h4>
-        </div>
-
-        {/* Balance & PNL */}
-        {tradingWallet && (
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-zinc-900 rounded-lg p-3">
-              <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-1">Balance</p>
-              <p className="text-sm font-black text-white">0.0000 SOL</p>
-            </div>
-            <div className="bg-zinc-900 rounded-lg p-3">
-              <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-1">PNL (All-Time)</p>
-              <p className="text-sm font-black text-green-500">+0.00%</p>
-            </div>
-          </div>
-        )}
-
-        {/* Wallet Actions */}
+      {/* Wallet — always on top */}
+      <div className="space-y-2.5">
         {walletError && (
           <div className="text-[10px] text-red-400 bg-red-900/20 border border-red-500/20 rounded-lg p-2">
             {walletError}
@@ -143,19 +97,19 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
         {!tradingWallet ? (
           !showImport ? (
             <div className="space-y-2">
-              <p className="text-[11px] text-zinc-400 font-medium leading-relaxed">Generate or import your trading wallet</p>
-              <div className="space-y-2">
-                <Button 
+              <p className="text-[11px] text-zinc-400 font-medium">Generate or import your trading wallet</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
                   onClick={generateWallet}
                   disabled={loading}
-                  className="w-full bg-[#5100fd] hover:bg-[#6610ff] h-11 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#5100fd]/20"
+                  className="bg-[#5100fd] hover:bg-[#6610ff] h-10 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-lg shadow-[#5100fd]/20"
                 >
                   {loading ? 'GENERATING...' : 'CREATE WALLET'}
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setShowImport(true)}
-                  className="w-full border-zinc-800 bg-zinc-900 h-11 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-zinc-800"
+                  className="border-zinc-800 bg-zinc-900 h-10 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-zinc-800"
                 >
                   IMPORT KEY
                 </Button>
@@ -163,25 +117,23 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest opacity-70">Private Key</label>
-                <input 
-                  type="password"
-                  value={importKey}
-                  onChange={(e) => setImportKey(e.target.value)}
-                  placeholder="Paste private key here"
-                  className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-mono shadow-inner"
-                />
-              </div>
+              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Private Key</label>
+              <input
+                type="password"
+                value={importKey}
+                onChange={(e) => setImportKey(e.target.value)}
+                placeholder="Paste private key here"
+                className="w-full bg-black border border-zinc-800 rounded-lg p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-mono shadow-inner"
+              />
               <div className="flex gap-2">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={() => setShowImport(false)}
                   className="flex-1 border-zinc-800 bg-zinc-900 h-9 rounded-lg text-[9px] font-black uppercase"
                 >
                   BACK
                 </Button>
-                <Button 
+                <Button
                   onClick={handleImport}
                   disabled={loading || !importKey}
                   className="flex-[2] bg-[#5100fd] hover:bg-[#6610ff] h-9 rounded-lg text-[9px] font-black uppercase"
@@ -192,28 +144,36 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
             </div>
           )
         ) : (
-          <div className="space-y-3">
-            <div className="p-3 rounded-lg bg-black border border-zinc-800 space-y-1 shadow-inner">
-              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Address</p>
-              <p className="text-[10px] font-mono text-zinc-300 break-all select-all">{tradingWallet.address.substring(0, 20)}...</p>
+          <div className="space-y-2">
+            {/* Address */}
+            <div className="p-2.5 rounded-lg bg-black border border-zinc-800">
+              <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Address</p>
+              <p className="text-[10px] font-mono text-zinc-300 break-all">{tradingWallet.address}</p>
             </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="h-10 rounded-lg border-zinc-800 bg-zinc-900 text-[9px] font-black text-white hover:bg-zinc-800 flex items-center justify-center gap-1">
-                <ArrowDownCircle className="w-3 h-3 text-green-500" /> DEPOSIT
+
+            {/* Deposit / Withdraw / Key — all in one row */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <Button
+                variant="outline"
+                className="h-9 rounded-lg border-zinc-800 bg-zinc-900 text-[8px] font-black text-white hover:bg-zinc-800 flex items-center justify-center gap-1 uppercase"
+              >
+                <ArrowDownCircle className="w-3 h-3 text-green-500" /> Deposit
               </Button>
-              <Button variant="outline" className="h-10 rounded-lg border-zinc-800 bg-zinc-900 text-[9px] font-black text-white hover:bg-zinc-800 flex items-center justify-center gap-1">
-                <ArrowUpCircle className="w-3 h-3 text-[#5100fd]" /> WITHDRAW
+              <Button
+                variant="outline"
+                className="h-9 rounded-lg border-zinc-800 bg-zinc-900 text-[8px] font-black text-white hover:bg-zinc-800 flex items-center justify-center gap-1 uppercase"
+              >
+                <ArrowUpCircle className="w-3 h-3 text-[#5100fd]" /> Withdraw
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setShowKey(!showKey)}
+                className="h-9 rounded-lg border border-zinc-800 bg-zinc-900 text-[8px] font-black text-zinc-400 hover:text-white hover:bg-zinc-800 flex items-center justify-center gap-1 uppercase"
+              >
+                <Key className="w-3 h-3" /> Key
               </Button>
             </div>
 
-            <Button 
-              variant="ghost" 
-              onClick={() => setShowKey(!showKey)}
-              className="w-full h-9 text-[9px] font-black text-zinc-500 hover:text-white flex items-center justify-center gap-1.5 uppercase tracking-widest"
-            >
-              <Key className="w-3 h-3" /> {showKey ? 'HIDE' : 'SHOW'} KEY
-            </Button>
             {showKey && (
               <div className="p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
                 <p className="text-[8px] font-mono text-red-400 break-all select-all">
@@ -224,6 +184,45 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
           </div>
         )}
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-zinc-900" />
+
+      {/* Trading Parameters — 4 in one row */}
+      <div>
+        <p className="text-[8px] text-zinc-500 uppercase font-black tracking-widest mb-2">Trading Parameters</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          <div
+            onClick={() => router.push('/onboarding')}
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+          >
+            <p className="text-[7px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">Size</p>
+            <p className="text-xs font-black text-white">{settings.buyAmount}<span className="text-[8px] text-zinc-500 ml-0.5">SOL</span></p>
+          </div>
+          <div
+            onClick={() => router.push('/onboarding')}
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+          >
+            <p className="text-[7px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">Slip</p>
+            <p className="text-xs font-black text-white">{settings.slippage}<span className="text-[8px] text-zinc-500">%</span></p>
+          </div>
+          <div
+            onClick={() => router.push('/onboarding')}
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+          >
+            <p className="text-[7px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">SL</p>
+            <p className="text-xs font-black text-red-500">-{settings.stopLoss}<span className="text-[8px]">%</span></p>
+          </div>
+          <div
+            onClick={() => router.push('/onboarding')}
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+          >
+            <p className="text-[7px] text-zinc-400 uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">TP</p>
+            <p className="text-xs font-black text-green-500">+{settings.takeProfit}<span className="text-[8px]">%</span></p>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

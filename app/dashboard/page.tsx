@@ -22,8 +22,16 @@ export default function DashboardPage() {
     }
   }, [user, sessionLoading, router]);
 
-  const [alerts, setAlerts] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [alerts, setAlerts] = useState<any[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('alertly_alerts');
+      if (cached) return JSON.parse(cached).slice(0, MAX_LOCAL_ALERTS);
+    } catch {}
+    return [];
+  })
+  const [loading, setLoading] = useState(() => {
+    try { return !sessionStorage.getItem('alertly_alerts'); } catch { return true; }
+  })
   const [metrics, setMetrics] = useState({
     totalBalanceSol: 0,
     profit24hSol: 0,
@@ -115,13 +123,20 @@ export default function DashboardPage() {
     }
   };
 
+  useEffect(() => {
+    if (alerts.length > 0) {
+      try {
+        sessionStorage.setItem('alertly_alerts', JSON.stringify(alerts));
+      } catch {}
+    }
+  }, [alerts]);
+
   const streamRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
     fetchSettings();
     fetchMetrics();
 
-    setAlerts([]);
     setLoading(true);
 
     if (streamRef.current) {

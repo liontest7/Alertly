@@ -147,42 +147,42 @@ export function AlphaFeed({
     <div className="space-y-6">
       <Card className="bg-zinc-950 border-zinc-900 overflow-hidden shadow-2xl rounded-[2rem]">
         {/* Header */}
-        <div className="p-5 border-b border-zinc-900 flex flex-wrap justify-between items-center gap-3 bg-zinc-950/20">
+        <div className="px-6 py-4 border-b border-zinc-900 flex flex-wrap justify-between items-center gap-3 bg-zinc-950/20">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
+              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
             </div>
-            <h2 className="text-base font-black tracking-tight text-white uppercase italic">Live Alpha Feed</h2>
+            <h2 className="text-xl font-black tracking-tight text-white uppercase italic">Live Alpha Feed</h2>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-3 text-xs font-black text-zinc-400">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-3 text-sm font-black text-zinc-400">
               <span>Total: <span className="text-white">{loading && alerts.length === 0 ? '...' : alerts.length}</span></span>
-              <span>|</span>
+              <span className="text-zinc-700">|</span>
               <span>24h: <span className="text-[#5100fd]">{loading && alerts.length === 0 ? '...' : dailyAlerts}</span></span>
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2 rounded-lg hover:bg-zinc-900 transition text-zinc-400 hover:text-white"
+              className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-[#5100fd]/50 transition-all text-zinc-400 hover:text-white"
               title={soundEnabled ? "Disable sound" : "Enable sound"}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
             {user && onToggleAlerts && (
               <button
                 onClick={onToggleAlerts}
                 disabled={togglingAlerts}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
                   alertsEnabled
                     ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
                     : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400'
                 }`}
               >
                 {togglingAlerts ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : alertsEnabled ? (
-                  <Bell className="w-3.5 h-3.5" />
+                  <Bell className="w-4 h-4" />
                 ) : (
-                  <BellOff className="w-3.5 h-3.5" />
+                  <BellOff className="w-4 h-4" />
                 )}
                 {alertsEnabled !== false ? "Alerts ON" : "Alerts OFF"}
               </button>
@@ -191,7 +191,7 @@ export function AlphaFeed({
         </div>
 
         {/* Filter chips — always at top */}
-        <div className="flex flex-wrap gap-2 px-5 py-3 border-b border-zinc-900/60 bg-zinc-950/10">
+        <div className="flex flex-wrap gap-2.5 px-6 py-3.5 border-b border-zinc-900/60 bg-zinc-950/10">
           {FILTER_CHIPS.map(f => (
             <FilterChip 
               key={f.key}
