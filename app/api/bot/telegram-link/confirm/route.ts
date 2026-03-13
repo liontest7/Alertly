@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireEnv } from "@/lib/env";
+import { sendCurrentAlertsToNewUser } from "@/lib/notifications/telegram";
 
 const INTERNAL_API_KEY = requireEnv("INTERNAL_API_KEY", {
   allowInDev: true,
@@ -45,6 +46,8 @@ export async function POST(req: Request) {
     });
 
     await prisma.telegramLinkRequest.delete({ where: { token: String(token) } });
+
+    sendCurrentAlertsToNewUser(String(telegramId)).catch(() => null);
 
     return NextResponse.json({ linked: true }, { status: 200 });
   } catch (error) {

@@ -493,6 +493,8 @@ async function setupProgramSubscription() {
 
 const seenBoostFingerprints = new Set<string>();
 let boostPollerTimer: ReturnType<typeof setTimeout> | null = null;
+let boostFingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
+const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
 
 async function pollDexBoosts() {
   if (!listenerRunning) return;
@@ -541,6 +543,9 @@ export async function startBlockchainListener() {
     listenerStartedAt = Date.now();
     await setupProgramSubscription();
     pollDexBoosts().catch(() => null);
+    boostFingerprintResetTimer = setInterval(() => {
+      seenBoostFingerprints.clear();
+    }, BOOST_FINGERPRINT_RESET_MS);
     return { success: true, message: "Listener started" };
   } catch (error) {
     listenerRunning = false;
@@ -574,6 +579,11 @@ export async function stopBlockchainListener() {
   if (boostPollerTimer) {
     clearTimeout(boostPollerTimer);
     boostPollerTimer = null;
+  }
+
+  if (boostFingerprintResetTimer) {
+    clearInterval(boostFingerprintResetTimer);
+    boostFingerprintResetTimer = null;
   }
 
   return { success: true, message: "Listener stopped" };

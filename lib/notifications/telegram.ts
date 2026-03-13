@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getAlerts } from "@/lib/alert-store";
 
 export type AlertBroadcastPayload = {
   address: string;
@@ -79,6 +80,40 @@ async function sendTelegramMessage(telegramId: string, text: string) {
       disable_web_page_preview: false,
     }),
   }).catch(() => null);
+}
+
+export async function sendCurrentAlertsToNewUser(telegramId: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+
+  const all = getAlerts();
+  const dexBoosts = all.filter((a) => a.type === "DEX_BOOST" || a.type === "DEX_LISTING");
+  if (dexBoosts.length === 0) return;
+
+  const toSend = dexBoosts.slice(0, 8);
+
+  await sendTelegramMessage(
+    telegramId,
+    `✅ *Alertly linked!* Here are ${toSend.length} active DEX alerts right now:`,
+  );
+
+  for (const alert of toSend) {
+    await sendTelegramMessage(
+      telegramId,
+      buildTelegramMessage({
+        address: alert.address,
+        pairAddress: alert.pairAddress,
+        type: alert.type,
+        name: alert.name,
+        symbol: alert.symbol || undefined,
+        mc: alert.mc,
+        liquidity: alert.liquidity,
+        vol: alert.vol,
+        alertedAt: alert.alertedAt,
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 120));
+  }
 }
 
 export async function broadcastAlertToTelegram(alert: AlertBroadcastPayload) {

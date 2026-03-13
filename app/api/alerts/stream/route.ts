@@ -77,8 +77,13 @@ export async function GET(req: Request) {
         }
       };
 
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
       const onNewAlert = () => {
-        sendAlerts();
+        if (closed) return;
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          sendAlerts();
+        }, 300);
       };
 
       alertEmitter.on("alert", onNewAlert);
@@ -91,6 +96,7 @@ export async function GET(req: Request) {
       req.signal.addEventListener("abort", () => {
         closed = true;
         clearInterval(heartbeat);
+        if (debounceTimer) clearTimeout(debounceTimer);
         alertEmitter.off("alert", onNewAlert);
         try {
           controller.close();
