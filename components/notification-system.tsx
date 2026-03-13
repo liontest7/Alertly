@@ -38,9 +38,12 @@ export function NotificationSystem() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthSession();
-  const lastFingerprintRef = useRef<string | null>(null);
+
   const startTimeRef = useRef<number>(Date.now());
   const initializedRef = useRef(false);
+  const notifiedTokensRef = useRef<Set<string>>(new Set());
+  const lastFingerprintRef = useRef<string | null>(null);
+
   const [notification, setNotification] = useState<AlertNotification | null>(null);
 
   useEffect(() => {
@@ -57,23 +60,36 @@ export function NotificationSystem() {
         const latest = Array.isArray(data) ? data[0] : null;
         if (!latest) return;
 
-        const fingerprint = latest.fingerprint || `${latest.address}:${latest.type}`;
+        const fingerprint: string = latest.fingerprint || `${latest.address}:${latest.type}`;
 
         if (!initializedRef.current) {
           lastFingerprintRef.current = fingerprint;
           initializedRef.current = true;
+          const tokenKey = `${latest.address}:${latest.type}`;
+          notifiedTokensRef.current.add(tokenKey);
           return;
         }
 
         if (fingerprint === lastFingerprintRef.current) return;
+        lastFingerprintRef.current = fingerprint;
 
         const alertedAt = latest.alertedAt ? new Date(latest.alertedAt).getTime() : 0;
-        if (alertedAt > 0 && alertedAt < startTimeRef.current) {
-          lastFingerprintRef.current = fingerprint;
-          return;
-        }
+        if (alertedAt === 0 || alertedAt < startTimeRef.current) return;
 
-        lastFingerprintRef.current = fingerprint;
+        const tokenKey = `${latest.address}:${latest.type}`;
+        if (notifiedTokensRef.current.has(tokenKey)) return;
+        notifiedTokensRef.current.add(tokenKey);
+
+        if (latest.name === "Loading..." || !latest.name) {
+          await new Promise((r) => setTimeout(r, 2500));
+          const res2 = await fetch("/api/alerts");
+          if (!res2.ok) return;
+          const data2 = await res2.json();
+          const refreshed = Array.isArray(data2) ? data2.find((a: any) => a.address === latest.address) : null;
+          if (refreshed && refreshed.name && refreshed.name !== "Loading...") {
+            Object.assign(latest, refreshed);
+          }
+        }
 
         const isOnDashboard = pathname === "/dashboard";
         if (!isOnDashboard) {
@@ -81,7 +97,7 @@ export function NotificationSystem() {
           setNotification({
             fingerprint,
             title: `New ${latest.type || "Alert"}`,
-            message: `${latest.name || ""} (${latest.symbol || ""}) — MC: ${latest.mc || "-"} | Liq: ${latest.liquidity || "-"}`,
+            message: `${latest.name || ""} ${latest.symbol ? `($${latest.symbol})` : ""} — MC: ${latest.mc || "-"} | Liq: ${latest.liquidity || "-"}`,
             address: latest.address || "",
           });
           setTimeout(() => setNotification(null), 8000);
@@ -107,20 +123,14 @@ export function NotificationSystem() {
           <p className="text-white text-sm mt-1 truncate">{notification.message}</p>
           <div className="flex gap-2 mt-3">
             <button
-              onClick={() => {
-                router.push("/dashboard");
-                setNotification(null);
-              }}
+              onClick={() => { router.push("/dashboard"); setNotification(null); }}
               className="bg-[#5100fd] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#5100fd]/80 transition-colors"
             >
               View Alerts
             </button>
             {notification.address && (
               <button
-                onClick={() => {
-                  router.push(`/token/${notification.address}`);
-                  setNotification(null);
-                }}
+                onClick={() => { router.push(`/token/${notification.address}`); setNotification(null); }}
                 className="bg-zinc-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-zinc-700 transition-colors"
               >
                 View Token
@@ -128,10 +138,7 @@ export function NotificationSystem() {
             )}
           </div>
         </div>
-        <button
-          onClick={() => setNotification(null)}
-          className="text-zinc-500 hover:text-white flex-shrink-0"
-        >
+        <button onClick={() => setNotification(null)} className="text-zinc-500 hover:text-white flex-shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
