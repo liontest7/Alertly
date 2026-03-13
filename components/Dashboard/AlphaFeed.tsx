@@ -148,8 +148,8 @@ export function AlphaFeed({
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="bg-zinc-950 border-zinc-900 overflow-hidden shadow-2xl rounded-[2rem]">
+    <div className="flex-1 flex flex-col min-h-0">
+      <Card className="bg-zinc-950 border-zinc-900 overflow-hidden shadow-2xl rounded-[2rem] flex-1 flex flex-col min-h-0">
         {/* Header + Filters — single row */}
         <div className="px-6 py-4 border-b border-zinc-900 flex flex-wrap items-center gap-3 bg-zinc-950/20">
           {/* Live dot + title */}
@@ -222,7 +222,7 @@ export function AlphaFeed({
           </div>
         </div>
         
-        <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - 148px)' }}>
+        <div className="flex-1 overflow-y-auto scrollbar-hide min-h-0">
           {loading && alerts.length === 0 ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-[#5100fd] mx-auto mb-4" />

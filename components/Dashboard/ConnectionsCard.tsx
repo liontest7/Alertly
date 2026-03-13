@@ -67,9 +67,9 @@ export function ConnectionsCard() {
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border ${
             extensionSynced
               ? 'bg-green-500/10 border-green-500/30'
-              : 'bg-zinc-800 border-zinc-700'
+              : 'bg-[#5100fd]/10 border-[#5100fd]/25'
           }`}>
-            <Puzzle className={`w-4.5 h-4.5 ${extensionSynced ? 'text-green-400' : 'text-zinc-400'}`} style={{ width: 18, height: 18 }} />
+            <Puzzle className={`w-4.5 h-4.5 ${extensionSynced ? 'text-green-400' : 'text-[#5100fd]'}`} style={{ width: 18, height: 18 }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-black text-white uppercase tracking-widest">Browser Extension</p>
@@ -85,12 +85,8 @@ export function ConnectionsCard() {
           telegramLinked ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-800'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border ${
-              telegramLinked
-                ? 'bg-[#229ED9]/10 border-[#229ED9]/30'
-                : 'bg-zinc-800 border-zinc-700'
-            }`}>
-              <TelegramIcon className={`w-[18px] h-[18px] ${telegramLinked ? 'text-[#229ED9]' : 'text-zinc-400'}`} />
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 border bg-[#229ED9]/10 border-[#229ED9]/30">
+              <TelegramIcon className="w-[18px] h-[18px] text-[#229ED9]" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-black text-white uppercase tracking-widest">Telegram Bot</p>

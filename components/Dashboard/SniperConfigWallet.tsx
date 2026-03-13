@@ -194,31 +194,35 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
         <div className="grid grid-cols-4 gap-1.5">
           <div
             onClick={() => router.push('/onboarding')}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all cursor-pointer group flex flex-col items-center text-center"
           >
-            <p className="text-[8px] text-white uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">Size</p>
-            <p className="text-xs font-black text-white">{settings.buyAmount}<span className="text-[8px] text-zinc-400 ml-0.5">SOL</span></p>
+            <p className="text-[10px] text-zinc-400 uppercase font-black mb-1.5 tracking-widest group-hover:text-[#5100fd] transition-colors">Size</p>
+            <p className="text-sm font-black text-white leading-none">{settings.buyAmount}</p>
+            <p className="text-[10px] text-zinc-400 font-black mt-0.5">SOL</p>
           </div>
           <div
             onClick={() => router.push('/onboarding')}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all cursor-pointer group flex flex-col items-center text-center"
           >
-            <p className="text-[8px] text-white uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">Slip</p>
-            <p className="text-xs font-black text-white">{settings.slippage}<span className="text-[8px] text-zinc-400">%</span></p>
+            <p className="text-[10px] text-zinc-400 uppercase font-black mb-1.5 tracking-widest group-hover:text-[#5100fd] transition-colors">Slip</p>
+            <p className="text-sm font-black text-white leading-none">{settings.slippage}</p>
+            <p className="text-[10px] text-zinc-400 font-black mt-0.5">%</p>
           </div>
           <div
             onClick={() => router.push('/onboarding')}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all cursor-pointer group flex flex-col items-center text-center"
           >
-            <p className="text-[8px] text-white uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">SL</p>
-            <p className="text-xs font-black text-red-500">-{settings.stopLoss}<span className="text-[8px]">%</span></p>
+            <p className="text-[10px] text-zinc-400 uppercase font-black mb-1.5 tracking-widest group-hover:text-[#5100fd] transition-colors">SL</p>
+            <p className="text-sm font-black text-red-500 leading-none">-{settings.stopLoss}</p>
+            <p className="text-[10px] text-red-500 font-black mt-0.5">%</p>
           </div>
           <div
             onClick={() => router.push('/onboarding')}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 hover:border-[#5100fd]/50 transition-all cursor-pointer group"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all cursor-pointer group flex flex-col items-center text-center"
           >
-            <p className="text-[8px] text-white uppercase font-black mb-1 tracking-widest group-hover:text-[#5100fd] transition-colors">TP</p>
-            <p className="text-xs font-black text-green-500">+{settings.takeProfit}<span className="text-[8px]">%</span></p>
+            <p className="text-[10px] text-zinc-400 uppercase font-black mb-1.5 tracking-widest group-hover:text-[#5100fd] transition-colors">TP</p>
+            <p className="text-sm font-black text-green-500 leading-none">+{settings.takeProfit}</p>
+            <p className="text-[10px] text-green-500 font-black mt-0.5">%</p>
           </div>
         </div>
       </div>

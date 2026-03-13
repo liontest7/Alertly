@@ -288,7 +288,7 @@ export default function DashboardPage() {
 
           <div className="flex-1 space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-8 space-y-6">
+              <div className="lg:col-span-8 flex flex-col">
                 <AlphaFeed
                   alerts={alertsEnabled !== false ? alerts : []}
                   loading={loading}
