@@ -34,6 +34,7 @@ async function processTokenAlert(
   type: AlertKind,
   dex: string,
   alertedAt: Date,
+  boostAmount?: number,
 ) {
   if (!isPotentialPublicKey(addr)) return;
 
@@ -68,6 +69,7 @@ async function processTokenAlert(
     website: null as string | null,
     twitter: null as string | null,
     telegram: null as string | null,
+    boostAmount,
     dex,
   };
 
@@ -135,14 +137,14 @@ async function pollDexBoostsTop() {
       seenBoostFingerprints.add(fingerprint);
 
       const totalAmount = boost.totalAmount ?? boost.amount;
-      newBoosts.push({ addr, reason: `Top boost${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i });
+      newBoosts.push({ addr, reason: `Top boost${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i, boostAmount: totalAmount ? Number(totalAmount) : undefined });
     }
 
     const now = Date.now();
     for (let j = newBoosts.length - 1; j >= 0; j--) {
-      const { addr, reason } = newBoosts[j];
+      const { addr, boostAmount } = newBoosts[j];
       const alertedAt = new Date(now - j * 1000);
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt).catch(() => null);
+      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount).catch(() => null);
     }
   } catch {
   } finally {
@@ -177,14 +179,14 @@ async function pollDexBoostsLatest() {
       seenBoostFingerprints.add(fingerprint);
 
       const totalAmount = boost.totalAmount ?? boost.amount;
-      newBoosts.push({ addr, reason: `New boost payment${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i });
+      newBoosts.push({ addr, reason: `New boost payment${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i, boostAmount: totalAmount ? Number(totalAmount) : undefined });
     }
 
     const now = Date.now();
     for (let j = newBoosts.length - 1; j >= 0; j--) {
-      const { addr, reason } = newBoosts[j];
+      const { addr, boostAmount } = newBoosts[j];
       const alertedAt = new Date(now - j * 1000);
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt).catch(() => null);
+      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount).catch(() => null);
     }
   } catch {
   }

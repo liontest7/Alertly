@@ -205,7 +205,7 @@ export function AlphaFeed({
           </div>
         </div>
         
-        <div className="max-h-[620px] overflow-y-auto divide-y divide-zinc-900/50 scrollbar-hide">
+        <div className="overflow-y-auto divide-y divide-zinc-900/50 scrollbar-hide" style={{ maxHeight: 'calc(100vh - 220px)' }}>
           {loading && alerts.length === 0 ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-[#5100fd] mx-auto mb-4" />
@@ -229,49 +229,61 @@ export function AlphaFeed({
             const displaySecondary = symbol && name && name !== symbol ? name : null;
             const normalizedType = normalizeType(token.type);
             const typeColor = TYPE_COLORS[normalizedType] || TYPE_COLORS[(token.type || "").toUpperCase()] || "bg-zinc-800 text-white";
+            const isBoost = normalizedType === "DEX BOOST";
 
             return (
-              <div key={`${token.address}-${i}`} className="group p-5 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
+              <div
+                key={`${token.fingerprint || token.address}-${i}`}
+                onClick={() => token.address && router.push(`/token/${token.address}`)}
+                className="group p-5 hover:bg-[#5100fd]/[0.04] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer"
+              >
                 {/* Token Logo */}
-                <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs font-bold text-white shadow-lg overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0 relative" style={{ width: 52, height: 52 }}>
+                <div className="min-w-[52px] min-h-[52px] rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0 relative" style={{ width: 52, height: 52 }}>
                   <span className="absolute inset-0 flex items-center justify-center text-xl font-black text-[#5100fd]">
                     {isLoading ? "·" : (displayPrimary)?.[0]?.toUpperCase() || "?"}
                   </span>
                   {token.imageUrl && (
-                    <img 
-                      src={token.imageUrl} 
-                      alt={displayPrimary} 
+                    <img
+                      src={token.imageUrl}
+                      alt={displayPrimary}
                       className="absolute inset-0 w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).remove(); }} 
+                      onError={(e) => { (e.target as HTMLImageElement).remove(); }}
                     />
                   )}
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  {/* Row 1: name + type badge + boost amount + time */}
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <div className="flex items-baseline gap-2 min-w-0">
                       {isLoading ? (
                         <span className="inline-block h-5 w-24 rounded bg-zinc-800 animate-pulse" />
                       ) : (
                         <>
-                          <span className="text-lg font-black text-white truncate tracking-tight">
-                            {displayPrimary}
-                          </span>
-                          {displaySecondary && (
-                            <span className="text-xs text-zinc-500 truncate">{displaySecondary}</span>
-                          )}
+                          <span className="text-lg font-black text-white truncate tracking-tight">{displayPrimary}</span>
+                          {displaySecondary && <span className="text-xs text-zinc-500 truncate">{displaySecondary}</span>}
                         </>
                       )}
                     </div>
+
+                    {/* Type badge */}
                     <span className={`text-[11px] px-2.5 py-0.5 rounded-md font-black uppercase tracking-tight shadow-sm whitespace-nowrap ${typeColor}`}>
                       {normalizedType}
                     </span>
+
+                    {/* Boost amount badge */}
+                    {isBoost && token.boostAmount != null && (
+                      <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-black bg-[#5100fd]/10 border border-[#5100fd]/30 text-[#5100fd] whitespace-nowrap">
+                        ⚡ {token.boostAmount.toLocaleString()} units
+                      </span>
+                    )}
+
                     <span className="text-xs text-zinc-500 font-black whitespace-nowrap tracking-widest ml-auto">
                       {token.alertedAt ? new Date(token.alertedAt).toLocaleTimeString() : "Live"}
                     </span>
                   </div>
 
-                  {/* Token Metrics — larger text */}
+                  {/* Row 2: metrics */}
                   <div className="flex items-center gap-4 text-xs flex-wrap mb-1">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">MC</span>
@@ -298,28 +310,21 @@ export function AlphaFeed({
                       <span className="text-xs text-zinc-500 font-mono">{shortAddr(token.address)}</span>
                     </div>
                   </div>
-
-                  {/* Boost reason */}
-                  {normalizedType === "DEX BOOST" && token.dex && (
-                    <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
-                      <span className="text-[#5100fd] font-black">⚡</span>
-                      <span>{token.dex}</span>
-                    </div>
-                  )}
                 </div>
 
+                {/* Change % + external link */}
                 <div className="text-right hidden md:flex flex-col items-end flex-shrink-0 gap-1">
                   <span className={`text-lg font-black block leading-none ${
-                    token.change?.startsWith("+") ? 'text-green-500' : 
+                    token.change?.startsWith("+") ? 'text-green-500' :
                     token.change?.startsWith("-") ? 'text-red-500' : 'text-zinc-500'
                   }`}>
                     {token.change || "—"}
                   </span>
                   <span className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">24H</span>
                   {token.dexUrl && (
-                    <a 
-                      href={token.dexUrl} 
-                      target="_blank" 
+                    <a
+                      href={token.dexUrl}
+                      target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
                       className="text-[10px] text-zinc-600 hover:text-[#5100fd] transition-colors mt-0.5"
@@ -328,9 +333,10 @@ export function AlphaFeed({
                     </a>
                   )}
                 </div>
-              
+
+                {/* Actions */}
                 <div className="flex gap-2 flex-shrink-0">
-                  <Button 
+                  <Button
                     size="lg"
                     onClick={(e) => { e.stopPropagation(); handleQuickBuy(token); }}
                     disabled={executing === token.address}

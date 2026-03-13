@@ -23,6 +23,7 @@ export interface StoredAlert {
   twitter?: string;
   telegram?: string;
   boostLevel?: string;
+  boostAmount?: number;
   dex?: string;
 }
 
