@@ -1,6 +1,7 @@
 const DEFAULT_ALERTLY_BASE_URL = "http://localhost:10000";
 const ALERTLY_BASE_URL_STORAGE_KEY = "alertlyBaseUrl";
 const LAST_ALERT_STORAGE_KEY = "lastAlertFingerprint";
+const SESSION_ALERTS_KEY = "sessionAlerts";
 
 type AlertItem = {
   address?: string;
@@ -35,7 +36,7 @@ function getBaseUrl(): Promise<string> {
 
 function getLastFingerprint(): Promise<string | null> {
   return new Promise((resolve) => {
-    chrome.storage.local.get([LAST_ALERT_STORAGE_KEY], (result) => {
+    chrome.storage.session.get([LAST_ALERT_STORAGE_KEY], (result) => {
       const value = result?.[LAST_ALERT_STORAGE_KEY];
       resolve(typeof value === "string" ? value : null);
     });
@@ -44,7 +45,13 @@ function getLastFingerprint(): Promise<string | null> {
 
 function setLastFingerprint(fingerprint: string): Promise<void> {
   return new Promise((resolve) => {
-    chrome.storage.local.set({ [LAST_ALERT_STORAGE_KEY]: fingerprint }, () => resolve());
+    chrome.storage.session.set({ [LAST_ALERT_STORAGE_KEY]: fingerprint }, () => resolve());
+  });
+}
+
+function saveSessionAlerts(alerts: AlertItem[]): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.session.set({ [SESSION_ALERTS_KEY]: alerts }, () => resolve());
   });
 }
 
@@ -83,13 +90,20 @@ async function checkAlerts() {
     const canUseFeed = syncData?.authenticated || syncData?.guestEnabled;
     if (!canUseFeed) return;
 
+    if (syncData?.alertsEnabled === false) return;
+
     const alertsRes = await fetch(`${baseUrl}/api/alerts`, {
       credentials: "include",
     });
 
     if (!alertsRes.ok) return;
     const alerts = await alertsRes.json();
-    if (!Array.isArray(alerts) || alerts.length === 0) return;
+    if (!Array.isArray(alerts) || alerts.length === 0) {
+      await saveSessionAlerts([]);
+      return;
+    }
+
+    await saveSessionAlerts(alerts);
 
     const latest = alerts[0] as AlertItem;
     const fingerprint = createFingerprint(latest);

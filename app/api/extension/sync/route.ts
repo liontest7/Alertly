@@ -36,6 +36,7 @@ export async function GET(req: Request) {
       {
         authenticated: true,
         guestEnabled: false,
+        alertsEnabled: user?.settings?.alertsEnabled !== false,
         sync: {
           provider: "render",
           syncedAt: new Date().toISOString(),

@@ -38,6 +38,7 @@ function sanitizeUpdate(input: Record<string, unknown>) {
   if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
   if (typeof input.selectedBoostLevel === "string") output.selectedBoostLevel = input.selectedBoostLevel;
   if (Array.isArray(input.sources)) output.sources = input.sources.filter((v) => typeof v === "string");
+  if (typeof input.alertsEnabled === "boolean") output.alertsEnabled = input.alertsEnabled;
   return output;
 }
 

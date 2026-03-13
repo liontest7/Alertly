@@ -48,6 +48,9 @@ const Popup = () => {
   const [loading, setLoading] = React.useState(true);
   const [baseUrl, setBaseUrl] = React.useState(DEFAULT_ALERTLY_BASE_URL);
   const [streamStatus, setStreamStatus] = React.useState<"live" | "connecting" | "offline">("offline");
+  const [alertsEnabled, setAlertsEnabled] = React.useState(true);
+  const [togglingAlerts, setTogglingAlerts] = React.useState(false);
+  const resolvedBaseUrlRef = React.useRef(DEFAULT_ALERTLY_BASE_URL);
 
   React.useEffect(() => {
     let mounted = true;
@@ -58,6 +61,7 @@ const Popup = () => {
         const resolvedBaseUrl = await getStoredBaseUrl();
         if (!mounted) return;
         setBaseUrl(resolvedBaseUrl);
+        resolvedBaseUrlRef.current = resolvedBaseUrl;
 
         const syncRes = await fetch(`${resolvedBaseUrl}/api/extension/sync`, {
           credentials: "include",
@@ -74,20 +78,18 @@ const Popup = () => {
         }
 
         setAuthenticated(true);
+        const enabled = sync?.alertsEnabled !== false;
+        setAlertsEnabled(enabled);
 
-        const alertRes = await fetch(`${resolvedBaseUrl}/api/alerts`, {
-          credentials: "include",
-        });
-
-        if (alertRes.ok) {
-          const data = await alertRes.json();
-          if (mounted) {
-            setAlerts(Array.isArray(data) ? data : []);
-          }
+        if (!enabled) {
+          setAlerts([]);
+          setStreamStatus("offline");
+          return;
         }
 
         setStreamStatus("connecting");
         stream = new EventSource(`${resolvedBaseUrl}/api/alerts/stream`, { withCredentials: true });
+
         stream.addEventListener("alerts", (event) => {
           try {
             const payload = JSON.parse((event as MessageEvent).data);
@@ -102,6 +104,14 @@ const Popup = () => {
 
         stream.addEventListener("heartbeat", () => {
           if (mounted) setStreamStatus("live");
+        });
+
+        stream.addEventListener("paused", () => {
+          if (mounted) {
+            setAlerts([]);
+            setAlertsEnabled(false);
+            setStreamStatus("offline");
+          }
         });
 
         stream.onerror = () => {
@@ -127,15 +137,58 @@ const Popup = () => {
     };
   }, []);
 
+  const handleToggleAlerts = async () => {
+    if (!authenticated) return;
+    setTogglingAlerts(true);
+    try {
+      const newEnabled = !alertsEnabled;
+      const res = await fetch(`${resolvedBaseUrlRef.current}/api/settings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ alertsEnabled: newEnabled }),
+      });
+      if (res.ok) {
+        setAlertsEnabled(newEnabled);
+        if (!newEnabled) setAlerts([]);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setTogglingAlerts(false);
+    }
+  };
+
   return (
     <div style={{ width: 340, padding: 16, backgroundColor: "#050505", color: "#fff", fontFamily: "Inter, sans-serif" }}>
       <h1 style={{ fontSize: 18, margin: 0, marginBottom: 6, color: "#8b5cf6" }}>Alertly Command Feed</h1>
       <p style={{ margin: 0, marginBottom: 8, color: "#9ca3af", fontSize: 12 }}>
         Real-time Solana signals synced with your dashboard profile.
       </p>
-      <p style={{ margin: 0, marginBottom: 12, color: streamStatus === "live" ? "#22c55e" : streamStatus === "connecting" ? "#f59e0b" : "#ef4444", fontSize: 11 }}>
-        Stream: {streamStatus === "live" ? "LIVE" : streamStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
-      </p>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <p style={{ margin: 0, color: streamStatus === "live" ? "#22c55e" : streamStatus === "connecting" ? "#f59e0b" : "#ef4444", fontSize: 11 }}>
+          Stream: {streamStatus === "live" ? "LIVE" : streamStatus === "connecting" ? "CONNECTING" : "OFFLINE"}
+        </p>
+        {authenticated && (
+          <button
+            onClick={handleToggleAlerts}
+            disabled={togglingAlerts}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 8,
+              border: alertsEnabled ? "1px solid #22c55e" : "1px solid #ef4444",
+              backgroundColor: alertsEnabled ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+              color: alertsEnabled ? "#22c55e" : "#ef4444",
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: togglingAlerts ? "wait" : "pointer",
+            }}
+          >
+            {togglingAlerts ? "..." : alertsEnabled ? "⏸ Pause Alerts" : "▶ Resume Alerts"}
+          </button>
+        )}
+      </div>
 
       <div style={{ ...cardStyle, marginBottom: 10 }}>
         <label style={{ display: "block", fontSize: 11, color: "#9ca3af", marginBottom: 6 }}>Dashboard URL</label>
@@ -167,6 +220,10 @@ const Popup = () => {
           <p style={{ margin: 0, color: "#d1d5db", fontSize: 12 }}>
             Guest mode is available. Log in to unlock full sync and VIP features.
           </p>
+        </div>
+      ) : !alertsEnabled ? (
+        <div style={cardStyle}>
+          <p style={{ margin: 0, color: "#9ca3af", fontSize: 12 }}>⏸ Alerts are paused. Click "Resume Alerts" to start receiving signals.</p>
         </div>
       ) : alerts.length === 0 ? (
         <div style={cardStyle}>

@@ -14,6 +14,8 @@ if (!apiBaseUrl) {
 }
 const internalApiKey = process.env.INTERNAL_API_KEY || process.env.ALERTLY_INTERNAL_API_KEY || "dev-internal-api-key";
 
+const DAILY_ALERT_LIMIT = 50;
+
 const DEFAULT_USER_SETTINGS = {
   id: "default",
   userId: "guest",
@@ -37,6 +39,9 @@ const DEFAULT_USER_SETTINGS = {
   dexListingEnabled: true,
   sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
   selectedBoostLevel: "all",
+  alertsEnabled: true,
+  isPremium: false,
+  dailyAlertCount: 0,
 };
 
 const bot = new TelegramBot(token, { polling: true });
@@ -61,6 +66,7 @@ const mainMenu = {
         { text: "⏱️ Auto-Sell (m)", callback_data: "set_autosell" },
       ],
       [{ text: "-- Alerts --", callback_data: "none" }],
+      [{ text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" }],
       [
         { text: "🔊 Vol Spike", callback_data: "toggle_vol" },
         { text: "🐋 Whale", callback_data: "toggle_whale" },
@@ -152,8 +158,13 @@ const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) 
 
     const whaleMinSol = s.whaleMinSolBalance ?? s.whaleMinSol ?? 500;
     const volThreshold = s.volumeSpikeThreshold || 50;
+    const alertsStatus = s.alertsEnabled !== false ? "▶️ Active" : "⏸️ Paused";
+    const planLabel = s.isPremium ? "⭐ VIP" : `🆓 Free (${s.dailyAlertCount || 0}/${DAILY_ALERT_LIMIT} today)`;
 
     return `⚙️ *Alertly Control Center*${unlinkedNotice}
+*Plan:* ${planLabel}
+*Alerts:* ${alertsStatus}
+
 *Trading Configuration*
 💰 Buy Amount: ${s.buyAmount} SOL
 🚀 Max Buy/Token: ${s.maxBuyPerToken} SOL
@@ -257,7 +268,11 @@ bot.on("callback_query", async (query) => {
     let update: Record<string, any> = {};
     let answer = "";
 
-    if (data === "toggle_auto") {
+    if (data === "toggle_alerts") {
+      const newEnabled = s.alertsEnabled === false ? true : false;
+      update = { alertsEnabled: newEnabled };
+      answer = newEnabled ? "▶️ Alerts resumed" : "⏸️ Alerts paused";
+    } else if (data === "toggle_auto") {
       update = { autoTrade: !s.autoTrade };
       answer = `Auto-Trade ${!s.autoTrade ? "ON" : "OFF"}`;
     } else if (data === "toggle_ts") {

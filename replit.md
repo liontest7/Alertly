@@ -5,7 +5,37 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 13, 2026) — Full Production Fixes
+## Latest Changes (March 13, 2026) — Real-Time Only + Alerts Control
+
+### Real-Time Only Architecture
+- **SSE Stream**: No longer sends existing buffer on connection — users start fresh and receive only new alerts from the moment they connect
+- **Dashboard**: Starts with empty list, populates only via SSE (no initial API fetch from buffer), polling removed
+- **Alert buffer in memory**: Still used for Telegram broadcast (real-time push), not served to dashboard on connect
+
+### Alerts ON/OFF Toggle (all platforms)
+- **Dashboard**: Added "Alerts ON/OFF" button at top of dashboard, synced to DB
+- **Telegram Bot**: Added ⏸️ Pause / ▶️ Resume Alerts button in /settings menu
+- **Chrome Extension**: Added pause/resume toggle in popup window
+- **SSE**: Returns `paused` event when user has alerts disabled instead of alert stream
+
+### VIP vs. Free Package System
+- **Daily alert limit**: Free users capped at 50 alerts/day via `dailyAlertCount` + `lastAlertReset`
+- **Telegram**: Checks `alertsEnabled` AND daily quota before every message send
+- **Auto-reset**: Daily count resets automatically when 24h pass since last reset
+- **isPremium users**: No daily cap, unlimited alerts
+
+### Chrome Extension Improvements
+- Changed from `chrome.storage.local` to `chrome.storage.session` for alert fingerprint (clears when browser closes)
+- Session alerts stored in `chrome.storage.session` (no persistence after session)
+- Settings (URL) remain in `chrome.storage.sync` for persistence
+
+### API Updates
+- `/api/settings` (GET + POST): Added `alertsEnabled` field support
+- `/api/extension/sync`: Now returns `alertsEnabled` field for extension to check
+- `/api/bot/settings`: Added `alertsEnabled` to allowed update fields
+- `/api/alerts/stream`: Returns `paused` SSE event when user has alerts disabled
+
+## Previous Changes (March 13, 2026) — Full Production Fixes
 - **DEX BOOST detection**: Replaced broken wallet-list approach with real DexScreener Boost API (`/token-boosts/top/v1`), polls every 45 seconds — DEX BOOST alerts now actually fire with real boosted token data
 - **DEX LISTING detection**: Added log-pattern detection for Raydium pool initialization and Pump.fun token creation in `parseLogsForEvents`
 - **Volume Spike threshold**: Lowered global threshold from 50% to 10% — now catches far more real spikes; each alert stores `spikePercent` value

@@ -33,6 +33,7 @@ type SettingsPayload = {
   dexListingEnabled?: boolean;
   sources?: string[];
   selectedBoostLevel?: string;
+  alertsEnabled?: boolean;
 };
 
 function sanitizeSettings(input: SettingsPayload) {
@@ -64,6 +65,7 @@ function sanitizeSettings(input: SettingsPayload) {
     output.sources = input.sources.filter((value) => typeof value === "string");
   }
   if (typeof input.selectedBoostLevel === "string") output.selectedBoostLevel = input.selectedBoostLevel;
+  if (typeof input.alertsEnabled === "boolean") output.alertsEnabled = input.alertsEnabled;
 
   return output;
 }

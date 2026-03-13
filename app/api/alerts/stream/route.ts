@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getLiveAlerts } from "@/lib/blockchain/solana";
 import { alertEmitter } from "@/lib/alert-store";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
-import type { AlertFilterSettings } from "@/lib/blockchain/solana";
 import { getGuestSettingsPatchFromCookieHeader } from "@/lib/guest-session";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
+import { getLiveAlerts } from "@/lib/blockchain/solana";
+import type { AlertFilterSettings } from "@/lib/blockchain/solana";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +44,32 @@ export async function GET(req: Request) {
   if (userId) {
     const dbSettings = await prisma.userSetting.findUnique({ where: { userId } }).catch(() => null);
     if (dbSettings) settings = dbSettings;
+    if (dbSettings && dbSettings.alertsEnabled === false) {
+      const pausedStream = new ReadableStream({
+        start(controller) {
+          const encode = (chunk: string) => new TextEncoder().encode(chunk);
+          controller.enqueue(encode(sseEvent("paused", { message: "Alerts are paused" })));
+          const heartbeat = setInterval(() => {
+            try {
+              controller.enqueue(encode(sseEvent("heartbeat", { t: Date.now(), paused: true })));
+            } catch {
+              clearInterval(heartbeat);
+            }
+          }, 15000);
+          req.signal.addEventListener("abort", () => {
+            clearInterval(heartbeat);
+            try { controller.close(); } catch {}
+          });
+        },
+      });
+      return new NextResponse(pausedStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
   } else {
     const cookieHeader = req.headers.get("cookie");
     const guestPatch = getGuestSettingsPatchFromCookieHeader(cookieHeader);
@@ -67,11 +93,12 @@ export async function GET(req: Request) {
         }
       };
 
-      const sendAlerts = async () => {
+      const sendNewAlert = async (newAlerts: any[]) => {
         if (closed) return;
         try {
-          const alerts = await getLiveAlerts(filters);
-          safeEnqueue(sseEvent("alerts", alerts));
+          const { getLiveAlerts } = await import("@/lib/blockchain/solana");
+          const filtered = await getLiveAlerts(filters);
+          safeEnqueue(sseEvent("alerts", filtered));
         } catch {
           safeEnqueue(sseEvent("heartbeat", { t: Date.now() }));
         }
@@ -82,13 +109,12 @@ export async function GET(req: Request) {
         if (closed) return;
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-          sendAlerts();
+          sendNewAlert([]);
         }, 300);
       };
 
       alertEmitter.on("alert", onNewAlert);
 
-      sendAlerts();
       const heartbeat = setInterval(() => {
         safeEnqueue(sseEvent("heartbeat", { t: Date.now() }));
       }, 15000);
