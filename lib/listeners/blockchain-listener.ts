@@ -9,8 +9,8 @@ export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 let listenerRunning = false;
 let listenerStartedAt: number | null = null;
 
-const BOOST_POLL_INTERVAL_MS = 25_000;
-const LISTING_POLL_INTERVAL_MS = 30_000;
+const BOOST_POLL_INTERVAL_MS = 9_000;
+const LISTING_POLL_INTERVAL_MS = 12_000;
 const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
 
 const seenBoostFingerprints = new Set<string>();
@@ -250,7 +250,7 @@ export async function startBlockchainListener() {
 
     boostLatestPollerTimer = setInterval(() => {
       pollDexBoostsLatest().catch(() => null);
-    }, 20_000);
+    }, 7_000);
 
     boostFingerprintResetTimer = setInterval(() => {
       seenBoostFingerprints.clear();

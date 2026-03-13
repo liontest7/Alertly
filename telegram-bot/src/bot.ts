@@ -40,7 +40,16 @@ const DEFAULT_USER_SETTINGS = {
   dailyAlertCount: 0,
 };
 
-const bot = new TelegramBot(token, { polling: { autoStart: true, params: { timeout: 10 } }, cancellation: true } as any);
+const bot = new TelegramBot(token, { polling: { autoStart: false, params: { timeout: 10 } }, cancellation: true } as any);
+
+bot.on("polling_error", (err: any) => {
+  if (err?.code === "ETELEGRAM" && err?.message?.includes("409")) {
+    return;
+  }
+  console.error("[Bot] polling error:", err?.message || err);
+});
+
+bot.startPolling({ restart: false } as any);
 
 const mainMenu = {
   reply_markup: {
