@@ -273,7 +273,7 @@ export function AlphaFeed({
 
                     {/* Boost amount badge */}
                     {isBoost && token.boostAmount != null && (
-                      <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-black bg-[#5100fd]/10 border border-[#5100fd]/30 text-[#5100fd] whitespace-nowrap">
+                      <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-black whitespace-nowrap" style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.55)', color: '#fbbf24' }}>
                         ⚡ {token.boostAmount.toLocaleString()} units
                       </span>
                     )}
