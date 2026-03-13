@@ -41,11 +41,10 @@ export function removeBrowserWallet(): void {
 }
 
 export async function generateBrowserWallet(): Promise<BrowserWallet> {
-  const nacl = (await import("tweetnacl")).default
-  const bs58 = (await import("bs58")).default
-  const keypair = nacl.sign.keyPair()
+  const { Keypair } = await import("@solana/web3.js")
+  const keypair = Keypair.generate()
   const wallet: BrowserWallet = {
-    address: bs58.encode(keypair.publicKey),
+    address: keypair.publicKey.toBase58(),
     privateKey: uint8ToBase64(keypair.secretKey),
     createdAt: new Date().toISOString(),
   }
@@ -54,8 +53,7 @@ export async function generateBrowserWallet(): Promise<BrowserWallet> {
 }
 
 export async function importBrowserWallet(privateKeyInput: string): Promise<BrowserWallet> {
-  const nacl = (await import("tweetnacl")).default
-  const bs58 = (await import("bs58")).default
+  const { Keypair } = await import("@solana/web3.js")
 
   let secretKey: Uint8Array
   const trimmed = privateKeyInput.trim()
@@ -72,9 +70,9 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
     throw new Error("Invalid private key. Expected base64 (64 bytes) or JSON byte array.")
   }
 
-  const keypair = nacl.sign.keyPair.fromSecretKey(secretKey)
+  const keypair = Keypair.fromSecretKey(secretKey)
   const wallet: BrowserWallet = {
-    address: bs58.encode(keypair.publicKey),
+    address: keypair.publicKey.toBase58(),
     privateKey: uint8ToBase64(secretKey),
     createdAt: new Date().toISOString(),
   }

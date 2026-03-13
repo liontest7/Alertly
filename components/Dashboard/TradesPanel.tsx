@@ -272,10 +272,10 @@ function PositionCard({
               />
               <span className="text-zinc-500 text-xs">%</span>
             </div>
-            <button onClick={saveEdit} className="p-1.5 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg hover:bg-green-500/25 transition-colors">
+            <button onClick={saveEdit} className="p-1.5 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg hover:bg-green-500/25 transition-colors cursor-pointer">
               <Check className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => { setEditing(false); setEditSl(String(meta.sl)); setEditTp(String(meta.tp)); }} className="p-1.5 bg-zinc-900 border border-zinc-700 text-zinc-400 rounded-lg">
+            <button onClick={() => { setEditing(false); setEditSl(String(meta.sl)); setEditTp(String(meta.tp)); }} className="p-1.5 bg-zinc-900 border border-zinc-700 text-zinc-400 rounded-lg cursor-pointer">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

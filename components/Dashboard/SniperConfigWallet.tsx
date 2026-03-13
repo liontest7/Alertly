@@ -322,10 +322,10 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
             <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-3 space-y-2">
               <p className="text-[10px] text-red-300 font-semibold">Back up your private key first. This cannot be undone.</p>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={handleRemove} className="rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-1.5 transition-all">
+                <button onClick={handleRemove} className="rounded-lg bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-1.5 transition-all cursor-pointer">
                   Yes, Remove
                 </button>
-                <button onClick={() => setShowRemoveConfirm(false)} className="rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400 text-[10px] font-bold py-1.5 transition-all">
+                <button onClick={() => setShowRemoveConfirm(false)} className="rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-400 text-[10px] font-bold py-1.5 transition-all cursor-pointer">
                   Cancel
                 </button>
               </div>
