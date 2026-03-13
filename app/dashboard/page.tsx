@@ -4,11 +4,7 @@ import { StatCard } from "@/components/Dashboard/StatCard"
 import { SniperConfigWallet } from "@/components/Dashboard/SniperConfigWallet"
 import { ConnectionsCard } from "@/components/Dashboard/ConnectionsCard"
 import { CopyTradingMiniCard } from "@/components/Dashboard/CopyTradingMiniCard"
-import {
-  Loader2,
-  BellOff,
-  Bell,
-} from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { useAuthSession } from "@/components/providers"
@@ -193,51 +189,18 @@ export default function DashboardPage() {
       <div className="container mx-auto px-6 pt-32 pb-12">
         <div className="flex flex-col gap-8">
 
-          {user && (
-            <div className="flex items-center justify-end gap-3">
-              {alertQuota && (
-                <span className="text-[11px] text-zinc-500 font-black">
-                  Alerts today: <span className="text-white">{alertQuota.used}/{alertQuota.limit}</span>
-                </span>
-              )}
-              <button
-                onClick={handleToggleAlerts}
-                disabled={togglingAlerts}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all ${
-                  alertsEnabled
-                    ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400'
-                    : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400'
-                }`}
-              >
-                {togglingAlerts ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : alertsEnabled ? (
-                  <Bell className="w-3.5 h-3.5" />
-                ) : (
-                  <BellOff className="w-3.5 h-3.5" />
-                )}
-                {alertsEnabled ? "Alerts ON" : "Alerts OFF"}
-              </button>
-            </div>
-          )}
-
           <div className="flex-1 space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-8 space-y-6">
-                {!alertsEnabled ? (
-                  <div className="bg-zinc-950 border border-zinc-900 rounded-[2rem] p-12 text-center shadow-2xl">
-                    <BellOff className="w-8 h-8 text-zinc-600 mx-auto mb-4" />
-                    <p className="text-sm font-black text-zinc-400 uppercase tracking-widest">Alerts are paused</p>
-                    <p className="text-xs text-zinc-600 mt-2">Click "Alerts OFF" above to resume live alerts</p>
-                  </div>
-                ) : (
-                  <AlphaFeed
-                    alerts={alerts}
-                    loading={loading}
-                    settings={settings}
-                    user={user}
-                  />
-                )}
+                <AlphaFeed
+                  alerts={alertsEnabled !== false ? alerts : []}
+                  loading={loading}
+                  settings={settings}
+                  user={user}
+                  alertsEnabled={alertsEnabled}
+                  onToggleAlerts={user ? handleToggleAlerts : undefined}
+                  togglingAlerts={togglingAlerts}
+                />
               </div>
 
               <div className="lg:col-span-4 space-y-6">

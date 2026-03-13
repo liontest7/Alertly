@@ -492,7 +492,9 @@ async function setupProgramSubscription() {
 }
 
 const seenBoostFingerprints = new Set<string>();
+const seenLatestBoostFingerprints = new Set<string>();
 let boostPollerTimer: ReturnType<typeof setTimeout> | null = null;
+let latestBoostPollerTimer: ReturnType<typeof setTimeout> | null = null;
 let boostFingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
 const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
 
@@ -517,13 +519,14 @@ async function pollDexBoosts() {
       if (seenBoostFingerprints.has(fingerprint)) continue;
       seenBoostFingerprints.add(fingerprint);
 
+      const totalAmount = boost.totalAmount ?? boost.amount;
       const boostEvent: BlockchainEvent = {
         type: "DEX_BOOST",
         tokenAddress: addr,
         dex: "DexScreener",
         timestamp: new Date(),
         signature: `boost_${addr}_${Date.now()}`,
-        reason: `DexScreener boost (${boost.totalAmount ?? boost.amount ?? "?"} units)`,
+        reason: `DexScreener top boost${totalAmount ? ` (${totalAmount} units)` : ""}`,
       };
       processBlockchainEvent(boostEvent).catch(() => null);
     }
@@ -531,6 +534,47 @@ async function pollDexBoosts() {
   } finally {
     if (listenerRunning) {
       boostPollerTimer = setTimeout(pollDexBoosts, 45_000);
+    }
+  }
+}
+
+async function pollLatestDexBoosts() {
+  if (!listenerRunning) return;
+  try {
+    const res = await fetch("https://api.dexscreener.com/token-boosts/latest/v1", {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return;
+
+    const data: unknown = await res.json();
+    const boosts: any[] = Array.isArray(data) ? data : [];
+
+    for (const boost of boosts) {
+      if (boost.chainId !== "solana") continue;
+      const addr = boost.tokenAddress as string | undefined;
+      if (!addr || !isPotentialPublicKey(addr)) continue;
+
+      const timeBucket = Math.floor(Date.now() / 300_000);
+      const fingerprint = `${addr}|DEX_BOOST_LATEST|${timeBucket}`;
+      if (seenLatestBoostFingerprints.has(fingerprint)) continue;
+      seenLatestBoostFingerprints.add(fingerprint);
+
+      const totalAmount = boost.totalAmount ?? boost.amount;
+      const boostEvent: BlockchainEvent = {
+        type: "DEX_BOOST",
+        tokenAddress: addr,
+        dex: "DexScreener",
+        timestamp: new Date(),
+        signature: `boost_latest_${addr}_${Date.now()}`,
+        reason: `New DexScreener boost payment${totalAmount ? ` — ${totalAmount} units` : ""}`,
+      };
+      processBlockchainEvent(boostEvent).catch(() => null);
+    }
+  } catch {
+  } finally {
+    if (listenerRunning) {
+      latestBoostPollerTimer = setTimeout(pollLatestDexBoosts, 20_000);
     }
   }
 }
@@ -543,8 +587,10 @@ export async function startBlockchainListener() {
     listenerStartedAt = Date.now();
     await setupProgramSubscription();
     pollDexBoosts().catch(() => null);
+    pollLatestDexBoosts().catch(() => null);
     boostFingerprintResetTimer = setInterval(() => {
       seenBoostFingerprints.clear();
+      seenLatestBoostFingerprints.clear();
     }, BOOST_FINGERPRINT_RESET_MS);
     return { success: true, message: "Listener started" };
   } catch (error) {
@@ -579,6 +625,11 @@ export async function stopBlockchainListener() {
   if (boostPollerTimer) {
     clearTimeout(boostPollerTimer);
     boostPollerTimer = null;
+  }
+
+  if (latestBoostPollerTimer) {
+    clearTimeout(latestBoostPollerTimer);
+    latestBoostPollerTimer = null;
   }
 
   if (boostFingerprintResetTimer) {
