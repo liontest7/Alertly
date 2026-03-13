@@ -70,6 +70,7 @@ export function AlphaFeed({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastAlertCount, setLastAlertCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   
   useEffect(() => {
     if (alerts.length > lastAlertCount && soundEnabled && lastAlertCount > 0) {
@@ -180,16 +181,20 @@ export function AlphaFeed({
             </div>
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-[#5100fd]/50 transition-all text-zinc-400 hover:text-white"
-              title={soundEnabled ? "Disable sound" : "Enable sound"}
+              title={soundEnabled ? "Sound ON — click to mute" : "Sound OFF — click to enable"}
+              className={`p-2.5 rounded-xl border transition-all ${
+                soundEnabled
+                  ? 'bg-[#5100fd]/10 border-[#5100fd]/40 text-[#5100fd]'
+                  : 'bg-zinc-900 border-zinc-700 text-zinc-500'
+              }`}
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
             {onClearFeed && (
               <button
-                onClick={onClearFeed}
-                className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-red-500/50 hover:text-red-400 transition-all text-zinc-500"
-                title="Clear feed & reset cache"
+                onClick={() => setShowClearConfirm(true)}
+                title="Clear feed"
+                className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 transition-all hover:bg-red-500/20 hover:border-red-500/60"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -371,6 +376,49 @@ export function AlphaFeed({
           })}
         </div>
       </Card>
+
+      {showClearConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowClearConfirm(false)}
+        >
+          <div
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-white font-black text-base uppercase tracking-tight mb-1">Clear Feed</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">
+                  This will remove all alerts currently stored in your browser cache. New alerts will continue to arrive live — only your local history will be wiped.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 text-xs font-black uppercase tracking-widest hover:text-white hover:border-zinc-600 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowClearConfirm(false);
+                  onClearFeed?.();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500/10 border border-red-500/40 text-red-400 text-xs font-black uppercase tracking-widest hover:bg-red-500/20 hover:border-red-500/70 transition-all"
+              >
+                Clear Feed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
