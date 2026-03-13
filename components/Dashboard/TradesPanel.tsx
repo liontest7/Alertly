@@ -431,19 +431,16 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
   const [tradeMsg, setTradeMsg] = useState<{ msg: string; ok: boolean } | null>(null)
 
   const loadTrades = useCallback(async () => {
-    if (!user) return
     setRefreshing(true)
     try {
-      const res = await fetch("/api/trades/history")
-      if (!res.ok) return
-      const { trades: raw } = await res.json()
+      const { getBrowserTrades } = await import("@/lib/browser-trade-history")
+      const raw = getBrowserTrades()
       setTrades(raw)
       setLastRefresh(new Date())
 
       const derived = derivePositions(raw)
       setPositions(derived.map((p) => ({ ...p, loadingPrice: true })))
 
-      // Fetch prices for open positions
       if (derived.length > 0) {
         const addrs = derived.map((p) => p.tokenAddress).join(",")
         const priceRes = await fetch(`/api/trades/price?addresses=${addrs}`)
@@ -465,12 +462,15 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
       setRefreshing(false)
       setLoading(false)
     }
-  }, [user])
+  }, [])
 
   useEffect(() => {
     const saved = readPositionsMeta()
     setPositionsMeta(saved)
     loadTrades()
+
+    const onTradeLogged = () => loadTrades()
+    window.addEventListener("alertly:trade-logged", onTradeLogged)
 
     const interval = setInterval(async () => {
       if (positions.length === 0) return
@@ -490,8 +490,11 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
       } catch {}
     }, 30000)
 
-    return () => clearInterval(interval)
-  }, [user])
+    return () => {
+      window.removeEventListener("alertly:trade-logged", onTradeLogged)
+      clearInterval(interval)
+    }
+  }, [])
 
   function handleMetaChange(addr: string, meta: PositionMeta) {
     const next = { ...positionsMeta, [addr]: meta }
@@ -500,23 +503,33 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
   }
 
   async function handleTrade(tokenAddress: string, action: "buy" | "sell", amount: number) {
-    if (!user) {
-      setTradeMsg({ msg: "Connect wallet to trade", ok: false })
-      setTimeout(() => setTradeMsg(null), 3000)
-      return
-    }
     try {
-      const res = await fetch("/api/trade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, tokenAddress, amount, slippage: settings?.slippage ?? 10 }),
+      const { getBrowserWallet } = await import("@/lib/browser-wallet")
+      const { executeBrowserTrade, slippagePctToBps } = await import("@/lib/browser-trade")
+      const { saveBrowserTrade } = await import("@/lib/browser-trade-history")
+      const wallet = getBrowserWallet()
+      if (!wallet) {
+        setTradeMsg({ msg: "No trading wallet — generate one in Sniper Config", ok: false })
+        setTimeout(() => setTradeMsg(null), 4000)
+        return
+      }
+      const slippage = settings?.slippage ?? 10
+      const result = await executeBrowserTrade(wallet, tokenAddress, amount, slippagePctToBps(slippage))
+      saveBrowserTrade({
+        tokenAddress,
+        alertType: "MANUAL",
+        action,
+        amount,
+        slippage,
+        status: result.success ? "success" : "failed",
+        txSig: result.txSig,
+        message: result.message,
       })
-      const data = await res.json()
-      if (data.success) {
+      if (result.success) {
         setTradeMsg({ msg: `${action === "buy" ? "Bought" : "Sold"} ${amount} SOL ✓`, ok: true })
-        setTimeout(() => loadTrades(), 1500)
+        setTimeout(() => loadTrades(), 500)
       } else {
-        setTradeMsg({ msg: data.message || "Trade failed", ok: false })
+        setTradeMsg({ msg: result.message || "Trade failed", ok: false })
       }
     } catch {
       setTradeMsg({ msg: "Trade error", ok: false })

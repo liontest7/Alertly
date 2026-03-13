@@ -5,7 +5,35 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 13, 2026) — Trades Panel + Bidirectional Extension Sync
+## Latest Changes (March 13, 2026) — Full Browser-Based Trading Architecture
+
+### Core Architecture Change: No DB for Trading
+All trading is now **browser-only**. The server never sees private keys, never executes trades, and never stores trade history. Everything runs in the user's browser (localStorage).
+
+#### Files Added/Changed:
+- **`lib/browser-trade-history.ts`** — localStorage trade log (last 100 trades). Fires `alertly:trade-logged` CustomEvent on every save so TradesPanel auto-refreshes.
+- **`lib/browser-copy-trading.ts`** — localStorage copy trader list + Solana polling watcher (every 8s). Detects swaps on watched wallets, fires `alertly:copy-alert`, and optionally executes copy trades via Jupiter.
+- **`components/Dashboard/CopyTradingMiniCard.tsx`** — fully rebuilt: no API calls, reads/writes to localStorage, starts browser watcher, shows live copy signals, supports "Trade & Alert" and "Alert Only" modes.
+- **`components/Dashboard/TradesPanel.tsx`** — now reads from `getBrowserTrades()` (localStorage) instead of `/api/trades/history`. Sell trades use `executeBrowserTrade`. Listens to `alertly:trade-logged` for auto-refresh.
+- **`components/Dashboard/AlphaFeed.tsx`** — both auto-trade and manual BUY now call `saveBrowserTrade()` instead of `/api/trade/log`.
+- **`lib/alert-listener.ts`** — removed `startAutomationScheduler()` and `stopAutomationScheduler()` calls. Server no longer runs any trading automation.
+
+#### What's DB vs Browser now:
+| Feature | Storage |
+|---------|---------|
+| User auth / session | DB |
+| User settings (filters, SL/TP params) | DB |
+| Trading wallet (private key) | localStorage only |
+| Trade history | localStorage only (last 100) |
+| Copy trader list | localStorage only |
+| Alert history | localStorage (last 500) |
+| Position SL/TP overrides | Cookie |
+| Telegram link | DB |
+
+#### Server-side automation scheduler: DISABLED
+The `lib/automation-scheduler.ts` file still exists but is no longer called. Trading is 100% browser-initiated via Jupiter DEX aggregator.
+
+## Previous Changes (March 13, 2026) — Trades Panel + Bidirectional Extension Sync
 
 ### New: My Trades Panel (Flip Card UI)
 - **Flip animation** on the dashboard: button "📊 My Trades" / "📡 Live Feed" flips the card 180° (CSS 3D `rotateY`) to show trades panel behind Live Feed

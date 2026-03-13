@@ -135,24 +135,19 @@ export function AlphaFeed({
         );
         setAutoTrading(null);
 
-        if (result.success) {
-          try {
-            await fetch("/api/trade/log", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                tokenAddress: alert.address,
-                alertType: alert.type || "UNKNOWN",
-                action: "buy",
-                amount: settings.buyAmount ?? 0.5,
-                slippage: settings.slippage ?? 10,
-                status: "success",
-                txSig: result.txSig,
-                message: result.message,
-              }),
-            });
-          } catch {}
-        }
+        const { saveBrowserTrade } = await import("@/lib/browser-trade-history");
+        saveBrowserTrade({
+          tokenAddress: alert.address,
+          alertType: alert.type || "UNKNOWN",
+          action: "buy",
+          amount: settings.buyAmount ?? 0.5,
+          slippage: settings.slippage ?? 10,
+          status: result.success ? "success" : "failed",
+          txSig: result.txSig,
+          message: result.message,
+          tokenName: alert.name,
+          tokenSymbol: alert.symbol,
+        });
       }
     })().catch(() => { setAutoTrading(null); });
   }, [alerts, settings?.autoTrade, settings?.buyAmount, settings?.slippage]);
@@ -193,24 +188,21 @@ export function AlphaFeed({
         settings.buyAmount ?? 0.5,
         slippagePctToBps(settings.slippage ?? 10),
       )
+      const { saveBrowserTrade } = await import("@/lib/browser-trade-history");
+      saveBrowserTrade({
+        tokenAddress: token.address,
+        alertType: token.type || "MANUAL",
+        action: "buy",
+        amount: settings.buyAmount ?? 0.5,
+        slippage: settings.slippage ?? 10,
+        status: result.success ? "success" : "failed",
+        txSig: result.txSig,
+        message: result.message,
+        tokenName: token.name,
+        tokenSymbol: token.symbol,
+      });
       if (result.success) {
         alert(`Trade Successful!\nToken: ${tokenName}\nTx: ${result.txSig?.substring(0, 16)}...`)
-        try {
-          await fetch("/api/trade/log", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              tokenAddress: token.address,
-              alertType: token.type || "MANUAL",
-              action: "buy",
-              amount: settings.buyAmount ?? 0.5,
-              slippage: settings.slippage ?? 10,
-              status: "success",
-              txSig: result.txSig,
-              message: result.message,
-            }),
-          });
-        } catch {}
       } else {
         alert(`Trade failed: ${result.message}`)
       }
