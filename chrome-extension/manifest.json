@@ -6,6 +6,8 @@
   "permissions": ["notifications", "alarms", "storage"],
   "host_permissions": [
     "https://*.onrender.com/*",
+    "https://*.replit.dev/*",
+    "https://*.repl.co/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

@@ -3,8 +3,7 @@
   "version": "1.2.0",
   "main": "src/background.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json && npm run build:bundle",
-    "build:bundle": "node scripts/bundle.js"
+    "build": "node scripts/bundle.js"
   },
   "dependencies": {
     "react": "^18.3.1",

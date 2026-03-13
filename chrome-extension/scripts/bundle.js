@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,47 +10,40 @@ if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
-// Copy static files
-fs.copyFileSync(path.join(srcDir, 'popup.html'), path.join(distDir, 'popup.html'));
+// Bundle popup.tsx with esbuild — React included, no require(), no window.React
+execSync(
+  `npx esbuild ${path.join(srcDir, 'popup.tsx')} \
+    --bundle \
+    --outfile=${path.join(distDir, 'popup.js')} \
+    --format=iife \
+    --target=chrome110 \
+    --jsx=automatic \
+    --loader:.tsx=tsx \
+    --minify`,
+  { stdio: 'inherit' }
+);
 
-// Check if logo exists
+// Bundle background.ts
+const bgSrc = path.join(srcDir, 'background.ts');
+if (fs.existsSync(bgSrc)) {
+  execSync(
+    `npx esbuild ${bgSrc} \
+      --bundle \
+      --outfile=${path.join(distDir, 'background.js')} \
+      --format=iife \
+      --target=chrome110 \
+      --minify`,
+    { stdio: 'inherit' }
+  );
+}
+
+// Copy static assets
+fs.copyFileSync(path.join(srcDir, 'popup.html'), path.join(distDir, 'popup.html'));
+fs.copyFileSync(path.join(__dirname, '..', 'manifest.json'), path.join(distDir, 'manifest.json'));
+
 const logoSource = path.join(__dirname, '..', '..', 'public', 'images', 'logo.png');
 if (fs.existsSync(logoSource)) {
   fs.copyFileSync(logoSource, path.join(distDir, 'icon128.png'));
 }
-
-fs.copyFileSync(path.join(__dirname, '..', 'manifest.json'), path.join(distDir, 'manifest.json'));
-
-// Process compiled JS files
-const popupJsPath = path.join(distDir, 'popup.js');
-const backgroundJsPath = path.join(distDir, 'background.js');
-
-function processJsFile(filePath) {
-  if (!fs.existsSync(filePath)) return;
-  
-  let content = fs.readFileSync(filePath, 'utf8');
-  
-  // Remove problematic React imports and replace with stubs
-  content = content.replace(
-    /import\s+React\s+from\s+["']react["'];?/g,
-    'const React = window.React || require("react");'
-  );
-  
-  content = content.replace(
-    /import\s+\{\s*createRoot\s*\}\s+from\s+["']react-dom\/client["'];?/g,
-    'const { createRoot } = window.ReactDOM || require("react-dom/client");'
-  );
-  
-  // Handle jsx-runtime imports - remove them
-  content = content.replace(
-    /import\s+\{[^}]*jsx[^}]*\}\s+from\s+["']react\/jsx-runtime["'];?/g,
-    ''
-  );
-  
-  fs.writeFileSync(filePath, content);
-}
-
-processJsFile(popupJsPath);
-processJsFile(backgroundJsPath);
 
 console.log('✅ Extension bundled successfully');

@@ -1,0 +1,375 @@
+popup.html
+התחקות אחר ערימה
+popup.js:2 (פונקציה אנונימית)
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+
+const React = window.React || require("react");
+const { createRoot } = window.ReactDOM || require("react-dom/client");
+const DEFAULT_ALERTLY_BASE_URL = "http://localhost:10000";
+const ALERTLY_BASE_URL_STORAGE_KEY = "alertlyBaseUrl";
+const cardStyle = {
+    padding: "10px",
+    border: "1px solid #1f1f1f",
+    borderRadius: "10px",
+    backgroundColor: "#0b0b0b",
+};
+function normalizeBaseUrl(input) {
+    if (!input)
+        return DEFAULT_ALERTLY_BASE_URL;
+    try {
+        const normalized = new URL(input.trim());
+        return normalized.origin;
+    }
+    catch {
+        return DEFAULT_ALERTLY_BASE_URL;
+    }
+}
+function getStoredBaseUrl() {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get([ALERTLY_BASE_URL_STORAGE_KEY], (result) => {
+            resolve(normalizeBaseUrl(result?.[ALERTLY_BASE_URL_STORAGE_KEY]));
+        });
+    });
+}
+function setStoredBaseUrl(value) {
+    return new Promise((resolve) => {
+        chrome.storage.sync.set({ [ALERTLY_BASE_URL_STORAGE_KEY]: normalizeBaseUrl(value) }, () => resolve());
+    });
+}
+const Popup = () => {
+    const [alerts, setAlerts] = React.useState([]);
+    const [authenticated, setAuthenticated] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
+    const [baseUrl, setBaseUrl] = React.useState(DEFAULT_ALERTLY_BASE_URL);
+    const [streamStatus, setStreamStatus] = React.useState("offline");
+    const [alertsEnabled, setAlertsEnabled] = React.useState(true);
+    const [togglingAlerts, setTogglingAlerts] = React.useState(false);
+    const resolvedBaseUrlRef = React.useRef(DEFAULT_ALERTLY_BASE_URL);
+    React.useEffect(() => {
+        let mounted = true;
+        let stream = null;
+        async function load() {
+            try {
+                const resolvedBaseUrl = await getStoredBaseUrl();
+                if (!mounted)
+                    return;
+                setBaseUrl(resolvedBaseUrl);
+                resolvedBaseUrlRef.current = resolvedBaseUrl;
+                const syncRes = await fetch(`${resolvedBaseUrl}/api/extension/sync`, {
+                    credentials: "include",
+                });
+                const sync = await syncRes.json();
+                const canUseFeed = sync?.authenticated || sync?.guestEnabled;
+                if (!mounted)
+                    return;
+                if (!canUseFeed) {
+                    setAuthenticated(false);
+                    setStreamStatus("offline");
+                    return;
+                }
+                setAuthenticated(true);
+                const enabled = sync?.alertsEnabled !== false;
+                setAlertsEnabled(enabled);
+                if (!enabled) {
+                    setAlerts([]);
+                    setStreamStatus("offline");
+                    return;
+                }
+                setStreamStatus("connecting");
+                stream = new EventSource(`${resolvedBaseUrl}/api/alerts/stream`, { withCredentials: true });
+                stream.addEventListener("alerts", (event) => {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        if (Array.isArray(payload) && mounted) {
+                            setAlerts(payload);
+                            setStreamStatus("live");
+                        }
+                    }
+                    catch {
+                        // ignore malformed stream event
+                    }
+                });
+                stream.addEventListener("heartbeat", () => {
+                    if (mounted)
+                        setStreamStatus("live");
+                });
+                stream.addEventListener("paused", () => {
+                    if (mounted) {
+                        setAlerts([]);
+                        setAlertsEnabled(false);
+                        setStreamStatus("offline");
+                    }
+                });
+                stream.onerror = () => {
+                    if (mounted)
+                        setStreamStatus("offline");
+                };
+            }
+            catch {
+                if (mounted) {
+                    setAuthenticated(false);
+                    setStreamStatus("offline");
+                }
+            }
+            finally {
+                if (mounted)
+                    setLoading(false);
+            }
+        }
+        load();
+        return () => {
+            mounted = false;
+            if (stream) {
+                stream.close();
+            }
+        };
+    }, []);
+    const handleToggleAlerts = async () => {
+        if (!authenticated)
+            return;
+        setTogglingAlerts(true);
+        try {
+            const newEnabled = !alertsEnabled;
+            const res = await fetch(`${resolvedBaseUrlRef.current}/api/settings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ alertsEnabled: newEnabled }),
+            });
+            if (res.ok) {
+                setAlertsEnabled(newEnabled);
+                if (!newEnabled)
+                    setAlerts([]);
+            }
+        }
+        catch {
+            // ignore
+        }
+        finally {
+            setTogglingAlerts(false);
+        }
+    };
+    return (_jsxs("div", { style: { width: 340, padding: 16, backgroundColor: "#050505", color: "#fff", fontFamily: "Inter, sans-serif" }, children: [_jsx("h1", { style: { fontSize: 18, margin: 0, marginBottom: 6, color: "#8b5cf6" }, children: "Alertly Command Feed" }), _jsx("p", { style: { margin: 0, marginBottom: 8, color: "#9ca3af", fontSize: 12 }, children: "Real-time Solana signals synced with your dashboard profile." }), _jsxs("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }, children: [_jsxs("p", { style: { margin: 0, color: streamStatus === "live" ? "#22c55e" : streamStatus === "connecting" ? "#f59e0b" : "#ef4444", fontSize: 11 }, children: ["Stream: ", streamStatus === "live" ? "LIVE" : streamStatus === "connecting" ? "CONNECTING" : "OFFLINE"] }), authenticated && (_jsx("button", { onClick: handleToggleAlerts, disabled: togglingAlerts, style: {
+                            padding: "4px 10px",
+                            borderRadius: 8,
+                            border: alertsEnabled ? "1px solid #22c55e" : "1px solid #ef4444",
+                            backgroundColor: alertsEnabled ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                            color: alertsEnabled ? "#22c55e" : "#ef4444",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            cursor: togglingAlerts ? "wait" : "pointer",
+                        }, children: togglingAlerts ? "..." : alertsEnabled ? "⏸ Pause Alerts" : "▶ Resume Alerts" }))] }), _jsxs("div", { style: { ...cardStyle, marginBottom: 10 }, children: [_jsx("label", { style: { display: "block", fontSize: 11, color: "#9ca3af", marginBottom: 6 }, children: "Dashboard URL" }), _jsx("input", { value: baseUrl, onChange: (e) => setBaseUrl(e.target.value), onBlur: async () => {
+                            await setStoredBaseUrl(baseUrl);
+                            setBaseUrl(normalizeBaseUrl(baseUrl));
+                        }, placeholder: "https://your-render-app.onrender.com", style: {
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: "1px solid #27272a",
+                            backgroundColor: "#09090b",
+                            color: "#fff",
+                            fontSize: 12,
+                            outline: "none",
+                        } })] }), loading ? (_jsx("p", { style: { color: "#6b7280", fontSize: 12 }, children: "Loading your live alerts\u2026" })) : !authenticated ? (_jsx("div", { style: cardStyle, children: _jsx("p", { style: { margin: 0, color: "#d1d5db", fontSize: 12 }, children: "Guest mode is available. Log in to unlock full sync and VIP features." }) })) : !alertsEnabled ? (_jsx("div", { style: cardStyle, children: _jsx("p", { style: { margin: 0, color: "#9ca3af", fontSize: 12 }, children: "\u23F8 Alerts are paused. Click \"Resume Alerts\" to start receiving signals." }) })) : alerts.length === 0 ? (_jsx("div", { style: cardStyle, children: _jsx("p", { style: { margin: 0, color: "#9ca3af", fontSize: 12 }, children: "No alerts right now. Your filters are active and monitoring." }) })) : (_jsx("div", { style: { display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }, children: alerts.slice(0, 8).map((alert, i) => (_jsxs("div", { style: cardStyle, children: [_jsxs("div", { style: { display: "flex", justifyContent: "space-between", gap: 8 }, children: [_jsx("strong", { style: { fontSize: 12 }, children: alert.name || "Unknown" }), _jsx("span", { style: { fontSize: 10, color: "#a78bfa" }, children: alert.type || "Signal" })] }), _jsxs("div", { style: { marginTop: 4, fontSize: 11, color: "#9ca3af" }, children: ["MC: ", alert.mc || "N/A", " \u00B7 VOL: ", alert.vol || "N/A"] })] }, i))) })), _jsx("button", { onClick: () => window.open(`${normalizeBaseUrl(baseUrl)}/dashboard`, "_blank"), style: {
+                    width: "100%",
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    backgroundColor: "#5100fd",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 999,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                }, children: "Open Alertly Dashboard" })] }));
+};
+const container = document.getElementById("root");
+if (container) {
+    const root = createRoot(container);
+    root.render(_jsx(Popup, {}));
+}
+ 
