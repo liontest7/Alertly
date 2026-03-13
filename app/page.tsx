@@ -176,8 +176,10 @@ export default function Home() {
       </div>
 
       <HeroStats />
-      <Capabilities />
-      <TokenSection />
+      <div className="relative z-20 bg-black/10 backdrop-blur-sm">
+        <Capabilities />
+        <TokenSection />
+      </div>
     </main>
   );
 }

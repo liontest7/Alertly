@@ -10,7 +10,7 @@ export function Capabilities() {
   return (
     <section
       id="capabilities"
-      className="relative z-20 pt-32 pb-16 bg-black/10 backdrop-blur-sm"
+      className="relative pt-32 pb-16"
     >
       <div className="container mx-auto px-6 lg:px-12">
         <div className="max-w-3xl mb-16">
