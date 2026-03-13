@@ -205,7 +205,7 @@ export function AlphaFeed({
           </div>
         </div>
         
-        <div className="overflow-y-auto divide-y divide-zinc-900/50 scrollbar-hide" style={{ maxHeight: 'calc(100vh - 148px)' }}>
+        <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - 148px)' }}>
           {loading && alerts.length === 0 ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-[#5100fd] mx-auto mb-4" />
@@ -235,10 +235,10 @@ export function AlphaFeed({
               <div
                 key={`${token.fingerprint || token.address}-${i}`}
                 onClick={() => token.address && router.push(`/token/${token.address}`)}
-                className="group p-5 hover:bg-[#5100fd]/[0.04] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer"
+                className="group p-4 hover:bg-[#5100fd]/[0.05] transition-all flex items-center gap-4 border-b border-zinc-900 border-l-4 border-l-transparent hover:border-l-[#5100fd] cursor-pointer last:border-b-0"
               >
                 {/* Token Logo */}
-                <div className="min-w-[52px] min-h-[52px] rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0 relative" style={{ width: 52, height: 52 }}>
+                <div className="rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden group-hover:border-[#5100fd]/50 transition-colors flex-shrink-0 relative" style={{ width: 60, height: 60, minWidth: 60, minHeight: 60 }}>
                   <span className="absolute inset-0 flex items-center justify-center text-xl font-black text-[#5100fd]">
                     {isLoading ? "·" : (displayPrimary)?.[0]?.toUpperCase() || "?"}
                   </span>

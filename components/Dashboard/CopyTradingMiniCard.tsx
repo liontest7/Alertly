@@ -64,7 +64,7 @@ export function CopyTradingMiniCard() {
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-zinc-600 font-bold italic text-center mb-2">No active copy traders</p>
+        <p className="text-[12px] text-white font-bold italic text-center mb-2">No active copy traders</p>
       )}
 
       <div className="space-y-2.5 pt-3 border-t border-zinc-900">
