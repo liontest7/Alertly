@@ -1,7 +1,9 @@
+"use client"
+
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff, Trash2 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff, Trash2, Bot } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 
 function FilterChip({ label, active = false, onClick }: { label: string, active?: boolean, onClick?: () => void }) {
@@ -67,10 +69,13 @@ export function AlphaFeed({
 }) {
   const router = useRouter();
   const [executing, setExecuting] = useState<string | null>(null);
+  const [autoTrading, setAutoTrading] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lastAlertCount, setLastAlertCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const autoTradedRef = useRef<Set<string>>(new Set());
+  const prevAlertsRef = useRef<any[]>([]);
   
   useEffect(() => {
     if (alerts.length > lastAlertCount && soundEnabled && lastAlertCount > 0) {
@@ -97,7 +102,62 @@ export function AlphaFeed({
     }
     setLastAlertCount(alerts.length);
   }, [alerts.length, soundEnabled, lastAlertCount]);
-  
+
+  useEffect(() => {
+    if (!settings?.autoTrade) {
+      prevAlertsRef.current = alerts;
+      return;
+    }
+    const newAlerts = alerts.filter(a =>
+      !prevAlertsRef.current.some((p: any) => p.address === a.address && p.type === a.type)
+    );
+    prevAlertsRef.current = alerts;
+    if (newAlerts.length === 0) return;
+
+    (async () => {
+      const { getBrowserWallet } = await import("@/lib/browser-wallet");
+      const { executeBrowserTrade, slippagePctToBps } = await import("@/lib/browser-trade");
+      const bwallet = getBrowserWallet();
+      if (!bwallet) return;
+
+      for (const alert of newAlerts) {
+        if (!alert.address) continue;
+        const key = `${alert.address}|${alert.type}`;
+        if (autoTradedRef.current.has(key)) continue;
+        autoTradedRef.current.add(key);
+
+        setAutoTrading(alert.address);
+        const result = await executeBrowserTrade(
+          bwallet,
+          alert.address,
+          settings.buyAmount ?? 0.5,
+          slippagePctToBps(settings.slippage ?? 10),
+        );
+        setAutoTrading(null);
+
+        if (result.success) {
+          try {
+            await fetch("/api/trade/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                tokenAddress: alert.address,
+                alertType: alert.type || "UNKNOWN",
+                action: "buy",
+                amount: settings.buyAmount ?? 0.5,
+                slippage: settings.slippage ?? 10,
+                status: "success",
+                txSig: result.txSig,
+                message: result.message,
+              }),
+            });
+          } catch {}
+        }
+      }
+    })().catch(() => { setAutoTrading(null); });
+  }, [alerts, settings?.autoTrade, settings?.buyAmount, settings?.slippage]);
+
+
   const dailyAlerts = alerts.filter(a => {
     const ts = a.clientSeenAt || a.alertedAt;
     const alertTime = ts ? new Date(ts).getTime() : 0;
@@ -113,35 +173,49 @@ export function AlphaFeed({
       });
 
   const handleQuickBuy = async (token: any) => {
-    if (!user) {
-      alert("Please connect your wallet to execute trades.");
-      return;
-    }
     if (!token.address) {
-      alert("This alert does not include a valid token address.")
+      alert("This alert does not have a valid token address.")
+      return
+    }
+    const { getBrowserWallet } = await import("@/lib/browser-wallet");
+    const bwallet = getBrowserWallet();
+    if (!bwallet) {
+      alert("No trading wallet found.\nGenerate or import a wallet in the Sniper Configuration panel first.")
       return
     }
     const tokenName = token.symbol || token.name || shortAddr(token.address)
     setExecuting(token.address)
     try {
-      const res = await fetch('/api/trade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'buy',
-          tokenAddress: token.address,
-          amount: settings.buyAmount,
-          slippage: settings.slippage
-        })
-      })
-      const data = await res.json()
-      if (data.success) {
-        alert(`Trade Successful!\nToken: ${tokenName}\nTransaction: ${data.txSig.substring(0, 16)}...`)
+      const { executeBrowserTrade, slippagePctToBps } = await import("@/lib/browser-trade");
+      const result = await executeBrowserTrade(
+        bwallet,
+        token.address,
+        settings.buyAmount ?? 0.5,
+        slippagePctToBps(settings.slippage ?? 10),
+      )
+      if (result.success) {
+        alert(`Trade Successful!\nToken: ${tokenName}\nTx: ${result.txSig?.substring(0, 16)}...`)
+        try {
+          await fetch("/api/trade/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tokenAddress: token.address,
+              alertType: token.type || "MANUAL",
+              action: "buy",
+              amount: settings.buyAmount ?? 0.5,
+              slippage: settings.slippage ?? 10,
+              status: "success",
+              txSig: result.txSig,
+              message: result.message,
+            }),
+          });
+        } catch {}
       } else {
-        alert(`Trade failed: ${data.message}`)
+        alert(`Trade failed: ${result.message}`)
       }
     } catch {
-      alert("Trade execution failed.")
+      alert("Trade execution failed. Check your wallet balance and try again.")
     } finally {
       setExecuting(null)
     }
@@ -358,10 +432,13 @@ export function AlphaFeed({
                   <Button
                     size="lg"
                     onClick={(e) => { e.stopPropagation(); handleQuickBuy(token); }}
-                    disabled={executing === token.address}
+                    disabled={executing === token.address || autoTrading === token.address}
                     className="bg-[#5100fd] hover:bg-[#4100cc] h-10 px-5 text-xs font-black rounded-lg text-white shadow-[0_0_20px_rgba(81,0,253,0.4)]"
                   >
-                    {executing === token.address ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "BUY"}
+                    {executing === token.address || autoTrading === token.address
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : "BUY"
+                    }
                   </Button>
                   <Button
                     size="lg"
