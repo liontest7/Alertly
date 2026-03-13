@@ -222,7 +222,7 @@ export function AlphaFeed({
           </div>
         </div>
         
-        <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - 50px)' }}>
+        <div className="overflow-y-auto scrollbar-feed" style={{ maxHeight: 'calc(100vh - 50px)' }}>
           {loading && alerts.length === 0 ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-[#5100fd] mx-auto mb-4" />

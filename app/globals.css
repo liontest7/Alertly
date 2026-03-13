@@ -139,6 +139,26 @@
   }
 }
 
+/* Custom scrollbar — matches site dark/purple design */
+.scrollbar-feed::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-feed::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-feed::-webkit-scrollbar-thumb {
+  background: #5100fd44;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+.scrollbar-feed::-webkit-scrollbar-thumb:hover {
+  background: #5100fd99;
+}
+.scrollbar-feed {
+  scrollbar-width: thin;
+  scrollbar-color: #5100fd44 transparent;
+}
+
 @layer utilities {
   /* Added bg-lines-container with responsive scaling */
   .bg-lines-container {
