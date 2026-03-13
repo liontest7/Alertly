@@ -374,9 +374,12 @@ export function AlphaFeed({
                     </span>
 
                     {/* Boost amount badge */}
-                    {isBoost && token.boostAmount != null && (
+                    {isBoost && (token.boostAmount != null || token.totalBoostAmount != null) && (
                       <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-black whitespace-nowrap" style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.55)', color: '#fbbf24' }}>
-                        ⚡ {token.boostAmount.toLocaleString()} units
+                        ⚡ {token.boostAmount != null ? `+${token.boostAmount.toLocaleString()}` : ""}
+                        {token.totalBoostAmount != null && token.totalBoostAmount > (token.boostAmount ?? 0) && (
+                          <span className="opacity-70">/ {token.totalBoostAmount.toLocaleString()} total</span>
+                        )}
                       </span>
                     )}
 

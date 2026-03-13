@@ -1,5 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
 
 dotenv.config();
 
@@ -8,137 +10,107 @@ if (!token) {
   throw new Error("Missing TELEGRAM_BOT_TOKEN for telegram bot");
 }
 
-const apiBaseUrl = process.env.ALERTLY_API_BASE_URL || process.env.API_URL;
-if (!apiBaseUrl) {
-  throw new Error("Missing ALERTLY_API_BASE_URL (or API_URL) for telegram bot API integration");
+const DATA_DIR = join(__dirname, "..", "data");
+const SUBSCRIBERS_FILE = join(DATA_DIR, "subscribers.json");
+
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true });
 }
-const internalApiKey = process.env.INTERNAL_API_KEY || process.env.ALERTLY_INTERNAL_API_KEY || "dev-internal-api-key";
+if (!existsSync(SUBSCRIBERS_FILE)) {
+  writeFileSync(SUBSCRIBERS_FILE, "{}", "utf-8");
+}
 
-const DAILY_ALERT_LIMIT = 50;
+type SubscriberSettings = {
+  alertsEnabled: boolean;
+  dexBoostEnabled: boolean;
+  dexListingEnabled: boolean;
+  selectedBoostLevel: string;
+  buyAmount: number;
+  slippage: number;
+  takeProfit: number;
+  stopLoss: number;
+  minMarketCap: number;
+  maxMarketCap: number;
+  minLiquidity: number;
+  minHolders: number;
+};
 
-const DEFAULT_USER_SETTINGS = {
-  id: "default",
-  userId: "guest",
-  buyAmount: 0.5,
-  maxBuyPerToken: 2.0,
-  slippage: 10.0,
-  autoTrade: false,
-  minMarketCap: 0,
-  maxMarketCap: 0,
-  minHolders: 1,
-  minLiquidity: 0,
-  takeProfit: 50,
-  stopLoss: 25,
-  trailingStop: false,
-  autoSellMinutes: 0,
+type Subscriber = {
+  chatId: string;
+  firstName?: string;
+  subscribedAt: string;
+  settings: SubscriberSettings;
+};
+
+type SubscriberStore = Record<string, Subscriber>;
+
+const DEFAULT_SETTINGS: SubscriberSettings = {
+  alertsEnabled: true,
   dexBoostEnabled: true,
   dexListingEnabled: true,
-  sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
   selectedBoostLevel: "all",
-  alertsEnabled: true,
-  isPremium: false,
-  dailyAlertCount: 0,
+  buyAmount: 0.5,
+  slippage: 10,
+  takeProfit: 50,
+  stopLoss: 25,
+  minMarketCap: 0,
+  maxMarketCap: 0,
+  minLiquidity: 0,
+  minHolders: 0,
 };
 
-const bot = new TelegramBot(token, { polling: { autoStart: false, params: { timeout: 10 } }, cancellation: true } as any);
-
-bot.on("polling_error", (err: any) => {
-  if (err?.code === "ETELEGRAM" && err?.message?.includes("409")) {
-    return;
+function loadStore(): SubscriberStore {
+  try {
+    const raw = readFileSync(SUBSCRIBERS_FILE, "utf-8");
+    return JSON.parse(raw) as SubscriberStore;
+  } catch {
+    return {};
   }
-  console.error("[Bot] polling error:", err?.message || err);
-});
-
-(bot as any).startPolling({ restart: false });
-
-const mainMenu = {
-  reply_markup: {
-    inline_keyboard: [
-      [
-        { text: "🔄 Auto-Trade", callback_data: "toggle_auto" },
-        { text: "💰 Buy Amount", callback_data: "set_buy" },
-      ],
-      [
-        { text: "📊 Slippage", callback_data: "set_slippage" },
-        { text: "🚀 Max Buy/Token", callback_data: "set_max_buy" },
-      ],
-      [
-        { text: "📈 Take Profit", callback_data: "set_tp" },
-        { text: "🛑 Stop Loss", callback_data: "set_sl" },
-      ],
-      [
-        { text: "🎯 Trailing Stop", callback_data: "toggle_ts" },
-        { text: "⏱️ Auto-Sell (m)", callback_data: "set_autosell" },
-      ],
-      [{ text: "-- Alerts --", callback_data: "none" }],
-      [{ text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" }],
-      [
-        { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
-        { text: "💎 Dex Listing", callback_data: "toggle_list" },
-      ],
-      [{ text: "📦 Boost Level Filter", callback_data: "boost_levels" }],
-      [{ text: "-- Filters --", callback_data: "none" }],
-      [
-        { text: "👥 Min Holders", callback_data: "set_min_holders" },
-        { text: "💧 Min Liquidity", callback_data: "set_min_liquidity" },
-      ],
-      [
-        { text: "📉 Min MC", callback_data: "set_min_mc" },
-        { text: "📈 Max MC", callback_data: "set_max_mc" },
-      ],
-    ],
-  },
-};
-
-async function fetchBotSettings(telegramId: string) {
-  const res = await fetch(`${apiBaseUrl}/api/bot/settings?telegramId=${encodeURIComponent(telegramId)}`, {
-    headers: { Authorization: `Bearer ${internalApiKey}` },
-  });
-
-  if (!res.ok) {
-    if (res.status === 404) {
-      return DEFAULT_USER_SETTINGS;
-    }
-    throw new Error(`Failed to fetch settings: ${res.status}`);
-  }
-  return res.json();
 }
 
-async function updateBotSettings(telegramId: string, payload: Record<string, unknown>) {
-  const res = await fetch(`${apiBaseUrl}/api/bot/settings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${internalApiKey}`,
-    },
-    body: JSON.stringify({ telegramId, ...payload }),
-  });
-
-  if (!res.ok) throw new Error(`Failed to update settings: ${res.status}`);
-  return res.json();
+function saveStore(store: SubscriberStore): void {
+  writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(store, null, 2), "utf-8");
 }
 
-async function confirmLink(tokenValue: string, telegramId: string) {
-  const res = await fetch(`${apiBaseUrl}/api/bot/telegram-link/confirm`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${internalApiKey}`,
-    },
-    body: JSON.stringify({ token: tokenValue, telegramId }),
-  });
+function getSubscriber(chatId: string): Subscriber | null {
+  const store = loadStore();
+  return store[chatId] ?? null;
+}
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({ message: "Failed to link Telegram account" }));
-    throw new Error(data.message || "Failed to link Telegram account");
+function upsertSubscriber(chatId: string, firstName?: string): Subscriber {
+  const store = loadStore();
+  if (!store[chatId]) {
+    store[chatId] = {
+      chatId,
+      firstName,
+      subscribedAt: new Date().toISOString(),
+      settings: { ...DEFAULT_SETTINGS },
+    };
+  } else if (firstName) {
+    store[chatId].firstName = firstName;
   }
-
-  return res.json();
+  saveStore(store);
+  return store[chatId];
 }
 
-function formatBoostLevel(level: string): string {
-  if (!level || level === "all") return "All Levels";
-  return level;
+function removeSubscriber(chatId: string): void {
+  const store = loadStore();
+  delete store[chatId];
+  saveStore(store);
+}
+
+function updateSettings(chatId: string, patch: Partial<SubscriberSettings>): SubscriberSettings {
+  const store = loadStore();
+  if (!store[chatId]) {
+    store[chatId] = {
+      chatId,
+      subscribedAt: new Date().toISOString(),
+      settings: { ...DEFAULT_SETTINGS },
+    };
+  }
+  store[chatId].settings = { ...store[chatId].settings, ...patch };
+  saveStore(store);
+  return store[chatId].settings;
 }
 
 function formatMc(val: number): string {
@@ -148,167 +120,164 @@ function formatMc(val: number): string {
   return `$${val}`;
 }
 
-const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) => {
-  try {
-    const s = await fetchBotSettings(telegramId);
-    const unlinkedNotice = isUnlinked ? "\n⚠️ *Account not linked yet* - /start to link your dashboard\n" : "";
+function formatBoostLevel(level: string): string {
+  if (!level || level === "all") return "All Levels";
+  return level;
+}
 
-    const alertsStatus = s.alertsEnabled !== false ? "▶️ Active" : "⏸️ Paused";
-    const planLabel = s.isPremium ? "⭐ VIP" : `🆓 Free (${s.dailyAlertCount || 0}/${DAILY_ALERT_LIMIT} today)`;
+function getSettingsText(chatId: string): string {
+  const sub = getSubscriber(chatId);
+  const s = sub?.settings ?? DEFAULT_SETTINGS;
 
-    return `⚙️ *Alertly Control Center*${unlinkedNotice}
-*Plan:* ${planLabel}
+  const alertsStatus = s.alertsEnabled ? "▶️ Active" : "⏸️ Paused";
+
+  return `⚙️ *Alertly Settings*
+
 *Alerts:* ${alertsStatus}
 
-*Trading Configuration*
-💰 Buy Amount: ${s.buyAmount} SOL
-🚀 Max Buy/Token: ${s.maxBuyPerToken} SOL
-📊 Slippage: ${s.slippage}%
-🔄 Auto-Trade: ${s.autoTrade ? "✅ ON" : "❌ OFF"}
-
-*Exit Strategy*
-📈 Take Profit: +${s.takeProfit}%
-🛑 Stop Loss: -${s.stopLoss}%
-🎯 Trailing Stop: ${s.trailingStop ? "✅ ON" : "❌ OFF"}
-⏱️ Auto-Sell: ${s.autoSellMinutes > 0 ? `${s.autoSellMinutes} min` : "OFF"}
-
-*Active Alert Monitors*
+*Alert Monitors*
 ⚡ Dex Boost: ${s.dexBoostEnabled ? "✅" : "❌"}
-   └ Level: ${formatBoostLevel(s.selectedBoostLevel || "all")}
-💎 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
+   └ Level: ${formatBoostLevel(s.selectedBoostLevel)}
+🆕 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
 
 *Filters*
-📉 Min MC: ${formatMc(s.minMarketCap || 0)}
-📈 Max MC: ${formatMc(s.maxMarketCap || 0)}
+📉 Min MC: ${formatMc(s.minMarketCap)}
+📈 Max MC: ${formatMc(s.maxMarketCap)}
 💧 Min Liquidity: ${s.minLiquidity > 0 ? `$${(s.minLiquidity / 1000).toFixed(0)}K` : "No limit"}
-👥 Min Holders: ${s.minHolders || 1}
+👥 Min Holders: ${s.minHolders > 0 ? s.minHolders : "No filter"}
 
-Stay sharp. Stay early. Stay Alertly.`;
-  } catch {
-    return "❌ Telegram account is not linked yet.\n\nIn the web app, open Telegram Link and run the generated command:\n`/link <token>`";
-  }
+*Trading*
+💰 Buy Amount: ${s.buyAmount} SOL
+📊 Slippage: ${s.slippage}%
+📈 Take Profit: +${s.takeProfit}%
+🛑 Stop Loss: -${s.stopLoss}%
+
+Stay sharp. Stay early. Stay Alertly. 🚀`;
+}
+
+const mainMenu = {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        { text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" },
+      ],
+      [
+        { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
+        { text: "🆕 Dex Listing", callback_data: "toggle_list" },
+      ],
+      [{ text: "📦 Boost Level Filter", callback_data: "boost_levels" }],
+      [
+        { text: "📉 Min MC", callback_data: "set_min_mc" },
+        { text: "📈 Max MC", callback_data: "set_max_mc" },
+      ],
+      [
+        { text: "💧 Min Liquidity", callback_data: "set_min_liquidity" },
+        { text: "👥 Min Holders", callback_data: "set_min_holders" },
+      ],
+      [
+        { text: "💰 Buy Amount", callback_data: "set_buy" },
+        { text: "📊 Slippage", callback_data: "set_slippage" },
+      ],
+      [
+        { text: "📈 Take Profit", callback_data: "set_tp" },
+        { text: "🛑 Stop Loss", callback_data: "set_sl" },
+      ],
+    ],
+  },
 };
 
+const bot = new TelegramBot(token, { polling: { autoStart: false, params: { timeout: 10 } }, cancellation: true } as any);
+
+bot.on("polling_error", (err: any) => {
+  if (err?.code === "ETELEGRAM" && err?.message?.includes("409")) return;
+  console.error("[Bot] polling error:", err?.message || err);
+});
+
+(bot as any).startPolling({ restart: false });
+
 bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  const name = msg.from?.first_name ? ` ${msg.from.first_name}` : "";
+  const chatId = String(msg.chat.id);
+  const firstName = msg.from?.first_name;
+
+  upsertSubscriber(chatId, firstName);
+
   await bot.sendMessage(
     chatId,
-    `👋 *Welcome${name} to Alertly!*\n\n` +
-    `Alertly gives you real-time Solana trading intelligence — DEX boosts, new token listings, and automated trading — directly in Telegram.\n\n` +
-    `*🔗 Getting Started*\n` +
-    `1. Open the [Alertly Dashboard](https://alertly-5zmw.onrender.com) and connect your wallet\n` +
-    `2. Go to *Connections → Telegram Link* to generate your link token\n` +
-    `3. Send \`/link <your-token>\` here to sync your account\n\n` +
-    `*📋 Available Commands*\n` +
-    `/settings — View and manage your trading settings\n` +
-    `/link <token> — Link your Alertly account\n` +
-    `/health — Check bot status\n\n` +
-    `Once linked, you'll receive real-time alerts for every new DEX boost and listing — and your AutoTrade settings will apply automatically. 🚀`,
-    { parse_mode: "Markdown", disable_web_page_preview: true },
+    `👋 *Welcome${firstName ? ` ${firstName}` : ""} to Alertly!*\n\n` +
+    `You are now subscribed to real-time Solana DEX alerts.\n\n` +
+    `*What you'll receive:*\n` +
+    `⚡ DEX Boost alerts — every new or increased token boost\n` +
+    `🆕 DEX Listing alerts — new Solana tokens on DexScreener\n\n` +
+    `Use /settings to customize your filters.\n` +
+    `Use /stop to unsubscribe at any time.`,
+    { parse_mode: "Markdown" },
   );
 });
 
-
-bot.onText(/\/start\s+(.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const tokenValue = match?.[1]?.trim();
-
-  if (!tokenValue) {
-    return;
-  }
-
-  try {
-    await confirmLink(tokenValue, String(chatId));
-    await bot.sendMessage(chatId, "✅ Telegram account linked successfully from deep-link. Use /settings to manage controls.");
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not link your account.";
-    await bot.sendMessage(chatId, `❌ ${message}`);
-  }
-});
-
-bot.onText(/\/link\s+(.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const tokenValue = match?.[1]?.trim();
-
-  if (!tokenValue) {
-    await bot.sendMessage(chatId, "Usage: /link <token>");
-    return;
-  }
-
-  try {
-    await confirmLink(tokenValue, String(chatId));
-    await bot.sendMessage(
-      chatId,
-      "✅ Telegram account linked successfully.\nUse /settings to manage synced Alerty preferences.",
-    );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not link your account.";
-    await bot.sendMessage(chatId, `❌ ${message}`);
-  }
+bot.onText(/\/stop/, async (msg) => {
+  const chatId = String(msg.chat.id);
+  removeSubscriber(chatId);
+  await bot.sendMessage(chatId, "✅ You have been unsubscribed from Alertly alerts.\n\nSend /start to re-subscribe anytime.");
 });
 
 bot.onText(/\/settings/, async (msg) => {
-  const chatId = msg.chat.id;
-  const text = await getSettingsText(String(chatId));
-  bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...mainMenu });
+  const chatId = String(msg.chat.id);
+  upsertSubscriber(chatId, msg.from?.first_name);
+  bot.sendMessage(chatId, getSettingsText(chatId), { parse_mode: "Markdown", ...mainMenu });
+});
+
+bot.onText(/\/status/, async (msg) => {
+  const chatId = String(msg.chat.id);
+  const store = loadStore();
+  const count = Object.keys(store).length;
+  const sub = store[chatId];
+  await bot.sendMessage(
+    chatId,
+    `📊 *Alertly Status*\n\n` +
+    `Total subscribers: ${count}\n` +
+    `Your status: ${sub ? "✅ Subscribed" : "❌ Not subscribed"}\n` +
+    (sub ? `Subscribed since: ${new Date(sub.subscribedAt).toLocaleDateString()}` : ""),
+    { parse_mode: "Markdown" },
+  );
 });
 
 bot.on("callback_query", async (query) => {
   const chatId = query.message?.chat.id;
   if (!chatId) return;
-  const telegramId = String(chatId);
+  const chatIdStr = String(chatId);
   const data = query.data;
 
-  if (data === "none") {
-    bot.answerCallbackQuery(query.id);
-    return;
-  }
+  if (data === "none") { bot.answerCallbackQuery(query.id); return; }
+
+  upsertSubscriber(chatIdStr, query.from?.first_name);
 
   try {
-    const s = await fetchBotSettings(telegramId);
-    let update: Record<string, any> = {};
+    const s = getSubscriber(chatIdStr)!.settings;
+    let patch: Partial<SubscriberSettings> = {};
     let answer = "";
 
     if (data === "toggle_alerts") {
-      const newEnabled = s.alertsEnabled === false ? true : false;
-      update = { alertsEnabled: newEnabled };
-      answer = newEnabled ? "▶️ Alerts resumed" : "⏸️ Alerts paused";
-    } else if (data === "toggle_auto") {
-      update = { autoTrade: !s.autoTrade };
-      answer = `Auto-Trade ${!s.autoTrade ? "ON" : "OFF"}`;
-    } else if (data === "toggle_ts") {
-      update = { trailingStop: !s.trailingStop };
-      answer = `Trailing Stop ${!s.trailingStop ? "ON" : "OFF"}`;
+      patch = { alertsEnabled: !s.alertsEnabled };
+      answer = !s.alertsEnabled ? "▶️ Alerts resumed" : "⏸️ Alerts paused";
     } else if (data === "toggle_boost") {
-      update = { dexBoostEnabled: !s.dexBoostEnabled };
+      patch = { dexBoostEnabled: !s.dexBoostEnabled };
       answer = `Dex Boost ${!s.dexBoostEnabled ? "ON" : "OFF"}`;
     } else if (data === "toggle_list") {
-      update = { dexListingEnabled: !s.dexListingEnabled };
+      patch = { dexListingEnabled: !s.dexListingEnabled };
       answer = `Dex Listing ${!s.dexListingEnabled ? "ON" : "OFF"}`;
     } else if (data === "boost_levels") {
       const boostMenu = {
         reply_markup: {
           inline_keyboard: [
-            [
-              { text: "✅ All Levels", callback_data: "boost_level_all" },
-            ],
-            [
-              { text: "Level 1", callback_data: "boost_level_1" },
-              { text: "Level 2", callback_data: "boost_level_2" },
-            ],
-            [
-              { text: "Level 3", callback_data: "boost_level_3" },
-              { text: "Level 4", callback_data: "boost_level_4" },
-            ],
-            [
-              { text: "Top Boost", callback_data: "boost_level_top" },
-            ],
+            [{ text: "✅ All Levels", callback_data: "boost_level_all" }],
+            [{ text: "Level 1", callback_data: "boost_level_1" }, { text: "Level 2", callback_data: "boost_level_2" }],
+            [{ text: "Level 3", callback_data: "boost_level_3" }, { text: "Level 4", callback_data: "boost_level_4" }],
+            [{ text: "Top Boost", callback_data: "boost_level_top" }],
             [{ text: "← Back", callback_data: "back_menu" }],
           ],
         },
       };
-      bot.editMessageText("Select boost level to track (default: All Levels):", {
+      bot.editMessageText("Select boost level to track:", {
         chat_id: chatId,
         message_id: query.message!.message_id,
         ...boostMenu,
@@ -317,29 +286,27 @@ bot.on("callback_query", async (query) => {
       return;
     } else if (data?.startsWith("boost_level_")) {
       const levelMap: Record<string, string> = {
-        "boost_level_all": "all",
-        "boost_level_1": "Level 1",
-        "boost_level_2": "Level 2",
-        "boost_level_3": "Level 3",
-        "boost_level_4": "Level 4",
-        "boost_level_top": "Top Boost",
+        boost_level_all: "all",
+        boost_level_1: "Level 1",
+        boost_level_2: "Level 2",
+        boost_level_3: "Level 3",
+        boost_level_4: "Level 4",
+        boost_level_top: "Top Boost",
       };
       const level = levelMap[data];
       if (level) {
-        await updateBotSettings(telegramId, { selectedBoostLevel: level });
-        const newText = await getSettingsText(telegramId);
-        bot.editMessageText(newText, {
+        updateSettings(chatIdStr, { selectedBoostLevel: level });
+        bot.editMessageText(getSettingsText(chatIdStr), {
           chat_id: chatId,
           message_id: query.message!.message_id,
           parse_mode: "Markdown",
           ...mainMenu,
         });
-        bot.answerCallbackQuery(query.id, { text: `Selected: ${formatBoostLevel(level)}` });
+        bot.answerCallbackQuery(query.id, { text: `Level: ${formatBoostLevel(level)}` });
       }
       return;
     } else if (data === "back_menu") {
-      const newText = await getSettingsText(telegramId);
-      bot.editMessageText(newText, {
+      bot.editMessageText(getSettingsText(chatIdStr), {
         chat_id: chatId,
         message_id: query.message!.message_id,
         parse_mode: "Markdown",
@@ -351,38 +318,36 @@ bot.on("callback_query", async (query) => {
       const field = data.replace("set_", "");
       const promptMap: Record<string, string> = {
         buy: "Enter Buy Amount in SOL (e.g., 0.5):",
-        max_buy: "Enter Max Buy Per Token in SOL (e.g., 2.0):",
         slippage: "Enter Slippage % (e.g., 10):",
         tp: "Enter Take Profit % (e.g., 50):",
         sl: "Enter Stop Loss % (e.g., 25):",
-        autosell: "Enter Auto-Sell minutes (0 to disable):",
-        min_holders: "Enter Min Holders (e.g., 1, default 1 = show all):",
-        min_liquidity: "Enter Min Liquidity in USD (e.g., 0 = no filter, 5000 = $5K):",
-        min_mc: "Enter Min Market Cap in USD (e.g., 0 = no filter, 10000 = $10K):",
-        max_mc: "Enter Max Market Cap in USD (e.g., 0 = no filter, 1000000 = $1M):",
+        min_holders: "Enter Min Holders (0 = no filter):",
+        min_liquidity: "Enter Min Liquidity in USD (0 = no filter, e.g., 5000):",
+        min_mc: "Enter Min Market Cap in USD (0 = no filter, e.g., 10000):",
+        max_mc: "Enter Max Market Cap in USD (0 = no filter, e.g., 1000000):",
       };
-      
+
       const prompt = promptMap[field];
       if (prompt) {
-        const msg = await bot.sendMessage(chatId, prompt, { reply_markup: { force_reply: true } });
-        bot.onReplyToMessage(chatId, msg.message_id, async (reply) => {
+        const sentMsg = await bot.sendMessage(chatId, prompt, { reply_markup: { force_reply: true } });
+        bot.onReplyToMessage(chatId, sentMsg.message_id, async (reply) => {
           const val = parseFloat(reply.text || "0");
           if (!isNaN(val)) {
-            const fieldMap: Record<string, string> = {
+            const fieldMap: Record<string, keyof SubscriberSettings> = {
               buy: "buyAmount",
-              max_buy: "maxBuyPerToken",
               slippage: "slippage",
               tp: "takeProfit",
               sl: "stopLoss",
-              autosell: "autoSellMinutes",
               min_holders: "minHolders",
               min_liquidity: "minLiquidity",
               min_mc: "minMarketCap",
               max_mc: "maxMarketCap",
             };
-            await updateBotSettings(telegramId, { [fieldMap[field]]: val });
-            const newText = await getSettingsText(telegramId);
-            bot.sendMessage(chatId, "✅ Updated!\n\n" + newText, { parse_mode: "Markdown", ...mainMenu });
+            const key = fieldMap[field];
+            if (key) {
+              updateSettings(chatIdStr, { [key]: val } as Partial<SubscriberSettings>);
+              bot.sendMessage(chatId, "✅ Updated!\n\n" + getSettingsText(chatIdStr), { parse_mode: "Markdown", ...mainMenu });
+            }
           }
         });
         bot.answerCallbackQuery(query.id);
@@ -390,10 +355,9 @@ bot.on("callback_query", async (query) => {
       }
     }
 
-    if (Object.keys(update).length > 0) {
-      await updateBotSettings(telegramId, update);
-      const newText = await getSettingsText(telegramId);
-      bot.editMessageText(newText, {
+    if (Object.keys(patch).length > 0) {
+      updateSettings(chatIdStr, patch);
+      bot.editMessageText(getSettingsText(chatIdStr), {
         chat_id: chatId,
         message_id: query.message!.message_id,
         parse_mode: "Markdown",
@@ -402,22 +366,9 @@ bot.on("callback_query", async (query) => {
       bot.answerCallbackQuery(query.id, { text: answer });
     }
   } catch (e) {
-    console.error("Bot action error:", e);
-    bot.answerCallbackQuery(query.id, { text: "❌ Error updating settings" });
+    console.error("[Bot] callback error:", e);
+    bot.answerCallbackQuery(query.id, { text: "❌ Error" });
   }
 });
 
-console.log("Alertly Telegram Bot is active.");
-
-
-bot.onText(/\/health/, async (msg) => {
-  const chatId = msg.chat.id;
-  try {
-    const res = await fetch(`${apiBaseUrl}/api/health`);
-    const data = await res.json().catch(() => ({}));
-    await bot.sendMessage(chatId, `Health: ${res.status}\nreadyForLaunch: ${data?.readyForLaunch}`);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "health check failed";
-    await bot.sendMessage(chatId, `❌ ${message}`);
-  }
-});
+console.log("✅ Alertly Telegram Bot is running (standalone mode — no DB required).");

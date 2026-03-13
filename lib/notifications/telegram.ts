@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 import { getAlerts } from "@/lib/alert-store";
 
 export type AlertBroadcastPayload = {
@@ -13,22 +14,41 @@ export type AlertBroadcastPayload = {
   alertedAt: Date;
   imageUrl?: string;
   boostAmount?: number;
+  totalBoostAmount?: number;
 };
 
-type UserSettingsLike = {
-  alertsEnabled?: boolean | null;
-  dexBoostEnabled?: boolean | null;
-  dexListingEnabled?: boolean | null;
+type SubscriberSettings = {
+  alertsEnabled?: boolean;
+  dexBoostEnabled?: boolean;
+  dexListingEnabled?: boolean;
+  selectedBoostLevel?: string;
 };
 
-function isAlertTypeEnabled(type: string, settings: UserSettingsLike | null | undefined): boolean {
-  if (type === "DEX_BOOST") return settings?.dexBoostEnabled !== false;
-  if (type === "DEX_LISTING") return settings?.dexListingEnabled !== false;
-  return true;
+type Subscriber = {
+  chatId: string;
+  firstName?: string;
+  subscribedAt: string;
+  settings: SubscriberSettings;
+};
+
+type SubscriberStore = Record<string, Subscriber>;
+
+const SUBSCRIBERS_FILE = join(process.cwd(), "telegram-bot", "data", "subscribers.json");
+
+function loadSubscribers(): SubscriberStore {
+  try {
+    if (!existsSync(SUBSCRIBERS_FILE)) return {};
+    const raw = readFileSync(SUBSCRIBERS_FILE, "utf-8");
+    return JSON.parse(raw) as SubscriberStore;
+  } catch {
+    return {};
+  }
 }
 
-function isAlertsEnabled(settings: UserSettingsLike | null | undefined): boolean {
-  return settings?.alertsEnabled !== false;
+function isAlertTypeEnabled(type: string, settings: SubscriberSettings): boolean {
+  if (type === "DEX_BOOST") return settings.dexBoostEnabled !== false;
+  if (type === "DEX_LISTING") return settings.dexListingEnabled !== false;
+  return true;
 }
 
 function shortAddress(addr: string): string {
@@ -55,8 +75,13 @@ function buildTelegramMessage(alert: AlertBroadcastPayload): string {
     `*CA:* \`${shortAddress(alert.address)}\``,
   ];
 
-  if (alert.boostAmount != null && alert.boostAmount > 0) {
-    lines.push(`*Boost Amount:* ${alert.boostAmount.toLocaleString()} units`);
+  if (alert.type === "DEX_BOOST") {
+    if (alert.boostAmount != null && alert.boostAmount > 0) {
+      lines.push(`*New Boost:* +${alert.boostAmount.toLocaleString()} units`);
+    }
+    if (alert.totalBoostAmount != null && alert.totalBoostAmount > 0) {
+      lines.push(`*Total Boosts:* ${alert.totalBoostAmount.toLocaleString()} units`);
+    }
   }
 
   lines.push(`*Market Cap:* ${alert.mc}`);
@@ -68,7 +93,7 @@ function buildTelegramMessage(alert: AlertBroadcastPayload): string {
   return lines.join("\n");
 }
 
-async function sendTelegramMessage(telegramId: string, text: string): Promise<boolean> {
+async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.warn("[Telegram] TELEGRAM_BOT_TOKEN is not set — skipping notification");
@@ -81,7 +106,7 @@ async function sendTelegramMessage(telegramId: string, text: string): Promise<bo
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: telegramId,
+        chat_id: chatId,
         text,
         parse_mode: "Markdown",
         disable_web_page_preview: false,
@@ -90,35 +115,35 @@ async function sendTelegramMessage(telegramId: string, text: string): Promise<bo
 
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.error(`[Telegram] Failed to send to ${telegramId}: HTTP ${res.status} — ${body}`);
+      console.error(`[Telegram] Failed to send to ${chatId}: HTTP ${res.status} — ${body}`);
       return false;
     }
 
     return true;
   } catch (err) {
-    console.error(`[Telegram] Network error sending to ${telegramId}:`, err instanceof Error ? err.message : err);
+    console.error(`[Telegram] Network error sending to ${chatId}:`, err instanceof Error ? err.message : err);
     return false;
   }
 }
 
-export async function sendCurrentAlertsToNewUser(telegramId: string) {
+export async function sendCurrentAlertsToNewUser(chatId: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return;
 
   const all = getAlerts();
-  const dexBoosts = all.filter((a) => a.type === "DEX_BOOST" || a.type === "DEX_LISTING");
-  if (dexBoosts.length === 0) return;
+  const dexAlerts = all.filter((a) => a.type === "DEX_BOOST" || a.type === "DEX_LISTING");
+  if (dexAlerts.length === 0) return;
 
-  const toSend = dexBoosts.slice(0, 8);
+  const toSend = dexAlerts.slice(0, 8);
 
   await sendTelegramMessage(
-    telegramId,
-    `✅ *Alertly linked!* Here are ${toSend.length} active DEX alerts right now:`,
+    chatId,
+    `✅ *Alertly activated!* Here are ${toSend.length} active DEX alerts right now:`,
   );
 
   for (const alert of toSend) {
     await sendTelegramMessage(
-      telegramId,
+      chatId,
       buildTelegramMessage({
         address: alert.address,
         pairAddress: alert.pairAddress ?? undefined,
@@ -130,6 +155,7 @@ export async function sendCurrentAlertsToNewUser(telegramId: string) {
         vol: alert.vol,
         alertedAt: alert.alertedAt,
         boostAmount: alert.boostAmount,
+        totalBoostAmount: alert.totalBoostAmount,
       }),
     );
     await new Promise((r) => setTimeout(r, 120));
@@ -137,43 +163,26 @@ export async function sendCurrentAlertsToNewUser(telegramId: string) {
 }
 
 export async function broadcastAlertToTelegram(alert: AlertBroadcastPayload) {
-  const links = await prisma.telegramLink
-    .findMany({
-      include: {
-        user: {
-          include: {
-            settings: true,
-          },
-        },
-      },
-    })
-    .catch((err) => {
-      console.error("[Telegram] Failed to fetch telegram links:", err instanceof Error ? err.message : err);
-      return [];
-    });
+  const subscribers = loadSubscribers();
+  const entries = Object.values(subscribers);
 
-  if (links.length === 0) return;
+  if (entries.length === 0) return;
 
   const message = buildTelegramMessage(alert);
   let sent = 0;
   let skipped = 0;
 
-  for (const link of links) {
-    const settings = link.user?.settings ?? null;
+  for (const sub of entries) {
+    const settings = sub.settings ?? {};
 
-    if (!isAlertsEnabled(settings)) {
-      skipped++;
-      continue;
-    }
+    if (settings.alertsEnabled === false) { skipped++; continue; }
+    if (!isAlertTypeEnabled(alert.type, settings)) { skipped++; continue; }
 
-    if (!isAlertTypeEnabled(alert.type, settings)) {
-      skipped++;
-      continue;
-    }
-
-    const ok = await sendTelegramMessage(link.telegramId, message);
+    const ok = await sendTelegramMessage(sub.chatId, message);
     if (ok) sent++;
   }
 
-  console.log(`[Telegram] ${alert.type} broadcast: sent=${sent}, skipped=${skipped}, token=${alert.name}`);
+  if (sent > 0 || skipped > 0) {
+    console.log(`[Telegram] ${alert.type} broadcast: sent=${sent}, skipped=${skipped}, token=${alert.name}`);
+  }
 }

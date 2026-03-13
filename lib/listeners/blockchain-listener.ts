@@ -12,15 +12,16 @@ let listenerStartedAt: number | null = null;
 const BOOST_TOP_POLL_MS = 6_000;
 const BOOST_LATEST_POLL_MS = 5_000;
 const LISTING_POLL_MS = 6_000;
-const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
 const RATE_LIMIT_BACKOFF_MS = 15_000;
-const seenBoostFingerprints = new Set<string>();
+
+// For boosts: track last known totalAmount per token — alert only on real increase
+const lastBoostTotalAmounts = new Map<string, number>();
+// For listings: still deduplicate (each token listed only once per session)
 const seenListingFingerprints = new Set<string>();
 
 let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
 let listingTimer: ReturnType<typeof setTimeout> | null = null;
-let fingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
 
 let globalRateLimitedUntil = 0;
 
@@ -46,6 +47,7 @@ async function processTokenAlert(
   dex: string,
   alertedAt: Date,
   boostAmount?: number,
+  totalBoostAmount?: number,
 ) {
   if (!isPotentialPublicKey(addr)) return;
 
@@ -57,7 +59,12 @@ async function processTokenAlert(
     lpLockedPct: 80,
   });
 
-  const fingerprint = `${addr}|${type}`;
+  // Boosts: unique fingerprint per boost event so each appears separately in feed
+  // Listings: classic fingerprint to avoid duplicates
+  const fingerprint = type === "DEX_BOOST"
+    ? `${addr}|DEX_BOOST|${totalBoostAmount ?? boostAmount ?? Math.floor(alertedAt.getTime() / 1000)}`
+    : `${addr}|${type}`;
+
   const alertData = {
     fingerprint,
     address: addr,
@@ -81,6 +88,7 @@ async function processTokenAlert(
     twitter: null as string | null,
     telegram: null as string | null,
     boostAmount,
+    totalBoostAmount,
     dex,
   };
 
@@ -99,6 +107,7 @@ async function processTokenAlert(
           vol: "N/A",
           alertedAt,
           boostAmount,
+          totalBoostAmount,
         }).catch(() => null);
         return;
       }
@@ -135,9 +144,8 @@ async function processTokenAlert(
         alertedAt,
         imageUrl: meta.imageUrl || undefined,
         boostAmount,
-      }).catch((err) => {
-        console.error(`[Listener] Telegram broadcast failed for ${addr.slice(0, 8)}…:`, err instanceof Error ? err.message : err);
-      });
+        totalBoostAmount,
+      }).catch(() => null);
     })
     .catch((err) => {
       console.error(`[Listener] Token metadata fetch failed for ${addr.slice(0, 8)}…:`, err instanceof Error ? err.message : err);
@@ -157,50 +165,39 @@ async function pollDexBoostsTop() {
       signal: AbortSignal.timeout(12000),
     });
 
-    if (res.status === 429 || res.status === 1015) {
-      setRateLimited();
-      return;
-    }
-
-    if (!res.ok) {
-      console.warn(`[Listener] DexScreener top boosts returned HTTP ${res.status}`);
-      return;
-    }
+    if (res.status === 429 || res.status === 1015) { setRateLimited(); return; }
+    if (!res.ok) { console.warn(`[Listener] DexScreener top boosts HTTP ${res.status}`); return; }
 
     const data: unknown = await res.json();
     const boosts: any[] = Array.isArray(data) ? data : [];
-    const newBoosts: Array<{ addr: string; boostAmount?: number; index: number }> = [];
+    const newBoosts: Array<{ addr: string; boostAmount: number; totalBoostAmount: number }> = [];
 
-    for (let i = 0; i < boosts.length; i++) {
-      const boost = boosts[i];
+    for (const boost of boosts) {
       if (boost?.chainId !== "solana") continue;
       const addr = boost.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
 
-      const fingerprint = `${addr}|DEX_BOOST|top`;
-      if (seenBoostFingerprints.has(fingerprint)) continue;
-      seenBoostFingerprints.add(fingerprint);
+      const totalAmount = Number(boost.totalAmount ?? boost.amount ?? 0);
+      const lastSeen = lastBoostTotalAmounts.get(addr) ?? -1;
+      if (totalAmount <= lastSeen) continue;
 
-      const totalAmount = boost.totalAmount ?? boost.amount;
-      newBoosts.push({ addr, index: i, boostAmount: totalAmount != null ? Number(totalAmount) : undefined });
+      const delta = lastSeen < 0 ? totalAmount : totalAmount - lastSeen;
+      lastBoostTotalAmounts.set(addr, totalAmount);
+      newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
 
     if (newBoosts.length > 0) {
-      console.log(`[Listener] Top boosts: ${newBoosts.length} new (${boosts.length} total on Solana)`);
-    }
-
-    const now = Date.now();
-    for (let j = newBoosts.length - 1; j >= 0; j--) {
-      const { addr, boostAmount } = newBoosts[j];
-      const alertedAt = new Date(now - j * 1000);
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount).catch(() => null);
+      console.log(`[Listener] Top boosts: ${newBoosts.length} new/increased`);
+      const now = Date.now();
+      newBoosts.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
+        const alertedAt = new Date(now - j * 1000);
+        processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount, totalBoostAmount).catch(() => null);
+      });
     }
   } catch (err) {
     console.error("[Listener] pollDexBoostsTop error:", err instanceof Error ? err.message : err);
   } finally {
-    if (listenerRunning) {
-      boostTopTimer = setTimeout(pollDexBoostsTop, BOOST_TOP_POLL_MS);
-    }
+    if (listenerRunning) boostTopTimer = setTimeout(pollDexBoostsTop, BOOST_TOP_POLL_MS);
   }
 }
 
@@ -217,50 +214,39 @@ async function pollDexBoostsLatest() {
       signal: AbortSignal.timeout(12000),
     });
 
-    if (res.status === 429 || res.status === 1015) {
-      setRateLimited();
-      return;
-    }
-
-    if (!res.ok) {
-      console.warn(`[Listener] DexScreener latest boosts returned HTTP ${res.status}`);
-      return;
-    }
+    if (res.status === 429 || res.status === 1015) { setRateLimited(); return; }
+    if (!res.ok) { console.warn(`[Listener] DexScreener latest boosts HTTP ${res.status}`); return; }
 
     const data: unknown = await res.json();
     const boosts: any[] = Array.isArray(data) ? data : [];
-    const newBoosts: Array<{ addr: string; boostAmount?: number; index: number }> = [];
+    const newBoosts: Array<{ addr: string; boostAmount: number; totalBoostAmount: number }> = [];
 
-    for (let i = 0; i < boosts.length; i++) {
-      const boost = boosts[i];
+    for (const boost of boosts) {
       if (boost?.chainId !== "solana") continue;
       const addr = boost.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
 
-      const fingerprint = `${addr}|DEX_BOOST|latest`;
-      if (seenBoostFingerprints.has(fingerprint)) continue;
-      seenBoostFingerprints.add(fingerprint);
+      const totalAmount = Number(boost.totalAmount ?? boost.amount ?? 0);
+      const lastSeen = lastBoostTotalAmounts.get(addr) ?? -1;
+      if (totalAmount <= lastSeen) continue;
 
-      const totalAmount = boost.totalAmount ?? boost.amount;
-      newBoosts.push({ addr, index: i, boostAmount: totalAmount != null ? Number(totalAmount) : undefined });
+      const delta = lastSeen < 0 ? totalAmount : totalAmount - lastSeen;
+      lastBoostTotalAmounts.set(addr, totalAmount);
+      newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
 
     if (newBoosts.length > 0) {
-      console.log(`[Listener] Latest boosts: ${newBoosts.length} new (${boosts.length} total on Solana)`);
-    }
-
-    const now = Date.now();
-    for (let j = newBoosts.length - 1; j >= 0; j--) {
-      const { addr, boostAmount } = newBoosts[j];
-      const alertedAt = new Date(now - j * 1000);
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount).catch(() => null);
+      console.log(`[Listener] Latest boosts: ${newBoosts.length} new/increased`);
+      const now = Date.now();
+      newBoosts.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
+        const alertedAt = new Date(now - j * 1000);
+        processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount, totalBoostAmount).catch(() => null);
+      });
     }
   } catch (err) {
     console.error("[Listener] pollDexBoostsLatest error:", err instanceof Error ? err.message : err);
   } finally {
-    if (listenerRunning) {
-      boostLatestTimer = setTimeout(pollDexBoostsLatest, BOOST_LATEST_POLL_MS);
-    }
+    if (listenerRunning) boostLatestTimer = setTimeout(pollDexBoostsLatest, BOOST_LATEST_POLL_MS);
   }
 }
 
@@ -277,49 +263,36 @@ async function pollDexTokenProfiles() {
       signal: AbortSignal.timeout(12000),
     });
 
-    if (res.status === 429 || res.status === 1015) {
-      setRateLimited();
-      return;
-    }
-
-    if (!res.ok) {
-      console.warn(`[Listener] DexScreener token profiles returned HTTP ${res.status}`);
-      return;
-    }
+    if (res.status === 429 || res.status === 1015) { setRateLimited(); return; }
+    if (!res.ok) { console.warn(`[Listener] DexScreener token profiles HTTP ${res.status}`); return; }
 
     const data: unknown = await res.json();
     const profiles: any[] = Array.isArray(data) ? data : [];
-    const newProfiles: Array<{ addr: string; index: number }> = [];
+    const newProfiles: Array<{ addr: string }> = [];
 
-    for (let i = 0; i < profiles.length; i++) {
-      const profile = profiles[i];
+    for (const profile of profiles) {
       if (profile?.chainId !== "solana") continue;
       const addr = profile.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
 
-      const fingerprint = `${addr}|DEX_LISTING`;
-      if (seenListingFingerprints.has(fingerprint)) continue;
-      seenListingFingerprints.add(fingerprint);
-
-      newProfiles.push({ addr, index: i });
+      const fp = `${addr}|DEX_LISTING`;
+      if (seenListingFingerprints.has(fp)) continue;
+      seenListingFingerprints.add(fp);
+      newProfiles.push({ addr });
     }
 
     if (newProfiles.length > 0) {
       console.log(`[Listener] Token profiles: ${newProfiles.length} new listings`);
-    }
-
-    const now = Date.now();
-    for (let j = newProfiles.length - 1; j >= 0; j--) {
-      const { addr } = newProfiles[j];
-      const alertedAt = new Date(now - j * 1000);
-      processTokenAlert(addr, "DEX_LISTING", "DexScreener", alertedAt).catch(() => null);
+      const now = Date.now();
+      newProfiles.forEach(({ addr }, j) => {
+        const alertedAt = new Date(now - j * 1000);
+        processTokenAlert(addr, "DEX_LISTING", "DexScreener", alertedAt).catch(() => null);
+      });
     }
   } catch (err) {
     console.error("[Listener] pollDexTokenProfiles error:", err instanceof Error ? err.message : err);
   } finally {
-    if (listenerRunning) {
-      listingTimer = setTimeout(pollDexTokenProfiles, LISTING_POLL_MS);
-    }
+    if (listenerRunning) listingTimer = setTimeout(pollDexTokenProfiles, LISTING_POLL_MS);
   }
 }
 
@@ -330,21 +303,11 @@ export async function startBlockchainListener() {
     listenerRunning = true;
     listenerStartedAt = Date.now();
 
-    console.log("[Listener] Starting DEX monitors (Top boosts every 6s + Latest boosts every 5s + Listings every 6s, staggered)");
+    console.log("[Listener] Starting DEX monitors (Top boosts 6s + Latest boosts 5s + Listings 6s, staggered)");
 
-    // Stagger startup: Top immediately, Latest after 2s, Listings after 4s
-    // This prevents all 3 from firing at the same time and hitting rate limits
     pollDexBoostsTop().catch(() => null);
     setTimeout(() => { if (listenerRunning) pollDexBoostsLatest().catch(() => null); }, 2_000);
     setTimeout(() => { if (listenerRunning) pollDexTokenProfiles().catch(() => null); }, 4_000);
-
-    // Reset fingerprints every 4h so repeat boosts re-alert
-    fingerprintResetTimer = setInterval(() => {
-      const before = seenBoostFingerprints.size + seenListingFingerprints.size;
-      seenBoostFingerprints.clear();
-      seenListingFingerprints.clear();
-      console.log(`[Listener] Fingerprint cache cleared (had ${before} entries)`);
-    }, BOOST_FINGERPRINT_RESET_MS);
 
     return { success: true, message: "Listener started (DEX Boosts + Token Profiles)" };
   } catch (error) {
@@ -362,7 +325,6 @@ export async function stopBlockchainListener() {
   if (boostTopTimer) { clearTimeout(boostTopTimer); boostTopTimer = null; }
   if (boostLatestTimer) { clearTimeout(boostLatestTimer); boostLatestTimer = null; }
   if (listingTimer) { clearTimeout(listingTimer); listingTimer = null; }
-  if (fingerprintResetTimer) { clearInterval(fingerprintResetTimer); fingerprintResetTimer = null; }
 
   console.log("[Listener] Stopped");
   return { success: true, message: "Listener stopped" };

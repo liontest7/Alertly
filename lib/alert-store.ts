@@ -24,11 +24,11 @@ export interface StoredAlert {
   telegram?: string | null;
   boostLevel?: string;
   boostAmount?: number;
+  totalBoostAmount?: number;
   dex?: string;
   wallet?: string;
   walletBalance?: number;
   buyAmountSol?: number;
-  spikePercent?: number;
 }
 
 const MAX_ALERTS = 200;
