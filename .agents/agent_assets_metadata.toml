@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "VutjiiGsQXlDes36tzxk0"
+uri = "file://alertly-extension.zip"
+type = "unspecified"
+title = "Alertly Extension - Chrome Web Store Upload"
