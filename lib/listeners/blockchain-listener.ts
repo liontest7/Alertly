@@ -9,9 +9,9 @@ export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 let listenerRunning = false;
 let listenerStartedAt: number | null = null;
 
-const BOOST_TOP_POLL_MS = 4_000;
-const BOOST_LATEST_POLL_MS = 4_000;
-const LISTING_POLL_MS = 4_000;
+const BOOST_TOP_POLL_MS = 2_000;
+const BOOST_LATEST_POLL_MS = 2_000;
+const LISTING_POLL_MS = 3_000;
 const RATE_LIMIT_BACKOFF_MS = 15_000;
 
 // For boosts: track last known totalAmount per token — alert only on real increase
@@ -303,7 +303,7 @@ export async function startBlockchainListener() {
     listenerRunning = true;
     listenerStartedAt = Date.now();
 
-    console.log("[Listener] Starting DEX monitors (Top boosts 4s + Latest boosts 4s + Listings 4s, staggered)");
+    console.log("[Listener] Starting DEX monitors (Top boosts 2s + Latest boosts 2s + Listings 3s, staggered)");
 
     pollDexBoostsTop().catch(() => null);
     setTimeout(() => { if (listenerRunning) pollDexBoostsLatest().catch(() => null); }, 2_000);
@@ -336,6 +336,6 @@ export function getListenerStatus() {
     subscriptions: 0,
     uptime: listenerStartedAt ? `${Math.floor((Date.now() - listenerStartedAt) / 1000)}s` : undefined,
     mode: "dexscreener-api-polling",
-    monitors: ["DEX Boosts top (6s)", "DEX Boosts latest (5s)", "DEX Token Profiles (6s)"],
+    monitors: ["DEX Boosts top (2s)", "DEX Boosts latest (2s)", "DEX Token Profiles (3s)"],
   };
 }

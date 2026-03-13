@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthSession } from "./providers";
 
 type AlertNotification = {
-  id: string;
+  fingerprint: string;
   title: string;
   message: string;
   address: string;
@@ -38,11 +38,16 @@ export function NotificationSystem() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuthSession();
-  const lastAlertIdRef = useRef<string | null>(null);
+  const lastFingerprintRef = useRef<string | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
+  const initializedRef = useRef(false);
   const [notification, setNotification] = useState<AlertNotification | null>(null);
 
   useEffect(() => {
     if (!user) return;
+
+    startTimeRef.current = Date.now();
+    initializedRef.current = false;
 
     const checkAlerts = async () => {
       try {
@@ -50,15 +55,31 @@ export function NotificationSystem() {
         if (!res.ok) return;
         const data = await res.json();
         const latest = Array.isArray(data) ? data[0] : null;
-        if (!latest || latest.id === lastAlertIdRef.current) return;
+        if (!latest) return;
 
-        lastAlertIdRef.current = latest.id;
+        const fingerprint = latest.fingerprint || `${latest.address}:${latest.type}`;
+
+        if (!initializedRef.current) {
+          lastFingerprintRef.current = fingerprint;
+          initializedRef.current = true;
+          return;
+        }
+
+        if (fingerprint === lastFingerprintRef.current) return;
+
+        const alertedAt = latest.alertedAt ? new Date(latest.alertedAt).getTime() : 0;
+        if (alertedAt > 0 && alertedAt < startTimeRef.current) {
+          lastFingerprintRef.current = fingerprint;
+          return;
+        }
+
+        lastFingerprintRef.current = fingerprint;
 
         const isOnDashboard = pathname === "/dashboard";
         if (!isOnDashboard) {
           playNotificationSound();
           setNotification({
-            id: latest.id,
+            fingerprint,
             title: `New ${latest.type || "Alert"}`,
             message: `${latest.name || ""} (${latest.symbol || ""}) — MC: ${latest.mc || "-"} | Liq: ${latest.liquidity || "-"}`,
             address: latest.address || "",

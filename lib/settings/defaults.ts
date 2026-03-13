@@ -7,7 +7,7 @@ export const DEFAULT_USER_SETTINGS = {
   autoTrade: false,
   minMarketCap: 0,
   maxMarketCap: 0,
-  minHolders: 1,
+  minHolders: 0,
   minLiquidity: 0,
   takeProfit: 50,
   stopLoss: 25,

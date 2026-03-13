@@ -39,7 +39,7 @@ export default function OnboardingPage() {
     takeProfit: 50,
     stopLoss: 25,
     minLiquidity: 0,
-    minHolders: 1,
+    minHolders: 0,
     dexBoostEnabled: true,
     dexListingEnabled: true,
     boostLevels: ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"]
@@ -121,10 +121,10 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#020202] text-white flex items-center justify-center p-4 md:p-8 font-sans selection:bg-[#5100fd]/40">
+    <div className="min-h-screen bg-[#020202] text-white flex items-start justify-center pt-24 pb-8 px-4 md:px-8 font-sans selection:bg-[#5100fd]/40">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(81,0,253,0.05),transparent_50%)] pointer-events-none" />
       
-      <Card className="max-w-3xl w-full bg-[#080808] border-zinc-900/50 p-8 md:p-12 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[95vh] relative z-10 backdrop-blur-3xl border">
+      <Card className="max-w-3xl w-full bg-[#080808] border-zinc-900/50 p-8 md:p-12 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] overflow-y-auto relative z-10 backdrop-blur-3xl border">
         {step === 1 && (
           <div className="space-y-10 py-4 text-center">
             <div className="flex items-center justify-center mb-8">
@@ -254,10 +254,10 @@ export default function OnboardingPage() {
                     <Input 
                       type="number" 
                       value={settings.minHolders} 
-                      onChange={(e) => setSettings({...settings, minHolders: parseInt(e.target.value) || 1})}
+                      onChange={(e) => setSettings({...settings, minHolders: Math.max(0, parseInt(e.target.value) || 0)})}
                       className="bg-zinc-900 border border-zinc-800 rounded-2xl h-12 text-base font-black text-white focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all pl-5 shadow-inner"
                     />
-                    <p className="text-[9px] text-zinc-500">Default: 1 (show all)</p>
+                    <p className="text-[9px] text-zinc-500">Default: 0 (show all)</p>
                   </div>
                 </div>
               </div>
