@@ -11,6 +11,29 @@ type AlertNotification = {
   address: string;
 };
 
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.setValueAtTime(600, now + 0.1);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } catch {
+    try {
+      const audio = new Audio("/notification.mp3");
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+    } catch {}
+  }
+}
+
 export function NotificationSystem() {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,6 +56,7 @@ export function NotificationSystem() {
 
         const isOnDashboard = pathname === "/dashboard";
         if (!isOnDashboard) {
+          playNotificationSound();
           setNotification({
             id: latest.id,
             title: `New ${latest.type || "Alert"}`,

@@ -245,7 +245,7 @@ async function checkAlerts() {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("checkAlerts", { periodInMinutes: 1 });
+  chrome.alarms.create("checkAlerts", { periodInMinutes: 0.5 });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

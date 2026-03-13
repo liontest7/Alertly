@@ -4,6 +4,7 @@
  */
 
 import { startBlockchainListener, stopBlockchainListener, getListenerStatus } from "./listeners/blockchain-listener";
+import { startAutomationScheduler, stopAutomationScheduler } from "./automation-scheduler";
 import { prisma } from "./prisma";
 
 const RESTART_DELAY_MS = 15_000;
@@ -24,6 +25,7 @@ export class AlertListener {
 
     try {
       await startBlockchainListener();
+      startAutomationScheduler();
       this.scheduleHealthCheck();
 
       try {
@@ -78,6 +80,7 @@ export class AlertListener {
 
     try {
       await stopBlockchainListener();
+      stopAutomationScheduler();
 
       try {
         await prisma.listenerStatus.upsert({
