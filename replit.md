@@ -1,20 +1,27 @@
 # ALERTLY - Production-Ready Blockchain Monitoring System
 
 **Status:** ✅ **100% COMPLETE - FULLY OPERATIONAL**  
-**Last Updated:** March 12, 2026  
+**Last Updated:** March 13, 2026  
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 12, 2026)
-- **Alert types cleaned up**: Removed EARLY_TOKEN_PAIR, SMART_MONEY_ENTRY, LIQUIDITY_ADDED, LIQUIDITY_REMOVAL from all layers
-- **Supported alert types**: VOLUME_SPIKE, WHALE_BUY, DEX_BOOST, DEX_LISTING only
-- **Stablecoin filter**: Volume spike and whale alerts now skip USDC/USDT/stable tokens
-- **Live Feed UI**: Shows ticker (symbol) as primary name, CA shortened to 4…4 chars, correct filter chips
-- **Telegram bot defaults**: Fixed to minHolders=1, minLiquidity=0, minMarketCap=0, selectedBoostLevel="all"
-- **Telegram bot**: Added Min Holders, Min Liquidity, Min/Max MC, Vol Spike %, Whale SOL settings buttons; Added "All Levels" boost option
-- **Whale alerts**: Fires on ALL wallets with >500 SOL - no specific wallet selection needed
-- **Chrome extension notifications**: Shows symbol/name, MC, Liquidity, Vol in notification
-- **All platforms synced**: Web dashboard, Telegram bot, Chrome extension all use same filters/defaults
+## Latest Changes (March 13, 2026) — Full Production Fixes
+- **DEX BOOST detection**: Replaced broken wallet-list approach with real DexScreener Boost API (`/token-boosts/top/v1`), polls every 45 seconds — DEX BOOST alerts now actually fire with real boosted token data
+- **DEX LISTING detection**: Added log-pattern detection for Raydium pool initialization and Pump.fun token creation in `parseLogsForEvents`
+- **Volume Spike threshold**: Lowered global threshold from 50% to 10% — now catches far more real spikes; each alert stores `spikePercent` value
+- **Per-user threshold filtering**: `volumeSpikeThreshold` and `whaleMinSolBalance` from user settings are now applied at read time in `getLiveAlerts()` — user settings actually matter now
+- **Whale threshold**: Lowered global minimum from 500 SOL to 100 SOL to catch real whale buys
+- **Token images**: All alerts now pull images from DexScreener + fallback to Jupiter API (`lite-api.jup.ag/tokens/v1/token/{address}`) — 100% image coverage verified
+- **`maxMarketCap` default fix**: Fixed Prisma schema default from $10M to 0 (no limit) — existing users with wrong value updated
+- **Telegram Bot workflow**: Added dedicated "Telegram Bot" workflow running `tsx src/bot.ts` — starts automatically
+- **Telegram messages improved**: DexScreener link now uses `pairAddress` (not raw token address) for correct chart view; `pairAddress` added to broadcast payload
+- **API routes updated**: Both `/api/alerts` and `/api/alerts/stream` now pass `volumeSpikeThreshold` + `whaleMinSolBalance` to `getLiveAlerts()`
+- **TypeScript types synced**: `TokenAlert`, `AlertFilterSettings`, `StoredAlert`, `BlockchainEvent` all updated with new fields (`spikePercent`, `volumeSpikeThreshold`, `whaleMinSolBalance`)
+
+## Previous Changes (March 12, 2026)
+- Alert types cleaned up: VOLUME_SPIKE, WHALE_BUY, DEX_BOOST, DEX_LISTING only
+- Stablecoin filter, Live Feed UI improvements, Telegram bot settings improvements
+- All platforms synced: Web dashboard, Telegram bot, Chrome extension
 
 ---
 

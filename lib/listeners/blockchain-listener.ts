@@ -52,8 +52,8 @@ const DEX_LABEL_BY_PROGRAM = new Map<string, string>([
 ]);
 
 const VOLUME_WINDOW_MS = 60_000;
-const DEFAULT_VOLUME_SPIKE_PCT = Number(getEnv("ALERT_VOLUME_SPIKE_PCT", "50"));
-const DEFAULT_WHALE_MIN_SOL = Number(getEnv("ALERT_WHALE_MIN_SOL_BALANCE", "500"));
+const DEFAULT_VOLUME_SPIKE_PCT = Number(getEnv("ALERT_VOLUME_SPIKE_PCT", "10"));
+const DEFAULT_WHALE_MIN_SOL = Number(getEnv("ALERT_WHALE_MIN_SOL_BALANCE", "100"));
 
 const DEX_BOOST_WALLETS = new Set(
   (getEnv("DEX_BOOST_WALLETS", "") || "")
@@ -98,6 +98,7 @@ export interface BlockchainEvent {
   timestamp: Date;
   signature: string;
   reason: string;
+  spikePercent?: number;
 }
 
 type VolumeSnapshot = { timestamp: number; amount: number };
@@ -165,10 +166,14 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
   const tokenAddress = extractTokenAddressFromLogs(logs) || signature.slice(0, 44);
   const dex = detectDexFromProgram(programId);
 
+  let hasSwap = false;
+  let isNewListing = false;
+
   for (const rawLog of logs) {
     const log = rawLog.toLowerCase();
 
     if (log.includes("swap")) {
+      hasSwap = true;
       const amount = parseFloatFromLog(rawLog);
       events.push({
         type: "_SWAP_INTERNAL",
@@ -180,6 +185,27 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
         reason: "Swap instruction detected",
       });
     }
+
+    if (
+      log.includes("initializepool") ||
+      log.includes("initialize_pool") ||
+      log.includes("initialize pool") ||
+      (programId === DEX_PROGRAMS.PUMP_FUN && (log.includes("program log: create") || log.includes("instruction: create") || log.includes("initialize bonding curve"))) ||
+      (programId === DEX_PROGRAMS.RAYDIUM_V4 && (log.includes("instruction: initialize") || log.includes("initialize2")))
+    ) {
+      isNewListing = true;
+    }
+  }
+
+  if (isNewListing && !hasSwap) {
+    events.push({
+      type: "DEX_LISTING",
+      tokenAddress,
+      dex,
+      timestamp: new Date(),
+      signature,
+      reason: `New ${dex} pool/token listing detected`,
+    });
   }
 
   return events;
@@ -213,6 +239,7 @@ function updateAndDetectVolumeSpike(event: BlockchainEvent, thresholdPct: number
   return {
     ...event,
     type: "VOLUME_SPIKE",
+    spikePercent: pctIncrease,
     reason: `Volume increased ${pctIncrease.toFixed(0)}% in ${VOLUME_WINDOW_MS / 1000}s`,
   };
 }
@@ -355,6 +382,7 @@ async function processBlockchainEvent(event: BlockchainEvent) {
     buyAmountSol: event.amount,
     walletBalance: event.walletBalance,
     dex: event.dex,
+    spikePercent: event.spikePercent,
   };
 
   pushAlert(alertData);
@@ -382,6 +410,7 @@ async function processBlockchainEvent(event: BlockchainEvent) {
 
     broadcastAlertToTelegram({
       address: alertData.address,
+      pairAddress: meta.pairAddress || undefined,
       type: alertType,
       name: meta.name || "Unknown Token",
       symbol: meta.symbol || undefined,
@@ -462,6 +491,48 @@ async function setupProgramSubscription() {
   console.log(`[Listener] ${subscribed} program subscriptions active`);
 }
 
+const seenBoostFingerprints = new Set<string>();
+let boostPollerTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function pollDexBoosts() {
+  if (!listenerRunning) return;
+  try {
+    const res = await fetch("https://api.dexscreener.com/token-boosts/top/v1", {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) return;
+
+    const data: unknown = await res.json();
+    const boosts: any[] = Array.isArray(data) ? data : [];
+
+    for (const boost of boosts) {
+      if (boost.chainId !== "solana") continue;
+      const addr = boost.tokenAddress as string | undefined;
+      if (!addr || !isPotentialPublicKey(addr)) continue;
+
+      const fingerprint = `${addr}|DEX_BOOST`;
+      if (seenBoostFingerprints.has(fingerprint)) continue;
+      seenBoostFingerprints.add(fingerprint);
+
+      const boostEvent: BlockchainEvent = {
+        type: "DEX_BOOST",
+        tokenAddress: addr,
+        dex: "DexScreener",
+        timestamp: new Date(),
+        signature: `boost_${addr}_${Date.now()}`,
+        reason: `DexScreener boost (${boost.totalAmount ?? boost.amount ?? "?"} units)`,
+      };
+      processBlockchainEvent(boostEvent).catch(() => null);
+    }
+  } catch {
+  } finally {
+    if (listenerRunning) {
+      boostPollerTimer = setTimeout(pollDexBoosts, 45_000);
+    }
+  }
+}
+
 export async function startBlockchainListener() {
   if (listenerRunning) return { success: true, message: "Listener already running" };
 
@@ -469,6 +540,7 @@ export async function startBlockchainListener() {
     listenerRunning = true;
     listenerStartedAt = Date.now();
     await setupProgramSubscription();
+    pollDexBoosts().catch(() => null);
     return { success: true, message: "Listener started" };
   } catch (error) {
     listenerRunning = false;
@@ -498,6 +570,11 @@ export async function stopBlockchainListener() {
   accountSubscriptionIds = [];
   listenerRunning = false;
   listenerStartedAt = null;
+
+  if (boostPollerTimer) {
+    clearTimeout(boostPollerTimer);
+    boostPollerTimer = null;
+  }
 
   return { success: true, message: "Listener stopped" };
 }

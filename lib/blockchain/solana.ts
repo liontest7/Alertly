@@ -49,6 +49,7 @@ export interface TokenAlert {
   walletBalance?: number;
   buyAmountSol?: number;
   dex?: string;
+  spikePercent?: number;
 }
 
 export interface AlertFilterSettings {
@@ -60,6 +61,8 @@ export interface AlertFilterSettings {
   whaleAlertEnabled?: boolean;
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
+  volumeSpikeThreshold?: number;
+  whaleMinSolBalance?: number;
 }
 
 const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
@@ -111,6 +114,22 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   if (typeof filters.maxMarketCap === "number" && filters.maxMarketCap > 0 && mcValue !== null && mcValue > filters.maxMarketCap) return false;
   if (typeof filters.minLiquidity === "number" && filters.minLiquidity > 0 && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
 
+  if (
+    alert.type === "VOLUME SPIKE" &&
+    typeof filters.volumeSpikeThreshold === "number" &&
+    filters.volumeSpikeThreshold > 0 &&
+    typeof alert.spikePercent === "number" &&
+    alert.spikePercent < filters.volumeSpikeThreshold
+  ) return false;
+
+  if (
+    alert.type === "WHALE BUY" &&
+    typeof filters.whaleMinSolBalance === "number" &&
+    filters.whaleMinSolBalance > 0 &&
+    typeof alert.walletBalance === "number" &&
+    alert.walletBalance < filters.whaleMinSolBalance
+  ) return false;
+
   return true;
 }
 
@@ -144,6 +163,7 @@ function mapStoredAlert(item: StoredAlert): TokenAlert | null {
     walletBalance: item.walletBalance,
     buyAmountSol: item.buyAmountSol,
     dex: item.dex,
+    spikePercent: item.spikePercent,
   };
 }
 

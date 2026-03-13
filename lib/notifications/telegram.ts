@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export type AlertBroadcastPayload = {
   address: string;
+  pairAddress?: string;
   type: string;
   name: string;
   symbol?: string;
@@ -57,7 +58,8 @@ function buildTelegramMessage(alert: AlertBroadcastPayload) {
   }
 
   lines.push(`*Time:* ${alert.alertedAt.toISOString()}`);
-  lines.push(`[View on DexScreener](https://dexscreener.com/solana/${alert.address})`);
+  const dexLink = alert.pairAddress || alert.address;
+  lines.push(`[View on DexScreener](https://dexscreener.com/solana/${dexLink})`);
 
   return lines.join("\n");
 }

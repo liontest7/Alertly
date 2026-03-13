@@ -73,6 +73,25 @@ function parsePair(pair: any): TokenMeta {
   };
 }
 
+async function fetchJupiterMeta(address: string): Promise<Partial<TokenMeta> | null> {
+  try {
+    const res = await fetch(`https://lite-api.jup.ag/tokens/v1/token/${address}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const token = await res.json();
+    if (!token || !token.address) return null;
+    return {
+      name: token.name || "Unknown Token",
+      symbol: token.symbol || "???",
+      imageUrl: token.logoURI || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchBatch(addresses: string[]): Promise<Map<string, TokenMeta>> {
   const results = new Map<string, TokenMeta>();
   if (addresses.length === 0) return results;
@@ -110,6 +129,31 @@ async function fetchBatch(addresses: string[]): Promise<Map<string, TokenMeta>> 
       }
     }
   } catch {
+  }
+
+  const missing = addresses.filter((a) => !results.has(a));
+  if (missing.length > 0) {
+    await Promise.allSettled(
+      missing.slice(0, 5).map(async (addr) => {
+        const jupMeta = await fetchJupiterMeta(addr);
+        if (jupMeta) {
+          results.set(addr, {
+            name: jupMeta.name || "Unknown Token",
+            symbol: jupMeta.symbol || "???",
+            imageUrl: jupMeta.imageUrl || null,
+            mc: "N/A",
+            liquidity: "N/A",
+            priceUsd: null,
+            change24h: "0.0%",
+            volume24h: "N/A",
+            pairAddress: null,
+            website: null,
+            twitter: null,
+            telegram: null,
+          });
+        }
+      }),
+    );
   }
 
   return results;

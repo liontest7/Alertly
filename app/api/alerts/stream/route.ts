@@ -24,6 +24,8 @@ function buildFilters(settings: any): AlertFilterSettings {
     whaleAlertEnabled: settings.whaleAlertEnabled,
     dexBoostEnabled: settings.dexBoostEnabled,
     dexListingEnabled: settings.dexListingEnabled,
+    volumeSpikeThreshold: settings.volumeSpikeThreshold,
+    whaleMinSolBalance: settings.whaleMinSolBalance,
   };
 }
 

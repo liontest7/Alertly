@@ -47,6 +47,8 @@ export async function GET(req: Request) {
             whaleAlertEnabled: userSettings.whaleAlertEnabled,
             dexBoostEnabled: userSettings.dexBoostEnabled,
             dexListingEnabled: userSettings.dexListingEnabled,
+            volumeSpikeThreshold: userSettings.volumeSpikeThreshold,
+            whaleMinSolBalance: userSettings.whaleMinSolBalance,
           }
         : undefined,
     );

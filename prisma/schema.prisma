@@ -76,7 +76,7 @@ model UserSetting {
   slippage             Float    @default(10.0)
   autoTrade            Boolean  @default(false)
   minMarketCap         Float    @default(0)
-  maxMarketCap         Float    @default(10000000)
+  maxMarketCap         Float    @default(0)
   minHolders           Int      @default(0)
   minLiquidity         Float    @default(0)
   takeProfit           Float    @default(50)
