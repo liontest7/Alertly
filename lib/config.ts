@@ -17,6 +17,7 @@ export const siteConfig = {
     telegram: TELEGRAM_URL,
     docs: `${APP_BASE_URL}/docs`,
     discord: "",
+    chromeExtension: "https://chromewebstore.google.com/detail/alertly",
   },
   token: {
     symbol: "ALERTLY",

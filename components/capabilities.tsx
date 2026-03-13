@@ -1,7 +1,10 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 import { ArrowRight, Zap, MessageSquare } from "lucide-react";
 import Image from "next/image";
+import { siteConfig } from "@/lib/config";
 
 export function Capabilities() {
   return (
@@ -15,8 +18,8 @@ export function Capabilities() {
             One System. Every Alert Surface.
           </h2>
           <p className="text-xl md:text-2xl text-white/90 leading-relaxed max-w-2xl">
-            Run Alertly from web, Telegram, and extension with synced preferences,
-            consistent filters, and launch-ready real-time monitoring.
+            Trade from anywhere. Web, Telegram, or browser — your filters, alerts,
+            and settings stay perfectly in sync.
           </p>
         </div>
 
@@ -33,11 +36,11 @@ export function Capabilities() {
             />
             <div className="relative bg-zinc-950/80 backdrop-blur-xl rounded-xl p-8 h-full flex flex-col border border-white/5">
               <h3 className="text-2xl font-light mb-4 text-white">
-                Live Market Alerts
+                Live DEX Alerts
               </h3>
               <p className="text-white/70 leading-relaxed mb-8">
-                Track DEX boosts, high-velocity volume spikes, and fresh trading
-                momentum in near real time with configurable risk filters.
+                Catch DEX payments and boosts as they happen — with configurable
+                filters so you only see the signals that matter to you.
               </p>
               <div className="mt-auto">
                 <Button
@@ -75,8 +78,8 @@ export function Capabilities() {
                   Telegram Integration
                 </h3>
                 <p className="text-white/80 leading-relaxed mb-8 text-base md:text-lg">
-                  Receive and manage alerts from your phone with synced settings,
-                  fast actions, and the same logic used by the web dashboard.
+                  Receive and act on alerts directly from your phone — with the
+                  same filters and logic as the web dashboard, fully synced.
                 </p>
                 <div className="mt-auto">
                   <Button
@@ -132,11 +135,15 @@ export function Capabilities() {
                   Unified Telegram Command Center
                 </h3>
                 <p className="text-white/80 leading-relaxed mb-8 text-base md:text-lg">
-                  Link once and keep your profile synced across products. Your
-                  Telegram controls update the same settings used by web and extension.
+                  Link your Telegram once. From that moment on, alerts arrive
+                  instantly on your phone — the same filters, the same logic, zero
+                  duplication.
                 </p>
                 <div className="mt-auto">
-                  <Button className="w-full md:w-auto bg-[#5100fd] hover:bg-[#6610ff] text-white rounded-full px-10 py-6 font-bold text-lg shadow-2xl shadow-[#5100fd]/30">
+                  <Button
+                    onClick={() => window.open(siteConfig.links.telegram, "_blank")}
+                    className="w-full md:w-auto bg-[#5100fd] hover:bg-[#6610ff] text-white rounded-full px-10 py-6 font-bold text-lg shadow-2xl shadow-[#5100fd]/30"
+                  >
                     Launch Bot
                   </Button>
                 </div>
@@ -156,18 +163,18 @@ export function Capabilities() {
             />
             <div className="relative bg-zinc-950/80 backdrop-blur-xl rounded-xl p-8 h-full flex flex-col border border-white/5">
               <h3 className="text-2xl font-light mb-4 text-white">
-                Wallet Tracking
+                Auto-Trade on Alerts
               </h3>
               <p className="text-white/70 leading-relaxed mb-8">
-                Follow whales and smart-money wallets to detect conviction entries
-                before broader market attention arrives.
+                Set your entry conditions once and let Alertly execute trades
+                automatically the moment a matching DEX alert fires.
               </p>
               <div className="mt-auto">
                 <Button
                   variant="link"
                   className="text-[#5100fd] hover:text-[#6610ff] p-0 h-auto group/btn font-bold"
                 >
-                  Start tracking{" "}
+                  Set up sniper{" "}
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
                 </Button>
               </div>
@@ -189,8 +196,8 @@ export function Capabilities() {
                 Copy Trading
               </h3>
               <p className="text-white/70 leading-relaxed mb-8">
-                Mirror selected traders with your own allocation controls,
-                risk limits, and account-level safety configuration.
+                Mirror selected traders automatically — with full control over
+                your allocation size, risk limits, and stop conditions.
               </p>
               <Button
                 variant="link"

@@ -77,7 +77,7 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
   };
 
   const handleDownloadExtension = () => {
-    window.open(siteConfig.links.docs, "_blank", "noopener,noreferrer");
+    window.open(siteConfig.links.chromeExtension, "_blank", "noopener,noreferrer");
   };
 
   return (
