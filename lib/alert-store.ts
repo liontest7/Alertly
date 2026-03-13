@@ -25,6 +25,7 @@ export interface StoredAlert {
   boostLevel?: string;
   boostAmount?: number;
   totalBoostAmount?: number;
+  spikePercent?: number;
   dex?: string;
   wallet?: string;
   walletBalance?: number;

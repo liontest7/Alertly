@@ -52,15 +52,15 @@ function normalizeBaseUrl(input?: string | null) {
 
 function getBaseUrl(): Promise<string> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get([ALERTLY_BASE_URL_STORAGE_KEY], (result) => {
-      resolve(normalizeBaseUrl(result?.[ALERTLY_BASE_URL_STORAGE_KEY]));
+    chrome.storage.sync.get([ALERTLY_BASE_URL_STORAGE_KEY], (result: Record<string, unknown>) => {
+      resolve(normalizeBaseUrl(result?.[ALERTLY_BASE_URL_STORAGE_KEY] as string | null));
     });
   });
 }
 
 function getLastFingerprint(): Promise<string | null> {
   return new Promise((resolve) => {
-    chrome.storage.session.get([LAST_ALERT_STORAGE_KEY], (result) => {
+    chrome.storage.session.get([LAST_ALERT_STORAGE_KEY], (result: Record<string, unknown>) => {
       const value = result?.[LAST_ALERT_STORAGE_KEY];
       resolve(typeof value === "string" ? value : null);
     });
@@ -81,8 +81,8 @@ function saveSessionAlerts(alerts: AlertItem[]): Promise<void> {
 
 function getExtSettings(): Promise<ExtSettings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get([EXT_SETTINGS_KEY], (result) => {
-      const stored = result?.[EXT_SETTINGS_KEY];
+    chrome.storage.local.get([EXT_SETTINGS_KEY], (result: Record<string, unknown>) => {
+      const stored = result?.[EXT_SETTINGS_KEY] as Partial<ExtSettings> | undefined;
       resolve({ ...DEFAULT_EXT_SETTINGS, ...(stored || {}) });
     });
   });
@@ -103,7 +103,7 @@ function decodeBase64urlCookie(value: string): FilterSettings | null {
 function getWebsiteFilterSettings(baseUrl: string): Promise<FilterSettings> {
   return new Promise((resolve) => {
     try {
-      chrome.cookies.get({ url: baseUrl, name: "alertly_guest_settings" }, (cookie) => {
+      chrome.cookies.get({ url: baseUrl, name: "alertly_guest_settings" }, (cookie: chrome.cookies.Cookie | null) => {
         if (!cookie?.value) {
           resolve({});
           return;
@@ -248,7 +248,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create("checkAlerts", { periodInMinutes: 0.5 });
 });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+chrome.alarms.onAlarm.addListener((alarm: chrome.alarms.Alarm) => {
   if (alarm.name === "checkAlerts") {
     checkAlerts();
   }
@@ -258,7 +258,11 @@ chrome.runtime.onStartup.addListener(() => {
   checkAlerts();
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((
+  message: Record<string, unknown>,
+  _sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: unknown) => void,
+) => {
   if (message.type === "GET_EXT_SETTINGS") {
     getExtSettings().then(sendResponse);
     return true;

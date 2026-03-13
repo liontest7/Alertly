@@ -89,3 +89,11 @@ export async function ensureAlertListenerStarted(): Promise<void> {
 export function getAlertListenerStatus() {
   return alertListener.getStatus();
 }
+
+export async function startAlertListener(): Promise<void> {
+  return alertListener.start();
+}
+
+export async function stopAlertListener(): Promise<void> {
+  return alertListener.stop();
+}

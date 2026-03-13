@@ -196,10 +196,11 @@ bot.on("polling_error", (err: any) => {
 (bot as any).startPolling({ restart: false });
 
 bot.onText(/\/start/, async (msg) => {
-  const chatId = String(msg.chat.id);
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
   const firstName = msg.from?.first_name;
 
-  upsertSubscriber(chatId, firstName);
+  upsertSubscriber(chatIdStr, firstName);
 
   await bot.sendMessage(
     chatId,
@@ -215,22 +216,25 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.onText(/\/stop/, async (msg) => {
-  const chatId = String(msg.chat.id);
-  removeSubscriber(chatId);
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
+  removeSubscriber(chatIdStr);
   await bot.sendMessage(chatId, "✅ You have been unsubscribed from Alertly alerts.\n\nSend /start to re-subscribe anytime.");
 });
 
 bot.onText(/\/settings/, async (msg) => {
-  const chatId = String(msg.chat.id);
-  upsertSubscriber(chatId, msg.from?.first_name);
-  bot.sendMessage(chatId, getSettingsText(chatId), { parse_mode: "Markdown", ...mainMenu });
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
+  upsertSubscriber(chatIdStr, msg.from?.first_name);
+  bot.sendMessage(chatId, getSettingsText(chatIdStr), { parse_mode: "Markdown", ...mainMenu });
 });
 
 bot.onText(/\/status/, async (msg) => {
-  const chatId = String(msg.chat.id);
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
   const store = loadStore();
   const count = Object.keys(store).length;
-  const sub = store[chatId];
+  const sub = store[chatIdStr];
   await bot.sendMessage(
     chatId,
     `📊 *Alertly Status*\n\n` +

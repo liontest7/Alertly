@@ -121,7 +121,7 @@ export async function sendSol(wallet: BrowserWallet, toAddress: string, amountSo
 
   const lamports = Math.round(amountSol * LAMPORTS_PER_SOL)
 
-  let toPubkey: PublicKey
+  let toPubkey: InstanceType<typeof PublicKey>
   try {
     toPubkey = new PublicKey(toAddress)
   } catch {

@@ -131,9 +131,9 @@ function decodeFilterCookie(value: string): FilterSettings | null {
 
 function getStoredBaseUrl(): Promise<string> {
   return new Promise((resolve) => {
-    chrome.storage.sync.get([ALERTLY_BASE_URL_STORAGE_KEY], (result) => {
+    chrome.storage.sync.get([ALERTLY_BASE_URL_STORAGE_KEY], (result: Record<string, unknown>) => {
       const val = result?.[ALERTLY_BASE_URL_STORAGE_KEY];
-      if (val) {
+      if (val && typeof val === "string") {
         try { resolve(new URL(val.trim()).origin); return; } catch {}
       }
       resolve(PRODUCTION_URL);
@@ -152,7 +152,7 @@ function setStoredBaseUrl(value: string): Promise<void> {
 
 function getExtSettings(): Promise<ExtSettings> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: "GET_EXT_SETTINGS" }, (res) => {
+    chrome.runtime.sendMessage({ type: "GET_EXT_SETTINGS" }, (res: ExtSettings | undefined) => {
       resolve(res || { paused: false, popupEnabled: true });
     });
   });
@@ -166,8 +166,8 @@ function setExtSettings(settings: ExtSettings): Promise<void> {
 
 function getLocalTradingSettings(): Promise<LocalTradingSettings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get([LOCAL_TRADING_SETTINGS_KEY], (result) => {
-      const stored = result?.[LOCAL_TRADING_SETTINGS_KEY];
+    chrome.storage.local.get([LOCAL_TRADING_SETTINGS_KEY], (result: Record<string, unknown>) => {
+      const stored = result?.[LOCAL_TRADING_SETTINGS_KEY] as Partial<LocalTradingSettings> | undefined;
       resolve({ ...DEFAULT_LOCAL_TRADING, ...(stored || {}) });
     });
   });
@@ -182,7 +182,7 @@ function setLocalTradingSettings(settings: LocalTradingSettings): Promise<void> 
 function readWebsiteFilterSettings(baseUrl: string): Promise<FilterSettings> {
   return new Promise((resolve) => {
     try {
-      chrome.cookies.get({ url: baseUrl, name: GUEST_SETTINGS_COOKIE }, (cookie) => {
+      chrome.cookies.get({ url: baseUrl, name: GUEST_SETTINGS_COOKIE }, (cookie: chrome.cookies.Cookie | null) => {
         if (!cookie?.value) { resolve({}); return; }
         resolve(decodeFilterCookie(cookie.value) || {});
       });
@@ -203,7 +203,7 @@ function writeWebsiteFilterSettings(baseUrl: string, settings: FilterSettings): 
         sameSite: "lax",
         secure: isHttps,
         expirationDate: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 90,
-      }, (cookie) => resolve(!!cookie));
+      }, (cookie: chrome.cookies.Cookie | null) => resolve(!!cookie));
     } catch { resolve(false); }
   });
 }
