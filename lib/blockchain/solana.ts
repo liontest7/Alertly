@@ -44,6 +44,7 @@ export interface TokenAlert {
   riskScore?: number;
   riskLevel?: string;
   buyAmountSol?: number;
+  boostAmount?: number;
   dex?: string;
   wallet?: string;
   walletBalance?: number;
@@ -136,6 +137,7 @@ function mapStoredAlert(item: StoredAlert): TokenAlert | null {
     wallet: item.wallet,
     walletBalance: item.walletBalance,
     buyAmountSol: item.buyAmountSol,
+    boostAmount: item.boostAmount,
     dex: item.dex,
     spikePercent: item.spikePercent,
   };
