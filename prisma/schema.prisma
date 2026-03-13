@@ -93,6 +93,10 @@ model UserSetting {
   dexListingEnabled    Boolean  @default(true)
   sources              String[] @default(["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"])
   selectedBoostLevel   String?  @default("all")
+  alertsEnabled        Boolean  @default(true)
+  isPremium            Boolean  @default(false)
+  dailyAlertCount      Int      @default(0)
+  lastAlertReset       DateTime @default(now())
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 

@@ -23,4 +23,10 @@ export const DEFAULT_USER_SETTINGS = {
   dexListingEnabled: true,
   sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
   selectedBoostLevel: "all",
+  alertsEnabled: true,
+  isPremium: false,
+  dailyAlertCount: 0,
+  lastAlertReset: new Date(),
 };
+
+export const FREE_DAILY_ALERT_LIMIT = 50;
