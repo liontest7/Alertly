@@ -42,6 +42,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
   const [balance, setBalance] = useState<number | null>(null)
   const [loadingBalance, setLoadingBalance] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
   const [showKey, setShowKey] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [importKeyInput, setImportKeyInput] = useState("")
@@ -71,6 +72,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
 
   async function handleGenerate() {
     setGenerating(true)
+    setGenerateError(null)
     try {
       const lib = await walletLib()
       const w = await lib.generateBrowserWallet()
@@ -78,7 +80,9 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
       setBalance(0)
       window.dispatchEvent(new CustomEvent("alertly:wallet-changed", { detail: w }))
     } catch (e) {
-      console.error(e)
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error("Generate wallet failed:", e)
+      setGenerateError(msg)
     } finally {
       setGenerating(false)
     }
@@ -189,6 +193,9 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
                   <Upload className="w-3 h-3" /> Import Key
                 </button>
               </div>
+              {generateError && (
+                <p className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{generateError}</p>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

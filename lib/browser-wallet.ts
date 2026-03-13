@@ -6,6 +6,29 @@ export type BrowserWallet = {
   createdAt: string
 }
 
+// Solana addresses are plain base58 (no checksum)
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+function encodeBase58(input: Uint8Array): string {
+  const digits: number[] = [0]
+  for (let i = 0; i < input.length; i++) {
+    let carry = input[i]
+    for (let j = 0; j < digits.length; j++) {
+      carry += digits[j] << 8
+      digits[j] = carry % 58
+      carry = (carry / 58) | 0
+    }
+    while (carry > 0) {
+      digits.push(carry % 58)
+      carry = (carry / 58) | 0
+    }
+  }
+  let result = ""
+  for (let i = 0; i < input.length && input[i] === 0; i++) result += "1"
+  for (let i = digits.length - 1; i >= 0; i--) result += BASE58_ALPHABET[digits[i]]
+  return result
+}
+
 function uint8ToBase64(bytes: Uint8Array): string {
   let binary = ""
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
@@ -41,10 +64,11 @@ export function removeBrowserWallet(): void {
 }
 
 export async function generateBrowserWallet(): Promise<BrowserWallet> {
-  const { Keypair } = await import("@solana/web3.js")
-  const keypair = Keypair.generate()
+  // tweetnacl is pure JS — no Node.js or Buffer dependencies, safe in all browsers
+  const nacl = (await import("tweetnacl")).default
+  const keypair = nacl.sign.keyPair()
   const wallet: BrowserWallet = {
-    address: keypair.publicKey.toBase58(),
+    address: encodeBase58(keypair.publicKey),
     privateKey: uint8ToBase64(keypair.secretKey),
     createdAt: new Date().toISOString(),
   }
@@ -53,16 +77,18 @@ export async function generateBrowserWallet(): Promise<BrowserWallet> {
 }
 
 export async function importBrowserWallet(privateKeyInput: string): Promise<BrowserWallet> {
-  const { Keypair } = await import("@solana/web3.js")
+  const nacl = (await import("tweetnacl")).default
 
   let secretKey: Uint8Array
   const trimmed = privateKeyInput.trim()
 
   try {
     if (trimmed.startsWith("[")) {
+      // JSON byte array format: [1,2,3,...]
       const arr = JSON.parse(trimmed)
       secretKey = new Uint8Array(arr)
     } else {
+      // base64 format
       secretKey = base64ToUint8(trimmed)
     }
     if (secretKey.length !== 64) throw new Error("bad length")
@@ -70,9 +96,9 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
     throw new Error("Invalid private key. Expected base64 (64 bytes) or JSON byte array.")
   }
 
-  const keypair = Keypair.fromSecretKey(secretKey)
+  const keypair = nacl.sign.keyPair.fromSecretKey(secretKey)
   const wallet: BrowserWallet = {
-    address: keypair.publicKey.toBase58(),
+    address: encodeBase58(keypair.publicKey),
     privateKey: uint8ToBase64(secretKey),
     createdAt: new Date().toISOString(),
   }
