@@ -44,6 +44,7 @@ export async function GET(req: Request) {
   if (userId) {
     const dbSettings = await prisma.userSetting.findUnique({ where: { userId } }).catch(() => null);
     if (dbSettings) settings = dbSettings;
+
     if (dbSettings && dbSettings.alertsEnabled === false) {
       const pausedStream = new ReadableStream({
         start(controller) {
@@ -93,10 +94,11 @@ export async function GET(req: Request) {
         }
       };
 
-      const sendNewAlert = async (newAlerts: any[]) => {
+      safeEnqueue(sseEvent("connected", { t: Date.now() }));
+
+      const sendNewAlerts = async () => {
         if (closed) return;
         try {
-          const { getLiveAlerts } = await import("@/lib/blockchain/solana");
           const filtered = await getLiveAlerts(filters);
           safeEnqueue(sseEvent("alerts", filtered));
         } catch {
@@ -108,9 +110,7 @@ export async function GET(req: Request) {
       const onNewAlert = () => {
         if (closed) return;
         if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          sendNewAlert([]);
-        }, 300);
+        debounceTimer = setTimeout(sendNewAlerts, 300);
       };
 
       alertEmitter.on("alert", onNewAlert);

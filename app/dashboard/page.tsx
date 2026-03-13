@@ -137,6 +137,10 @@ export default function DashboardPage() {
       stream = new EventSource('/api/alerts/stream');
       streamRef.current = stream;
 
+      stream.addEventListener('connected', () => {
+        setLoading(false);
+      });
+
       stream.addEventListener('alerts', (event: any) => {
         try {
           const payload = JSON.parse(event.data);

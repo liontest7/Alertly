@@ -36,6 +36,10 @@ export async function GET(req: Request) {
       });
     }
 
+    if (userId && userSettings && (userSettings as any).alertsEnabled === false) {
+      return NextResponse.json([], { headers: { "Cache-Control": "no-store", "X-Alert-Mode": "paused" } });
+    }
+
     const alerts = await getLiveAlerts(
       userSettings
         ? {
@@ -77,7 +81,9 @@ export async function GET(req: Request) {
       return response;
     }
 
-    const isVip = session?.user?.vipStatus === true;
+    const isPremium = (userSettings as any)?.isPremium === true;
+    const isVip = session?.user?.vipStatus === true || isPremium;
+
     if (!isVip) {
       const quotaApplied = applyGuestAlertQuota(cookieStore, formattedAlerts);
       payload = quotaApplied.alerts as typeof formattedAlerts;
