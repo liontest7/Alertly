@@ -43,7 +43,7 @@ export function pushAlert(alert: StoredAlert): void {
     if (idx !== -1) {
       alertBuffer[idx] = { ...alertBuffer[idx], ...alert, alertedAt: alert.alertedAt };
     }
-    alertEmitter.emit("alert", getAlerts());
+    alertEmitter.emit("alert", alert);
     return;
   }
 
@@ -55,7 +55,7 @@ export function pushAlert(alert: StoredAlert): void {
     if (removed) seenFingerprints.delete(removed.fingerprint);
   }
 
-  alertEmitter.emit("alert", getAlerts());
+  alertEmitter.emit("alert", alert);
 }
 
 export function getAlerts(): StoredAlert[] {

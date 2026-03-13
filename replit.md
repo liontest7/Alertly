@@ -5,7 +5,24 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 13, 2026) — Real-Time Only + Alerts Control
+## Latest Changes (March 13, 2026) — Efficient Monitoring Architecture
+
+### Removed Volume Spike & Whale Buy from On-Chain Scanning
+- **Removed `VOLUME_SPIKE`** detection — no longer tracks every swap transaction; eliminated the 19,000+ tx scanning problem
+- **Removed `WHALE_BUY`** detection from on-chain scanning — no longer fetches wallet SOL balance for every swap
+- **On-chain subscriptions now DEX Listing only** — still subscribe to 8 DEX programs but only react to pool creation events (`initializePool`, `initialize bonding curve`), ignoring all swap transactions
+- **Result**: Listener now processes only a tiny fraction of blockchain events (new pools only)
+
+### SSE Stream — Individual Alerts (Real-Time Only)
+- **SSE now emits single alert objects** — `alertEmitter.emit("alert", specificAlert)` instead of full buffer
+- **Dashboard prepends individual alerts** — on `alert` SSE event, prepend to local list (no more `setAlerts(fullArray)` replacement)
+- **On connect**: receives empty state + `connected` event; no historical data sent
+- **Filter logic moved to SSE**: `alertMatchesFilters()` applied per-alert before sending to client
+
+### Telegram Bot 409 Fix
+- Added `cancellation: true` option to TelegramBot polling — cancels old hanging connections automatically
+
+## Previous Changes (March 13, 2026) — Real-Time Only + Alerts Control
 
 ### Real-Time Only Architecture
 - **SSE Stream**: No longer sends existing buffer on connection — users start fresh and receive only new alerts from the moment they connect

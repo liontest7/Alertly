@@ -44,7 +44,7 @@ const DEFAULT_USER_SETTINGS = {
   dailyAlertCount: 0,
 };
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, { polling: { autoStart: true, params: { timeout: 10 } }, cancellation: true } as any);
 
 const mainMenu = {
   reply_markup: {

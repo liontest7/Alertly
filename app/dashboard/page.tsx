@@ -10,6 +10,8 @@ import { useState, useEffect, useRef } from "react"
 import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
+const MAX_LOCAL_ALERTS = 200;
+
 export default function DashboardPage() {
   const { user, loading: sessionLoading } = useAuthSession();
   const router = useRouter();
@@ -28,7 +30,6 @@ export default function DashboardPage() {
     tradeCount24h: 0,
     available: false,
   });
-  const [alertQuota, setAlertQuota] = useState<{ used: number; limit: number; mode: string } | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [togglingAlerts, setTogglingAlerts] = useState(false);
 
@@ -137,11 +138,20 @@ export default function DashboardPage() {
         setLoading(false);
       });
 
-      stream.addEventListener('alerts', (event: any) => {
+      stream.addEventListener('alert', (event: any) => {
         try {
-          const payload = JSON.parse(event.data);
-          if (Array.isArray(payload)) {
-            setAlerts(payload);
+          const newAlert = JSON.parse(event.data);
+          if (newAlert && newAlert.fingerprint) {
+            setAlerts(prev => {
+              const existing = prev.findIndex(a => a.fingerprint === newAlert.fingerprint);
+              if (existing !== -1) {
+                const updated = [...prev];
+                updated[existing] = { ...updated[existing], ...newAlert };
+                return updated;
+              }
+              const next = [newAlert, ...prev];
+              return next.length > MAX_LOCAL_ALERTS ? next.slice(0, MAX_LOCAL_ALERTS) : next;
+            });
             setLoading(false);
           }
         } catch {}

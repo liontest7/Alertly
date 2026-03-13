@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { alertEmitter } from "@/lib/alert-store";
+import { alertEmitter, StoredAlert } from "@/lib/alert-store";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
 import { getGuestSettingsPatchFromCookieHeader } from "@/lib/guest-session";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
-import { getLiveAlerts } from "@/lib/blockchain/solana";
-import type { AlertFilterSettings } from "@/lib/blockchain/solana";
 
 export const dynamic = "force-dynamic";
 
@@ -14,19 +12,52 @@ function sseEvent(name: string, data: unknown) {
   return `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-function buildFilters(settings: any): AlertFilterSettings {
-  return {
-    minMarketCap: settings.minMarketCap,
-    maxMarketCap: settings.maxMarketCap,
-    minLiquidity: settings.minLiquidity,
-    minHolders: settings.minHolders,
-    volumeSpikeEnabled: settings.volumeSpikeEnabled,
-    whaleAlertEnabled: settings.whaleAlertEnabled,
-    dexBoostEnabled: settings.dexBoostEnabled,
-    dexListingEnabled: settings.dexListingEnabled,
-    volumeSpikeThreshold: settings.volumeSpikeThreshold,
-    whaleMinSolBalance: settings.whaleMinSolBalance,
-  };
+interface AlertFilters {
+  minMarketCap?: number;
+  maxMarketCap?: number;
+  minLiquidity?: number;
+  minHolders?: number;
+  dexBoostEnabled?: boolean;
+  dexListingEnabled?: boolean;
+}
+
+function parseMoneyValue(input?: string | null): number | null {
+  if (!input) return null;
+  const normalized = input.replace(/[$,\s]/g, "").toUpperCase();
+  if (!normalized || normalized === "N/A") return null;
+  const suffix = normalized.slice(-1);
+  const num = parseFloat(normalized);
+  if (isNaN(num)) return null;
+  if (suffix === "B") return num * 1_000_000_000;
+  if (suffix === "M") return num * 1_000_000;
+  if (suffix === "K") return num * 1_000;
+  return num;
+}
+
+function alertMatchesFilters(alert: StoredAlert, filters: AlertFilters): boolean {
+  if (alert.type === "DEX_BOOST" && filters.dexBoostEnabled === false) return false;
+  if (alert.type === "DEX_LISTING" && filters.dexListingEnabled === false) return false;
+
+  if (filters.minMarketCap && filters.minMarketCap > 0) {
+    const mc = parseMoneyValue(alert.mc);
+    if (mc !== null && mc < filters.minMarketCap) return false;
+  }
+
+  if (filters.maxMarketCap && filters.maxMarketCap > 0) {
+    const mc = parseMoneyValue(alert.mc);
+    if (mc !== null && mc > filters.maxMarketCap) return false;
+  }
+
+  if (filters.minLiquidity && filters.minLiquidity > 0) {
+    const liq = parseMoneyValue(alert.liquidity);
+    if (liq !== null && liq < filters.minLiquidity) return false;
+  }
+
+  if (filters.minHolders && filters.minHolders > 1) {
+    if (alert.holders < filters.minHolders) return false;
+  }
+
+  return true;
 }
 
 export async function GET(req: Request) {
@@ -77,7 +108,14 @@ export async function GET(req: Request) {
     settings = { ...DEFAULT_USER_SETTINGS, ...guestPatch };
   }
 
-  const filters = buildFilters(settings);
+  const filters: AlertFilters = {
+    minMarketCap: settings.minMarketCap,
+    maxMarketCap: settings.maxMarketCap,
+    minLiquidity: settings.minLiquidity,
+    minHolders: settings.minHolders,
+    dexBoostEnabled: settings.dexBoostEnabled,
+    dexListingEnabled: settings.dexListingEnabled,
+  };
 
   const stream = new ReadableStream({
     start(controller) {
@@ -96,21 +134,10 @@ export async function GET(req: Request) {
 
       safeEnqueue(sseEvent("connected", { t: Date.now() }));
 
-      const sendNewAlerts = async () => {
+      const onNewAlert = (alert: StoredAlert) => {
         if (closed) return;
-        try {
-          const filtered = await getLiveAlerts(filters);
-          safeEnqueue(sseEvent("alerts", filtered));
-        } catch {
-          safeEnqueue(sseEvent("heartbeat", { t: Date.now() }));
-        }
-      };
-
-      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-      const onNewAlert = () => {
-        if (closed) return;
-        if (debounceTimer) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(sendNewAlerts, 300);
+        if (!alertMatchesFilters(alert, filters)) return;
+        safeEnqueue(sseEvent("alert", alert));
       };
 
       alertEmitter.on("alert", onNewAlert);
@@ -122,7 +149,6 @@ export async function GET(req: Request) {
       req.signal.addEventListener("abort", () => {
         closed = true;
         clearInterval(heartbeat);
-        if (debounceTimer) clearTimeout(debounceTimer);
         alertEmitter.off("alert", onNewAlert);
         try {
           controller.close();
