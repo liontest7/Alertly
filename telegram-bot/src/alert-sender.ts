@@ -60,12 +60,14 @@ export async function broadcastAlert(alert: any) {
 
     for (const link of telegramLinks) {
       const settings = link.user.settings;
-      if (!settings) continue;
 
-      // Check if user wants this alert type
+      if (settings?.alertsEnabled === false) continue;
+
+      const alertType = (alert.alertType || "").toLowerCase().replace(/[_\s]/g, "-");
       const shouldSend =
-        (alert.alertType === "dex-boost" && settings.dexBoostEnabled) ||
-        (alert.alertType === "dex-listing" && settings.dexListingEnabled);
+        alertType === "dex-boost" ? settings?.dexBoostEnabled !== false :
+        alertType === "dex-listing" ? settings?.dexListingEnabled !== false :
+        true;
 
       if (shouldSend) {
         await sendAlertToUser(String(link.telegramId), alert);
