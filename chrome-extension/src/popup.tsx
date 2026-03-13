@@ -747,6 +747,14 @@ const Popup = () => {
           maxMarketCap: ws.maxMarketCap || undefined,
           minLiquidity: ws.minLiquidity || undefined,
         });
+        setLocalTradingState({
+          buyAmount: ws.buyAmount,
+          slippage: ws.slippage,
+          takeProfit: ws.takeProfit,
+          stopLoss: ws.stopLoss,
+          autoTrade: ws.autoTrade,
+        });
+        setTradingDirty(false);
         setCookieSyncAvailable(true);
       }
 

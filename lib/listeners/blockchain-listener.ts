@@ -14,6 +14,7 @@ const BOOST_LATEST_POLL_MS = 5_000;
 const LISTING_POLL_MS = 6_000;
 const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
 const RATE_LIMIT_BACKOFF_MS = 15_000;
+const AUTOMATION_INTERVAL_MS = 60_000;
 
 const seenBoostFingerprints = new Set<string>();
 const seenListingFingerprints = new Set<string>();
@@ -22,6 +23,43 @@ let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
 let listingTimer: ReturnType<typeof setTimeout> | null = null;
 let fingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
+let automationTimer: ReturnType<typeof setInterval> | null = null;
+
+async function runAutomation() {
+  const internalKey = getEnv("INTERNAL_API_KEY", "dev-internal-api-key");
+  const appUrl =
+    getEnv("NEXT_PUBLIC_APP_URL") ||
+    getEnv("ALERTLY_API_BASE_URL") ||
+    "http://localhost:10000";
+
+  try {
+    const res = await fetch(`${appUrl}/api/automation/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${internalKey}`,
+      },
+      body: JSON.stringify({ dryRun: false }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[Automation] Run returned ${res.status}`);
+      return;
+    }
+
+    const result = await res.json();
+    const s = result?.summary;
+    if (s && (s.tradesAttempted > 0 || s.scannedUsers > 0)) {
+      console.log(
+        `[Automation] Users=${s.scannedUsers} Alerts=${s.scannedAlerts} ` +
+        `Attempted=${s.tradesAttempted} Success=${s.tradesSucceeded} Failed=${s.tradesFailed}`
+      );
+    }
+  } catch (err) {
+    console.warn("[Automation] Run error:", err instanceof Error ? err.message : err);
+  }
+}
 
 let globalRateLimitedUntil = 0;
 
@@ -348,7 +386,16 @@ export async function startBlockchainListener() {
       console.log(`[Listener] Fingerprint cache cleared (had ${before} entries)`);
     }, BOOST_FINGERPRINT_RESET_MS);
 
-    return { success: true, message: "Listener started (DEX Boosts + Token Profiles)" };
+    // Run AutoTrade check every 60s for users who have it enabled
+    setTimeout(() => {
+      if (!listenerRunning) return;
+      runAutomation().catch(() => null);
+      automationTimer = setInterval(() => {
+        if (listenerRunning) runAutomation().catch(() => null);
+      }, AUTOMATION_INTERVAL_MS);
+    }, 10_000);
+
+    return { success: true, message: "Listener started (DEX Boosts + Token Profiles + AutoTrade)" };
   } catch (error) {
     listenerRunning = false;
     listenerStartedAt = null;
@@ -365,6 +412,7 @@ export async function stopBlockchainListener() {
   if (boostLatestTimer) { clearTimeout(boostLatestTimer); boostLatestTimer = null; }
   if (listingTimer) { clearTimeout(listingTimer); listingTimer = null; }
   if (fingerprintResetTimer) { clearInterval(fingerprintResetTimer); fingerprintResetTimer = null; }
+  if (automationTimer) { clearInterval(automationTimer); automationTimer = null; }
 
   console.log("[Listener] Stopped");
   return { success: true, message: "Listener stopped" };

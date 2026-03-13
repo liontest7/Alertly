@@ -191,10 +191,21 @@ Stay sharp. Stay early. Stay Alertly.`;
 
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
+  const name = msg.from?.first_name ? ` ${msg.from.first_name}` : "";
   await bot.sendMessage(
     chatId,
-    "Welcome to *Alerty* — real-time Solana intelligence for serious traders.\n\n1) Link your account from the website (Telegram Link section).\n2) Run `/link <token>` here once.\n3) Use `/settings` to manage your live trading preferences.",
-    { parse_mode: "Markdown" },
+    `👋 *Welcome${name} to Alertly!*\n\n` +
+    `Alertly gives you real-time Solana trading intelligence — DEX boosts, new token listings, and automated trading — directly in Telegram.\n\n` +
+    `*🔗 Getting Started*\n` +
+    `1. Open the [Alertly Dashboard](https://alertly-5zmw.onrender.com) and connect your wallet\n` +
+    `2. Go to *Connections → Telegram Link* to generate your link token\n` +
+    `3. Send \`/link <your-token>\` here to sync your account\n\n` +
+    `*📋 Available Commands*\n` +
+    `/settings — View and manage your trading settings\n` +
+    `/link <token> — Link your Alertly account\n` +
+    `/health — Check bot status\n\n` +
+    `Once linked, you'll receive real-time alerts for every new DEX boost and listing — and your AutoTrade settings will apply automatically. 🚀`,
+    { parse_mode: "Markdown", disable_web_page_preview: true },
   );
 });
 
