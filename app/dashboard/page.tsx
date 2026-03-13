@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from "react"
 import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
-const MAX_LOCAL_ALERTS = 100;
+const MAX_LOCAL_ALERTS = 500;
 const LS_KEY = 'alertly_feed_v2';
 const OLD_LS_KEYS = ['alertly_feed_v1'];
 

@@ -5,7 +5,35 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 13, 2026) — Efficient Monitoring Architecture
+## Latest Changes (March 13, 2026) — Cookie-Based Settings + Extension Overhaul
+
+### Storage Architecture (No DB for User History)
+- **Dashboard localStorage limit**: increased from 100 → **500 alerts** (personal history per browser)
+- **Filter settings**: stored in cookies (`alertly_guest_settings`, already existed) — browser reads them client-side
+- **Personal alert history**: stored in `localStorage` per browser (`alertly_feed_v2`)
+- **Server memory**: unchanged — keeps last 200 alerts for new/guest users to see on first visit
+- **No DB growth**: alert history never touches the database, only tiny filter settings row per user
+
+### Browser Extension v2.1.0 — Major Overhaul
+- **`cookies` permission added** to manifest — extension can now read `alertly_guest_settings` cookie from the website
+- **Cookie sync**: extension reads website filter settings automatically if user has visited the site
+- **Guest mode**: extension now works without authentication — shows alerts as guest if `guestEnabled` is true
+- **SETTINGS tab** added to popup with:
+  - Receive Alerts toggle (pause/resume all monitoring)
+  - Desktop Notifications toggle (enable/disable system popup notifications)
+  - Sound toggle (plays sound in popup when new alerts arrive, via Web Audio API)
+  - Active filters display (shows which filters are synced from website)
+  - Dashboard URL configuration
+- **Client-side filtering**: extension applies filter settings to alerts before showing notifications
+- **Pause/resume**: background service respects pause setting from `chrome.storage.local`
+- **Message passing**: popup ↔ background communication for settings sync via `chrome.runtime.sendMessage`
+
+### Extension Files Changed
+- `chrome-extension/manifest.json` — version 2.1.0, added `cookies` permission
+- `chrome-extension/src/background.ts` — filter logic, cookie reading, ext settings, pause support
+- `chrome-extension/src/popup.tsx` — new SETTINGS tab, guest mode, sound, filter display
+
+## Previous Latest Changes (March 13, 2026) — Efficient Monitoring Architecture
 
 ### Removed Volume Spike & Whale Buy from On-Chain Scanning
 - **Removed `VOLUME_SPIKE`** detection — no longer tracks every swap transaction; eliminated the 19,000+ tx scanning problem

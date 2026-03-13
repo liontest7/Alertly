@@ -51,6 +51,19 @@ type SyncData = {
   user?: SyncUser;
 };
 
+type ExtSettings = {
+  paused: boolean;
+  popupEnabled: boolean;
+};
+
+type FilterSettings = {
+  dexBoostEnabled?: boolean;
+  dexListingEnabled?: boolean;
+  minMarketCap?: number;
+  maxMarketCap?: number;
+  minLiquidity?: number;
+};
+
 // ─── Storage helpers ─────────────────────────────────────────────
 function getStoredBaseUrl(): Promise<string> {
   return new Promise((resolve) => {
@@ -73,6 +86,45 @@ function setStoredBaseUrl(value: string): Promise<void> {
       resolve();
     }
   });
+}
+
+function getExtSettings(): Promise<ExtSettings> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_EXT_SETTINGS" }, (res) => {
+      resolve(res || { paused: false, popupEnabled: true });
+    });
+  });
+}
+
+function setExtSettings(settings: ExtSettings): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "SET_EXT_SETTINGS", settings }, () => resolve());
+  });
+}
+
+function getFilterSettings(): Promise<FilterSettings> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_FILTER_SETTINGS" }, (res) => {
+      resolve(res || {});
+    });
+  });
+}
+
+// ─── Sound ───────────────────────────────────────────────────────
+function playAlertSound() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+  } catch {}
 }
 
 // ─── Alert type helpers ──────────────────────────────────────────
@@ -251,24 +303,64 @@ const s = {
   statValue: { fontSize: 11, fontWeight: 600, color: C.text } as React.CSSProperties,
 };
 
+// ─── Toggle Switch component ──────────────────────────────────────
+function ToggleSwitch({ on, onChange, label, sub }: { on: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 0",
+        borderBottom: `1px solid rgba(255,255,255,0.04)`,
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{label}</div>
+        {sub && <div style={{ fontSize: 10, color: C.textDim, marginTop: 2 }}>{sub}</div>}
+      </div>
+      <button
+        onClick={() => onChange(!on)}
+        style={{
+          width: 40,
+          height: 22,
+          borderRadius: 999,
+          border: "none",
+          cursor: "pointer",
+          backgroundColor: on ? C.accent : C.surfaceBorder,
+          position: "relative",
+          transition: "background 0.2s",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: 3,
+            left: on ? 21 : 3,
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            backgroundColor: "#fff",
+            transition: "left 0.2s",
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────
 function shortWallet(addr?: string) {
   if (!addr) return "—";
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
 }
 
-function formatNum(n?: number | null, suffix = "") {
+function formatNum(n?: number | null) {
   if (n == null || n === 0) return "Any";
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M${suffix}`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K${suffix}`;
-  return `$${n}${suffix}`;
-}
-
-function formatNumRaw(n?: number | null, suffix = "", fallback = "—") {
-  if (n == null) return fallback;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M${suffix}`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K${suffix}`;
-  return `${n}${suffix}`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${n}`;
 }
 
 // ─── Sub-components ────────────────────────────────────────────────
@@ -334,40 +426,6 @@ function AlertCard({ alert }: { alert: AlertItem }) {
   );
 }
 
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>
-      {label}
-    </p>
-  );
-}
-
-function StatRow({ label, value, valueColor, last = false }: {
-  label: string; value: React.ReactNode; valueColor?: string; last?: boolean;
-}) {
-  return (
-    <div style={{ ...s.statRow, ...(last ? { borderBottom: "none" } : {}) }}>
-      <span style={s.statLabel}>{label}</span>
-      <span style={{ ...s.statValue, ...(valueColor ? { color: valueColor } : {}) }}>{value}</span>
-    </div>
-  );
-}
-
-function ToggleChip({ active, label }: { active: boolean; label: string }) {
-  return (
-    <span style={{
-      display: "inline-block",
-      padding: "2px 8px",
-      borderRadius: 4,
-      fontSize: 10,
-      fontWeight: 700,
-      color: active ? "#fff" : C.textDim,
-      backgroundColor: active ? C.accent : C.surfaceBorder,
-      border: `1px solid ${active ? C.accentBorder : C.border}`,
-    }}>{label}</span>
-  );
-}
-
 function EmptyState({ message, icon }: { message: string; icon: string }) {
   return (
     <div style={{ textAlign: "center" as const, padding: "24px 16px", color: C.textDim }}>
@@ -380,15 +438,18 @@ function EmptyState({ message, icon }: { message: string; icon: string }) {
 // ─── Main Popup ────────────────────────────────────────────────────
 const Popup = () => {
   const [phase, setPhase] = React.useState<"loading" | "unauthenticated" | "main">("loading");
-  const [tab, setTab] = React.useState<"alerts" | "account">("alerts");
+  const [tab, setTab] = React.useState<"alerts" | "settings">("alerts");
   const [syncData, setSyncData] = React.useState<SyncData | null>(null);
   const [alerts, setAlerts] = React.useState<AlertItem[]>([]);
   const [streamStatus, setStreamStatus] = React.useState<"connecting" | "live" | "offline">("connecting");
-  const [alertsEnabled, setAlertsEnabled] = React.useState(true);
   const [lastSynced, setLastSynced] = React.useState<string>("");
   const [syncing, setSyncing] = React.useState(false);
-  const [toggling, setToggling] = React.useState(false);
   const [baseUrl, setBaseUrl] = React.useState(PRODUCTION_URL);
+  const [extSettings, setExtSettingsState] = React.useState<ExtSettings>({ paused: false, popupEnabled: true });
+  const [filterSettings, setFilterSettings] = React.useState<FilterSettings>({});
+  const [soundEnabled, setSoundEnabled] = React.useState(true);
+  const [filterSyncSource, setFilterSyncSource] = React.useState<"website" | "none">("none");
+  const prevAlertCountRef = React.useRef(0);
   const baseUrlRef = React.useRef(PRODUCTION_URL);
   const esRef = React.useRef<EventSource | null>(null);
 
@@ -398,6 +459,12 @@ const Popup = () => {
 
   function openLogin() {
     chrome.tabs.create({ url: baseUrlRef.current });
+  }
+
+  async function updateExtSettings(patch: Partial<ExtSettings>) {
+    const next = { ...extSettings, ...patch };
+    setExtSettingsState(next);
+    await setExtSettings(next);
   }
 
   async function doSync(url?: string) {
@@ -411,9 +478,9 @@ const Popup = () => {
       if (!res.ok) throw new Error("sync failed");
       const data: SyncData = await res.json();
       setSyncData(data);
-      setAlertsEnabled(data.alertsEnabled !== false);
       setLastSynced(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-      if (data.authenticated) {
+
+      if (data.authenticated || data.guestEnabled) {
         setPhase("main");
       } else {
         setPhase("unauthenticated");
@@ -423,27 +490,6 @@ const Popup = () => {
     } finally {
       setSyncing(false);
     }
-  }
-
-  async function handleRefresh() {
-    await doSync();
-  }
-
-  async function handleToggleAlerts() {
-    if (toggling) return;
-    setToggling(true);
-    const newVal = !alertsEnabled;
-    try {
-      await fetch(`${baseUrlRef.current}/api/settings`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alertsEnabled: newVal }),
-        signal: AbortSignal.timeout(8000),
-      });
-      setAlertsEnabled(newVal);
-    } catch {}
-    setToggling(false);
   }
 
   function connectStream(base: string) {
@@ -469,9 +515,6 @@ const Popup = () => {
           setAlerts(data.alerts.slice(0, 50));
           setStreamStatus("live");
         }
-        if (data.type === "status" && data.alertsEnabled != null) {
-          setAlertsEnabled(data.alertsEnabled);
-        }
       } catch {}
     };
 
@@ -480,14 +523,33 @@ const Popup = () => {
 
   React.useEffect(() => {
     (async () => {
-      const stored = await getStoredBaseUrl();
+      const [stored, ext, filters] = await Promise.all([
+        getStoredBaseUrl(),
+        getExtSettings(),
+        getFilterSettings(),
+      ]);
       setBaseUrl(stored);
       baseUrlRef.current = stored;
+      setExtSettingsState(ext);
+
+      const hasFilters = Object.keys(filters).length > 0;
+      if (hasFilters) {
+        setFilterSettings(filters);
+        setFilterSyncSource("website");
+      }
+
       await doSync(stored);
       connectStream(stored);
     })();
     return () => { esRef.current?.close(); };
   }, []);
+
+  React.useEffect(() => {
+    if (soundEnabled && alerts.length > prevAlertCountRef.current && prevAlertCountRef.current > 0) {
+      playAlertSound();
+    }
+    prevAlertCountRef.current = alerts.length;
+  }, [alerts.length, soundEnabled]);
 
   // ── Loading ──────────────────────────────────────────────────────
   if (phase === "loading") {
@@ -520,14 +582,14 @@ const Popup = () => {
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Connect your account</p>
             <p style={{ margin: 0, fontSize: 11, color: C.textMuted, lineHeight: 1.6 }}>
-              Log in to Alertly to sync your filters, trading settings, alert history, and preferences across all platforms.
+              Visit the Alertly dashboard to start receiving alerts. Your filter settings will sync here automatically.
             </p>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button style={s.btn("primary")} onClick={openLogin}>Open Alertly & Connect</button>
-            <button style={{ ...s.btn("ghost"), width: "100%", fontSize: 11 }} onClick={handleRefresh}>
-              {syncing ? "Checking…" : "↻  Already logged in? Sync now"}
+            <button style={s.btn("primary")} onClick={openLogin}>Open Alertly Dashboard</button>
+            <button style={{ ...s.btn("ghost"), width: "100%", fontSize: 11 }} onClick={() => doSync()}>
+              {syncing ? "Checking…" : "↻  Already set up? Sync now"}
             </button>
           </div>
 
@@ -567,22 +629,9 @@ const Popup = () => {
 
   // ── Main ─────────────────────────────────────────────────────────
   const user = syncData?.user;
-  const settings = user?.settings;
+  const isGuest = !syncData?.authenticated && syncData?.guestEnabled;
 
-  const boostOn = settings?.dexBoostEnabled !== false;
-  const listingOn = settings?.dexListingEnabled !== false;
-  const autoTradeOn = settings?.autoTrade === true;
-
-  const boostLevelLabel = settings?.selectedBoostLevel
-    ? settings.selectedBoostLevel === "all" ? "All Levels"
-    : settings.selectedBoostLevel === "trending" ? "Trending"
-    : settings.selectedBoostLevel === "top" ? "Top Only"
-    : settings.selectedBoostLevel
-    : "All Levels";
-
-  const sourcesLabel = settings?.sources?.length
-    ? settings.sources.join(", ")
-    : "All";
+  const displayedAlerts = extSettings.paused ? [] : alerts;
 
   return (
     <div style={s.root}>
@@ -591,12 +640,17 @@ const Popup = () => {
         <img src="icon128.png" style={s.logo} />
         <div style={s.headerText}>
           <p style={s.headerTitle}>Alertly</p>
-          <p style={s.headerSub}>{shortWallet(user?.walletAddress)}{user?.vipLevel ? ` · ${user.vipLevel}` : ""}</p>
+          <p style={s.headerSub}>
+            {isGuest
+              ? "GUEST MODE · " + new URL(baseUrl).hostname
+              : (shortWallet(user?.walletAddress) + (user?.vipLevel ? ` · ${user.vipLevel}` : ""))
+            }
+          </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <StatusPill status={alertsEnabled ? streamStatus : "paused"} />
+          <StatusPill status={extSettings.paused ? "paused" : streamStatus} />
           <button
-            onClick={handleRefresh}
+            onClick={() => doSync()}
             title="Sync"
             style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, fontSize: 14, padding: 2, lineHeight: 1 }}
           >
@@ -608,7 +662,7 @@ const Popup = () => {
       {/* Tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 16px" }}>
         <button style={s.tab(tab === "alerts")} onClick={() => setTab("alerts")}>ALERTS</button>
-        <button style={s.tab(tab === "account")} onClick={() => setTab("account")}>ACCOUNT</button>
+        <button style={s.tab(tab === "settings")} onClick={() => setTab("settings")}>SETTINGS</button>
       </div>
 
       {/* Tab: Alerts */}
@@ -619,106 +673,146 @@ const Popup = () => {
               {lastSynced ? `Synced ${lastSynced}` : "Syncing…"}
             </span>
             <button
-              onClick={handleToggleAlerts}
-              disabled={toggling}
-              style={{ ...s.btn(alertsEnabled ? "ghost" : "primary"), padding: "5px 11px", fontSize: 10, borderRadius: 999 }}
+              onClick={() => updateExtSettings({ paused: !extSettings.paused })}
+              style={{ ...s.btn(extSettings.paused ? "primary" : "ghost"), padding: "5px 11px", fontSize: 10, borderRadius: 999 }}
             >
-              {toggling ? "…" : alertsEnabled ? "⏸  Pause" : "▶  Resume"}
+              {extSettings.paused ? "▶  Resume" : "⏸  Pause"}
             </button>
           </div>
 
-          {!alertsEnabled ? (
-            <EmptyState icon="⏸" message="Alerts are paused. Click Resume to start receiving signals." />
+          {extSettings.paused ? (
+            <EmptyState icon="⏸" message="Alerts are paused. Click Resume to continue receiving signals." />
           ) : streamStatus === "connecting" ? (
             <EmptyState icon="⟳" message="Connecting to live stream…" />
-          ) : alerts.length === 0 ? (
-            <EmptyState icon="📡" message="No alerts right now. Filters are active and monitoring for DEX Boosts & Listings." />
+          ) : displayedAlerts.length === 0 ? (
+            <EmptyState icon="📡" message="No alerts yet. Monitoring for new signals according to your filter settings." />
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto" }}>
-              {alerts.slice(0, 10).map((a, i) => <AlertCard key={i} alert={a} />)}
-            </div>
-          )}
-
-          <button style={s.btn("primary")} onClick={openDashboard}>Open Dashboard</button>
-        </div>
-      )}
-
-      {/* Tab: Account */}
-      {tab === "account" && (
-        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, maxHeight: 480, overflowY: "auto" }}>
-
-          {/* Identity */}
-          <div style={s.card}>
-            <SectionLabel label="IDENTITY" />
-            <StatRow label="Wallet" value={<span style={{ fontFamily: "monospace", fontSize: 10 }}>{shortWallet(user?.walletAddress)}</span>} />
-            <StatRow label="Level" value={user?.vipLevel || "Free"} valueColor={C.accent} />
-            <StatRow
-              label="Telegram"
-              value={user?.telegramLinked ? "✓ Linked" : "Not linked"}
-              valueColor={user?.telegramLinked ? C.green : C.textDim}
-              last
-            />
-          </div>
-
-          {/* Alert Types */}
-          <div style={s.card}>
-            <SectionLabel label="ALERT TYPES" />
-            <StatRow label="Alerts" value={settings?.alertsEnabled !== false ? "Enabled" : "Disabled"} valueColor={settings?.alertsEnabled !== false ? C.green : C.red} />
-            <StatRow label="DEX Boost" value={<ToggleChip active={boostOn} label={boostOn ? "ON" : "OFF"} />} />
-            <StatRow label="DEX Listing" value={<ToggleChip active={listingOn} label={listingOn ? "ON" : "OFF"} />} />
-            <StatRow label="Boost Level" value={boostLevelLabel} last />
-          </div>
-
-          {/* Filters */}
-          <div style={s.card}>
-            <SectionLabel label="FILTERS" />
-            <StatRow label="Min Market Cap" value={formatNum(settings?.minMarketCap)} />
-            <StatRow label="Max Market Cap" value={formatNum(settings?.maxMarketCap)} />
-            <StatRow label="Min Liquidity" value={formatNum(settings?.minLiquidity)} />
-            <StatRow label="Min Holders" value={settings?.minHolders ? `${settings.minHolders}` : "Any"} />
-            <StatRow label="Sources" value={sourcesLabel} last />
-          </div>
-
-          {/* Auto-Trade */}
-          <div style={s.card}>
-            <SectionLabel label="AUTO-TRADE" />
-            <StatRow label="Status" value={autoTradeOn ? "Active" : "Off"} valueColor={autoTradeOn ? C.green : C.textDim} />
-            <StatRow label="Buy Size" value={settings?.buyAmount != null ? `${settings.buyAmount} SOL` : "—"} />
-            <StatRow label="Max Per Token" value={settings?.maxBuyPerToken != null ? `${settings.maxBuyPerToken} SOL` : "—"} />
-            <StatRow label="Slippage" value={settings?.slippage != null ? `${settings.slippage}%` : "—"} />
-            <StatRow label="Stop Loss" value={settings?.stopLoss != null ? `-${settings.stopLoss}%` : "—"} valueColor={C.red} />
-            <StatRow label="Take Profit" value={settings?.takeProfit != null ? `+${settings.takeProfit}%` : "—"} valueColor={C.green} />
-            <StatRow label="Trailing Stop" value={settings?.trailingStop ? "On" : "Off"} valueColor={settings?.trailingStop ? C.green : C.textDim} />
-            <StatRow
-              label="Auto Sell"
-              value={settings?.autoSellMinutes ? `${settings.autoSellMinutes} min` : "Off"}
-              last
-            />
-          </div>
-
-          {/* Trading Wallet */}
-          {user?.wallets && user.wallets.length > 0 && (
-            <div style={s.card}>
-              <SectionLabel label="TRADING WALLETS" />
-              {user.wallets.map((w, i) => (
-                <StatRow
-                  key={i}
-                  label={`Wallet ${i + 1}`}
-                  value={<span style={{ fontFamily: "monospace", fontSize: 10 }}>{shortWallet(w.publicKey)}</span>}
-                  last={i === user.wallets!.length - 1}
-                />
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
+              {displayedAlerts.map((alert, i) => (
+                <AlertCard key={i} alert={alert} />
               ))}
             </div>
           )}
 
-          <button style={s.btn("primary")} onClick={openDashboard}>Manage in Dashboard</button>
+          <button style={s.btn("primary")} onClick={openDashboard}>
+            Open Full Dashboard ↗
+          </button>
+        </div>
+      )}
+
+      {/* Tab: Settings */}
+      {tab === "settings" && (
+        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+
+          {/* Sync status */}
+          {filterSyncSource === "website" && (
+            <div style={{
+              ...s.card,
+              padding: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 4,
+              backgroundColor: C.accentLight,
+              border: `1px solid ${C.accentBorder}`,
+            }}>
+              <span style={{ fontSize: 14 }}>🔗</span>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.text }}>Synced from Alertly website</p>
+                <p style={{ margin: 0, fontSize: 10, color: C.textMuted }}>Filter settings loaded from your browser cookies</p>
+              </div>
+            </div>
+          )}
+
+          {/* Extension controls */}
+          <p style={{ margin: "4px 0 6px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>EXTENSION CONTROLS</p>
+
+          <ToggleSwitch
+            on={!extSettings.paused}
+            onChange={(v) => updateExtSettings({ paused: !v })}
+            label="Receive Alerts"
+            sub="Enable or pause all alert monitoring"
+          />
+
+          <ToggleSwitch
+            on={extSettings.popupEnabled}
+            onChange={(v) => updateExtSettings({ popupEnabled: v })}
+            label="Desktop Notifications"
+            sub="Show system popups when new alerts arrive"
+          />
+
+          <ToggleSwitch
+            on={soundEnabled}
+            onChange={(v) => setSoundEnabled(v)}
+            label="Sound (in popup)"
+            sub="Play a sound when new alerts appear in this popup"
+          />
+
+          {/* Active filter summary */}
+          {(filterSettings.dexBoostEnabled !== undefined || filterSettings.minMarketCap || filterSettings.minLiquidity) && (
+            <>
+              <p style={{ margin: "12px 0 6px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>ACTIVE FILTERS</p>
+              <div style={{ ...s.card, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {filterSettings.dexBoostEnabled === false && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>⛔ DEX Boost — disabled</div>
+                )}
+                {filterSettings.dexListingEnabled === false && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>⛔ DEX Listing — disabled</div>
+                )}
+                {filterSettings.minMarketCap != null && filterSettings.minMarketCap > 0 && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>Min Market Cap: <span style={{ color: C.text }}>{formatNum(filterSettings.minMarketCap)}</span></div>
+                )}
+                {filterSettings.maxMarketCap != null && filterSettings.maxMarketCap > 0 && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>Max Market Cap: <span style={{ color: C.text }}>{formatNum(filterSettings.maxMarketCap)}</span></div>
+                )}
+                {filterSettings.minLiquidity != null && filterSettings.minLiquidity > 0 && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>Min Liquidity: <span style={{ color: C.text }}>{formatNum(filterSettings.minLiquidity)}</span></div>
+                )}
+              </div>
+            </>
+          )}
+
+          <div style={{ marginTop: 8 }}>
+            <button style={{ ...s.btn("ghost"), width: "100%", fontSize: 11 }} onClick={openDashboard}>
+              Change filters on Alertly dashboard ↗
+            </button>
+          </div>
+
+          {/* URL config */}
+          <div style={{ ...s.card, padding: "10px 12px", marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 10, color: C.textDim, marginBottom: 6, fontWeight: 600, letterSpacing: "0.05em" }}>DASHBOARD URL</p>
+            <input
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              onBlur={async () => {
+                try {
+                  const origin = new URL(baseUrl).origin;
+                  setBaseUrl(origin);
+                  baseUrlRef.current = origin;
+                  await setStoredBaseUrl(origin);
+                  await doSync(origin);
+                  connectStream(origin);
+                } catch {}
+              }}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderBottom: `1px solid ${C.border}`,
+                color: C.textMuted,
+                fontSize: 11,
+                fontFamily: "monospace",
+                outline: "none",
+                padding: "4px 0",
+                boxSizing: "border-box" as const,
+              }}
+            />
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-const container = document.getElementById("root");
-if (container) {
-  createRoot(container).render(<Popup />);
-}
+const root = document.getElementById("root")!;
+createRoot(root).render(<Popup />);
