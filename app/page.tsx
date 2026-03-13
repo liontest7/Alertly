@@ -8,7 +8,7 @@ import { TokenSection } from "@/components/token-section";
 import { useEffect, useState } from "react";
 import { useAuthSession } from "@/components/providers";
 
-const STAY_WORDS = ["sharp.", "early.", "Alertly."];
+const STAY_WORDS = ["Sharp.", "Early.", "Alertly."];
 
 export default function Home() {
   const { user, loading } = useAuthSession();
@@ -149,9 +149,9 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="relative z-20 container mx-auto px-6 lg:px-12 pt-6 md:pt-12 pb-32 min-h-screen flex flex-col justify-center">
+      <div className="relative z-20 container mx-auto px-6 lg:px-12 pt-28 md:pt-36 pb-20 md:pb-28 flex flex-col justify-center">
         <div className="max-w-3xl">
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-light mb-8 leading-[1.1] animate-fade-in-up text-white">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-light mb-12 leading-[1.1] animate-fade-in-up text-white">
             Stay{" "}
             <span className="text-[#5100fd] whitespace-nowrap">
               {typed}
@@ -162,7 +162,7 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="text-lg md:text-xl text-white mb-12 animate-fade-in-up animation-delay-200 max-w-xl">
+          <p className="text-lg md:text-xl text-white mb-14 animate-fade-in-up animation-delay-200 max-w-xl">
             Alertly streams live market intelligence from Solana DEX activity and
 auto-syncs your settings across dashboard, Telegram bot, and browser extension.
 Connect your wallet to start trading automatically with real-time signals.
