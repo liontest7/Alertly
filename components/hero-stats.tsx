@@ -4,7 +4,7 @@ export function HeroStats() {
   return (
     <section className="relative z-20 py-12 border-y border-zinc-900 bg-black/30 backdrop-blur-sm">
       <div className="container mx-auto px-6 lg:px-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-white">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-white text-center">
           <div>
             <p className="text-white/80 text-sm mb-1">Alerts</p>
             <p className="text-2xl font-light">Unlimited</p>
