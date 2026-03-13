@@ -64,7 +64,7 @@ export function CopyTradingMiniCard() {
           ))}
         </div>
       ) : (
-        <p className="text-[10px] text-zinc-600 font-bold italic text-center py-1 mb-3">No active copy traders</p>
+        <p className="text-[10px] text-zinc-600 font-bold italic text-center mb-2">No active copy traders</p>
       )}
 
       <div className="space-y-2.5 pt-3 border-t border-zinc-900">
@@ -79,33 +79,34 @@ export function CopyTradingMiniCard() {
           />
         </div>
 
-        {/* Mode — always visible */}
-        <div>
-          <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1 block">Mode</label>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as any)}
-            className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-bold appearance-none cursor-pointer"
-          >
-            <option value="both">Trade & Alert</option>
-            <option value="trade">Trade Only</option>
-            <option value="alert">Alert Only</option>
-          </select>
-        </div>
-
-        {/* Amount — only shown when trading */}
-        {!isAlertOnly && (
+        {/* Mode + Amount — same row */}
+        <div className={`grid gap-2.5 ${!isAlertOnly ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <div>
-            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1 block">Amount (SOL)</label>
-            <input
-              type="number"
-              value={buyAmount}
-              onChange={(e) => setBuyAmount(e.target.value)}
-              placeholder="0.5"
-              className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-bold"
-            />
+            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1 block">Mode</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as any)}
+              className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-bold appearance-none cursor-pointer"
+            >
+              <option value="both">Trade & Alert</option>
+              <option value="trade">Trade Only</option>
+              <option value="alert">Alert Only</option>
+            </select>
           </div>
-        )}
+
+          {!isAlertOnly && (
+            <div>
+              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-1 block">Amount (SOL)</label>
+              <input
+                type="number"
+                value={buyAmount}
+                onChange={(e) => setBuyAmount(e.target.value)}
+                placeholder="0.5"
+                className="w-full bg-black border border-zinc-800 rounded-xl p-2.5 text-[10px] text-white focus:outline-none focus:border-[#5100fd] font-bold"
+              />
+            </div>
+          )}
+        </div>
 
         <Button
           onClick={addTrader}
