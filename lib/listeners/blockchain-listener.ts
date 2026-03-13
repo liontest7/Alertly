@@ -19,6 +19,7 @@ const seenListingFingerprints = new Set<string>();
 let boostPollerTimer: ReturnType<typeof setTimeout> | null = null;
 let listingPollerTimer: ReturnType<typeof setTimeout> | null = null;
 let boostFingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
+let boostLatestPollerTimer: ReturnType<typeof setInterval> | null = null;
 
 function isPotentialPublicKey(value: string): boolean {
   if (!value) return false;
@@ -32,7 +33,7 @@ async function processTokenAlert(
   addr: string,
   type: AlertKind,
   dex: string,
-  reason: string,
+  alertedAt: Date,
 ) {
   if (!isPotentialPublicKey(addr)) return;
 
@@ -59,7 +60,7 @@ async function processTokenAlert(
     holders: 0,
     imageUrl: null as string | null,
     dexUrl: `https://dexscreener.com/solana/${addr}`,
-    alertedAt: new Date(),
+    alertedAt,
     riskScore: risk.score,
     riskLevel: risk.level,
     pairAddress: addr,
@@ -103,7 +104,7 @@ async function processTokenAlert(
       mc: meta.mc || "N/A",
       liquidity: meta.liquidity || "N/A",
       vol: meta.volume24h || "N/A",
-      alertedAt: alertData.alertedAt,
+      alertedAt,
       imageUrl: meta.imageUrl || undefined,
     }).catch(() => null);
   }).catch(() => null);
@@ -121,7 +122,10 @@ async function pollDexBoostsTop() {
     const data: unknown = await res.json();
     const boosts: any[] = Array.isArray(data) ? data : [];
 
-    for (const boost of boosts) {
+    const newBoosts: Array<{ addr: string; reason: string; index: number }> = [];
+
+    for (let i = 0; i < boosts.length; i++) {
+      const boost = boosts[i];
       if (boost.chainId !== "solana") continue;
       const addr = boost.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
@@ -131,7 +135,14 @@ async function pollDexBoostsTop() {
       seenBoostFingerprints.add(fingerprint);
 
       const totalAmount = boost.totalAmount ?? boost.amount;
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", `Top boost${totalAmount ? ` — ${totalAmount} units` : ""}`).catch(() => null);
+      newBoosts.push({ addr, reason: `Top boost${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i });
+    }
+
+    const now = Date.now();
+    for (let j = newBoosts.length - 1; j >= 0; j--) {
+      const { addr, reason } = newBoosts[j];
+      const alertedAt = new Date(now - j * 1000);
+      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt).catch(() => null);
     }
   } catch {
   } finally {
@@ -153,24 +164,31 @@ async function pollDexBoostsLatest() {
     const data: unknown = await res.json();
     const boosts: any[] = Array.isArray(data) ? data : [];
 
-    for (const boost of boosts) {
+    const newBoosts: Array<{ addr: string; reason: string; index: number }> = [];
+
+    for (let i = 0; i < boosts.length; i++) {
+      const boost = boosts[i];
       if (boost.chainId !== "solana") continue;
       const addr = boost.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
 
-      const timeBucket = Math.floor(Date.now() / 300_000);
-      const fingerprint = `${addr}|DEX_BOOST|latest|${timeBucket}`;
+      const fingerprint = `${addr}|DEX_BOOST|latest`;
       if (seenBoostFingerprints.has(fingerprint)) continue;
       seenBoostFingerprints.add(fingerprint);
 
       const totalAmount = boost.totalAmount ?? boost.amount;
-      processTokenAlert(addr, "DEX_BOOST", "DexScreener", `New boost payment${totalAmount ? ` — ${totalAmount} units` : ""}`).catch(() => null);
+      newBoosts.push({ addr, reason: `New boost payment${totalAmount ? ` — ${totalAmount} units` : ""}`, index: i });
+    }
+
+    const now = Date.now();
+    for (let j = newBoosts.length - 1; j >= 0; j--) {
+      const { addr, reason } = newBoosts[j];
+      const alertedAt = new Date(now - j * 1000);
+      processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt).catch(() => null);
     }
   } catch {
   }
 }
-
-let listingLatestPollerTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function pollDexTokenProfiles() {
   if (!listenerRunning) return;
@@ -184,27 +202,36 @@ async function pollDexTokenProfiles() {
     const data: unknown = await res.json();
     const profiles: any[] = Array.isArray(data) ? data : [];
 
-    for (const profile of profiles) {
+    const newProfiles: Array<{ addr: string; index: number }> = [];
+
+    for (let i = 0; i < profiles.length; i++) {
+      const profile = profiles[i];
       if (profile.chainId !== "solana") continue;
       const addr = profile.tokenAddress as string | undefined;
       if (!addr || !isPotentialPublicKey(addr)) continue;
 
-      const timeBucket = Math.floor(Date.now() / 300_000);
-      const fingerprint = `${addr}|DEX_LISTING|${timeBucket}`;
+      const fingerprint = `${addr}|DEX_LISTING`;
       if (seenListingFingerprints.has(fingerprint)) continue;
       seenListingFingerprints.add(fingerprint);
 
-      processTokenAlert(addr, "DEX_LISTING", "DexScreener", "New paid DEX token profile / listing").catch(() => null);
+      newProfiles.push({ addr, index: i });
+    }
+
+    if (newProfiles.length === 0) return;
+
+    const now = Date.now();
+    for (let j = newProfiles.length - 1; j >= 0; j--) {
+      const { addr, index } = newProfiles[j];
+      const alertedAt = new Date(now - index * 1000);
+      processTokenAlert(addr, "DEX_LISTING", "DexScreener", alertedAt).catch(() => null);
     }
   } catch {
   } finally {
     if (listenerRunning) {
-      listingLatestPollerTimer = setTimeout(pollDexTokenProfiles, LISTING_POLL_INTERVAL_MS);
+      listingPollerTimer = setTimeout(pollDexTokenProfiles, LISTING_POLL_INTERVAL_MS);
     }
   }
 }
-
-let boostLatestPollerTimer: ReturnType<typeof setInterval> | null = null;
 
 export async function startBlockchainListener() {
   if (listenerRunning) return { success: true, message: "Listener already running" };
@@ -242,7 +269,7 @@ export async function stopBlockchainListener() {
   listenerStartedAt = null;
 
   if (boostPollerTimer) { clearTimeout(boostPollerTimer); boostPollerTimer = null; }
-  if (listingLatestPollerTimer) { clearTimeout(listingLatestPollerTimer); listingLatestPollerTimer = null; }
+  if (listingPollerTimer) { clearTimeout(listingPollerTimer); listingPollerTimer = null; }
   if (boostLatestPollerTimer) { clearInterval(boostLatestPollerTimer); boostLatestPollerTimer = null; }
   if (boostFingerprintResetTimer) { clearInterval(boostFingerprintResetTimer); boostFingerprintResetTimer = null; }
 
