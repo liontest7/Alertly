@@ -1,4 +1,4 @@
-const DEFAULT_ALERTLY_BASE_URL = "http://localhost:10000";
+const DEFAULT_ALERTLY_BASE_URL = "https://alertly-5zmw.onrender.com";
 const ALERTLY_BASE_URL_STORAGE_KEY = "alertlyBaseUrl";
 const LAST_ALERT_STORAGE_KEY = "lastAlertFingerprint";
 const SESSION_ALERTS_KEY = "sessionAlerts";
