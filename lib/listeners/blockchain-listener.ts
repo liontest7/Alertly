@@ -364,7 +364,6 @@ export async function stopBlockchainListener() {
   if (boostLatestTimer) { clearTimeout(boostLatestTimer); boostLatestTimer = null; }
   if (listingTimer) { clearTimeout(listingTimer); listingTimer = null; }
   if (fingerprintResetTimer) { clearInterval(fingerprintResetTimer); fingerprintResetTimer = null; }
-  if (automationTimer) { clearInterval(automationTimer); automationTimer = null; }
 
   console.log("[Listener] Stopped");
   return { success: true, message: "Listener stopped" };

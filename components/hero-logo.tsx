@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 interface HeroLogoProps {
@@ -36,6 +35,7 @@ export function HeroLogo({ progress, scale }: HeroLogoProps) {
           alt="Alertly Hero Logo"
           className="w-full h-full object-contain drop-shadow-[0_0_30px_rgba(81,0,253,0.3)]"
           loading="eager"
+          fetchPriority="high"
         />
       </div>
     </div>
