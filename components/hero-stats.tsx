@@ -6,15 +6,13 @@ export function HeroStats() {
       <div className="container mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-white">
           <div>
-            <p className="text-white/80 text-sm mb-1">Free Plan</p>
-            <p className="text-2xl font-light">
-              Up to 50 alerts/day <span className="text-xs text-white/60">Guest mode</span>
-            </p>
+            <p className="text-white/80 text-sm mb-1">Alerts</p>
+            <p className="text-2xl font-light">Unlimited</p>
           </div>
           <div>
-            <p className="text-white/80 text-sm mb-1">VIP Plan</p>
+            <p className="text-white/80 text-sm mb-1">Auto-Trade</p>
             <p className="text-2xl font-light text-[#5100fd]">
-              Unlimited + Auto-Trade
+              Sniper + Copy Trading
             </p>
           </div>
           <div>

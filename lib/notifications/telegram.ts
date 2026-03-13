@@ -14,8 +14,6 @@ export type AlertBroadcastPayload = {
   imageUrl?: string;
 };
 
-const DAILY_ALERT_LIMIT = 50;
-
 function shouldSendByType(
   type: string,
   settings: {
@@ -69,33 +67,6 @@ async function sendTelegramMessage(telegramId: string, text: string) {
       disable_web_page_preview: false,
     }),
   }).catch(() => null);
-}
-
-async function checkAndIncrementDailyCount(userId: string, settings: any): Promise<boolean> {
-  if (settings.isPremium) return true;
-
-  const now = new Date();
-  const lastReset = settings.lastAlertReset ? new Date(settings.lastAlertReset) : now;
-  const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
-
-  if (hoursSinceReset >= 24) {
-    await prisma.userSetting.update({
-      where: { userId },
-      data: { dailyAlertCount: 1, lastAlertReset: now },
-    }).catch(() => null);
-    return true;
-  }
-
-  if (settings.dailyAlertCount >= DAILY_ALERT_LIMIT) {
-    return false;
-  }
-
-  await prisma.userSetting.update({
-    where: { userId },
-    data: { dailyAlertCount: { increment: 1 } },
-  }).catch(() => null);
-
-  return true;
 }
 
 export async function sendCurrentAlertsToNewUser(telegramId: string) {
@@ -154,9 +125,6 @@ export async function broadcastAlertToTelegram(alert: AlertBroadcastPayload) {
     if (settings.alertsEnabled === false) continue;
 
     if (!shouldSendByType(alert.type, settings)) continue;
-
-    const canSend = await checkAndIncrementDailyCount(link.user.id, settings);
-    if (!canSend) continue;
 
     await sendTelegramMessage(link.telegramId, message);
   }

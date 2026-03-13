@@ -4,12 +4,7 @@ import { getLiveAlerts } from "@/lib/blockchain/solana";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
-import {
-  applyGuestAlertQuota,
-  GUEST_DAILY_ALERT_LIMIT,
-  getGuestSettings,
-  setGuestAlertState,
-} from "@/lib/guest-session";
+import { getGuestSettings } from "@/lib/guest-session";
 
 export const dynamic = "force-dynamic";
 
@@ -62,40 +57,12 @@ export async function GET(req: Request) {
       imageUrl: a.imageUrl || "",
     }));
 
-    let payload = formattedAlerts;
-    const responseHeaders: Record<string, string> = { "Cache-Control": "no-store" };
-
-    if (!userId) {
-      const quotaApplied = applyGuestAlertQuota(cookieStore, formattedAlerts);
-      payload = quotaApplied.alerts as typeof formattedAlerts;
-      responseHeaders["X-Alert-Limit"] = String(GUEST_DAILY_ALERT_LIMIT);
-      responseHeaders["X-Alert-Used"] = String(quotaApplied.state.used);
-      responseHeaders["X-Alert-Mode"] = "guest";
-
-      const response = NextResponse.json(payload, { headers: responseHeaders });
-      setGuestAlertState(response, quotaApplied.state);
-      return response;
-    }
-
-    const isPremium = (userSettings as any)?.isPremium === true;
-    const isVip = session?.user?.vipStatus === true || isPremium;
-
-    if (!isVip) {
-      const quotaApplied = applyGuestAlertQuota(cookieStore, formattedAlerts);
-      payload = quotaApplied.alerts as typeof formattedAlerts;
-      responseHeaders["X-Alert-Limit"] = String(GUEST_DAILY_ALERT_LIMIT);
-      responseHeaders["X-Alert-Used"] = String(quotaApplied.state.used);
-      responseHeaders["X-Alert-Mode"] = "free";
-      responseHeaders["X-Vip-Status"] = "false";
-
-      const response = NextResponse.json(payload, { headers: responseHeaders });
-      setGuestAlertState(response, quotaApplied.state);
-      return response;
-    }
-
-    responseHeaders["X-Alert-Mode"] = "vip";
-    responseHeaders["X-Vip-Status"] = "true";
-    return NextResponse.json(payload, { headers: responseHeaders });
+    return NextResponse.json(formattedAlerts, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Alert-Mode": userId ? "user" : "guest",
+      },
+    });
   } catch (error) {
     console.error("Alerts API error:", error instanceof Error ? error.message : String(error));
     if (error instanceof Error) {
