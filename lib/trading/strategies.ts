@@ -1,5 +1,18 @@
 import { TokenAlert } from "../blockchain/solana";
 
+function parseMoneyValue(input?: string | null): number {
+  if (!input) return 0;
+  const normalized = input.replace(/[$,\s]/g, "").toUpperCase();
+  if (!normalized || normalized === "N/A") return 0;
+  const suffix = normalized.slice(-1);
+  const num = parseFloat(normalized);
+  if (isNaN(num)) return 0;
+  if (suffix === "B") return num * 1_000_000_000;
+  if (suffix === "M") return num * 1_000_000;
+  if (suffix === "K") return num * 1_000;
+  return num;
+}
+
 export function shouldAutoTrade(
   alert: TokenAlert,
   settings: {
@@ -14,8 +27,8 @@ export function shouldAutoTrade(
 ): boolean {
   if (!settings.autoTrade) return false;
 
-  const mc = parseFloat(alert.mc?.replace(/[$,KMB]/g, "") || "0");
-  const liquidity = parseFloat(alert.liquidity?.replace(/[$,KMB]/g, "") || "0");
+  const mc = parseMoneyValue(alert.mc);
+  const liquidity = parseMoneyValue(alert.liquidity);
 
   if (settings.minMarketCap > 0 && mc < settings.minMarketCap) return false;
   if (settings.maxMarketCap > 0 && mc > settings.maxMarketCap) return false;
