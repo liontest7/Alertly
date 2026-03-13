@@ -4,50 +4,9 @@ import { verifyToken } from "@/lib/auth-edge";
 
 const PROTECTED_PATHS = ["/profile", "/settings", "/telegram-link", "/admin"];
 const AUTH_PATHS = ["/login", "/connect-wallet"];
-const PUBLIC_PATHS = ["/_next", "/api/startup-check", "/api/health", "/startup-error"];
-
-// Check if all required environment variables are present
-function validateRequiredEnvVars(): { valid: boolean; missing: string[] } {
-  const required = [
-    "DATABASE_URL",
-    "AUTH_SECRET",
-    "SOLANA_RPC_URL",
-    "TELEGRAM_BOT_TOKEN",
-    "ENCRYPTION_KEY",
-    "INTERNAL_API_KEY",
-    "NEXT_PUBLIC_APP_URL",
-    "ALERTLY_API_BASE_URL",
-  ];
-  
-  const missing = required.filter(key => !process.env[key]);
-  return { valid: missing.length === 0, missing };
-}
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  
-  // Allow public paths
-  if (PUBLIC_PATHS.some(path => pathname.startsWith(path)) || pathname.includes('.')) {
-    return NextResponse.next();
-  }
-
-  // Check environment before allowing any other requests
-  const { valid, missing } = validateRequiredEnvVars();
-  if (!valid) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        {
-          error: "System not ready - missing environment variables",
-          missing,
-          message: "Add secrets in Replit: DATABASE_URL, AUTH_SECRET, SOLANA_RPC_URL, TELEGRAM_BOT_TOKEN, ENCRYPTION_KEY, INTERNAL_API_KEY"
-        },
-        { status: 503 }
-      );
-    }
-    
-    // For web pages, redirect to error page
-    return NextResponse.redirect(new URL("/startup-error?missing=" + missing.join(","), request.url));
-  }
 
   const isProtected = PROTECTED_PATHS.some((path) => pathname.startsWith(path));
   const isAuthPath = AUTH_PATHS.some((path) => pathname.startsWith(path));
@@ -64,7 +23,6 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(new URL("/dashboard", request.url));
         }
         const response = NextResponse.next();
-        // Ensure the token persists
         response.cookies.set("auth_token", tokenValue, {
           httpOnly: true,
           sameSite: "lax",
