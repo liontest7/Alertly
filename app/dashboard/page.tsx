@@ -10,7 +10,8 @@ import { useState, useEffect, useRef } from "react"
 import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
-const MAX_LOCAL_ALERTS = 200;
+const MAX_LOCAL_ALERTS = 100;
+const LS_KEY = 'alertly_feed_v1';
 
 export default function DashboardPage() {
   const { user, loading: sessionLoading } = useAuthSession();
@@ -24,13 +25,13 @@ export default function DashboardPage() {
 
   const [alerts, setAlerts] = useState<any[]>(() => {
     try {
-      const cached = sessionStorage.getItem('alertly_alerts');
+      const cached = localStorage.getItem(LS_KEY);
       if (cached) return JSON.parse(cached).slice(0, MAX_LOCAL_ALERTS);
     } catch {}
     return [];
   })
   const [loading, setLoading] = useState(() => {
-    try { return !sessionStorage.getItem('alertly_alerts'); } catch { return true; }
+    try { return !localStorage.getItem(LS_KEY); } catch { return true; }
   })
   const [metrics, setMetrics] = useState({
     totalBalanceSol: 0,
@@ -124,11 +125,11 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if (alerts.length > 0) {
-      try {
-        sessionStorage.setItem('alertly_alerts', JSON.stringify(alerts));
-      } catch {}
-    }
+    try {
+      if (alerts.length > 0) {
+        localStorage.setItem(LS_KEY, JSON.stringify(alerts.slice(0, MAX_LOCAL_ALERTS)));
+      }
+    } catch {}
   }, [alerts]);
 
   const streamRef = useRef<EventSource | null>(null);
@@ -155,11 +156,38 @@ export default function DashboardPage() {
 
       stream.addEventListener('init', (event: any) => {
         try {
-          const initialAlerts = JSON.parse(event.data);
-          if (Array.isArray(initialAlerts) && initialAlerts.length > 0) {
-            setAlerts(initialAlerts.slice(0, MAX_LOCAL_ALERTS));
-            setLoading(false);
-          }
+          const serverAlerts = JSON.parse(event.data);
+          if (!Array.isArray(serverAlerts) || serverAlerts.length === 0) return;
+
+          setAlerts(prev => {
+            // Map local alerts by fingerprint to preserve original timestamps
+            const localMap = new Map(prev.map((a: any) => [a.fingerprint, a]));
+
+            // For each server alert: if we already have it locally, keep the
+            // original alertedAt (the real first-seen time), and merge other fields
+            const merged = serverAlerts.map((sa: any) => {
+              const local = localMap.get(sa.fingerprint);
+              if (local) {
+                return { ...sa, alertedAt: local.alertedAt };
+              }
+              return sa;
+            });
+
+            // Append any local-only alerts not present in server's current buffer
+            const serverFps = new Set(serverAlerts.map((a: any) => a.fingerprint));
+            const localOnly = prev.filter((a: any) => !serverFps.has(a.fingerprint));
+
+            const combined = [...merged, ...localOnly];
+
+            // Sort newest-first by alertedAt
+            combined.sort((a: any, b: any) =>
+              new Date(b.alertedAt).getTime() - new Date(a.alertedAt).getTime()
+            );
+
+            return combined.slice(0, MAX_LOCAL_ALERTS);
+          });
+
+          setLoading(false);
         } catch {}
       });
 
@@ -168,10 +196,15 @@ export default function DashboardPage() {
           const newAlert = JSON.parse(event.data);
           if (newAlert && newAlert.fingerprint) {
             setAlerts(prev => {
-              const existing = prev.findIndex(a => a.fingerprint === newAlert.fingerprint);
+              const existing = prev.findIndex((a: any) => a.fingerprint === newAlert.fingerprint);
               if (existing !== -1) {
                 const updated = [...prev];
-                updated[existing] = { ...updated[existing], ...newAlert };
+                // Update in-place but always keep the original alertedAt
+                updated[existing] = {
+                  ...updated[existing],
+                  ...newAlert,
+                  alertedAt: updated[existing].alertedAt,
+                };
                 return updated;
               }
               const next = [newAlert, ...prev];
