@@ -39,32 +39,6 @@ async function checkSolanaRpc(rpcUrl: string) {
   }
 }
 
-async function checkJupiter(apiUrl: string) {
-  const start = Date.now();
-
-  const endpoints = [
-    `${apiUrl.replace(/\/$/, "")}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=100`,
-    "https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=100",
-  ];
-
-  for (const url of endpoints) {
-    try {
-      const response = await withTimeout(fetch(url), HEALTH_TIMEOUT_MS);
-      if (!response.ok) {
-        continue;
-      }
-
-      const json = await response.json();
-      if (json?.outAmount || json?.routePlan || json?.data) {
-        return { status: "ok" as const, latencyMs: Date.now() - start };
-      }
-    } catch {
-      // try next endpoint
-    }
-  }
-
-  return { status: "error" as const, latencyMs: Date.now() - start };
-}
 
 export async function GET() {
   const requiredEnv = [
@@ -88,12 +62,10 @@ export async function GET() {
 
   const checks = {
     api: "ok",
-    database: "unknown" as "ok" | "error" | "unknown",
+    database: "unknown" as "ok" | "disabled" | "error",
     solanaRpc: "unknown" as "ok" | "error" | "unknown",
-    jupiter: "unknown" as "ok" | "error" | "unknown",
     latencyMs: {
       solanaRpc: null as number | null,
-      jupiter: null as number | null,
     },
     env: envStatus,
     readyForLaunch: false,
@@ -113,15 +85,9 @@ export async function GET() {
     checks.latencyMs.solanaRpc = result.latencyMs;
   }
 
-  const jupiterUrl = process.env.JUPITER_API_URL || "https://lite-api.jup.ag/swap/v1";
-  const jupiterResult = await checkJupiter(jupiterUrl);
-  checks.jupiter = jupiterResult.status;
-  checks.latencyMs.jupiter = jupiterResult.latencyMs;
-
   const envReady = Object.values(envStatus).every(Boolean);
   checks.readyForLaunch =
     checks.solanaRpc === "ok" &&
-    checks.jupiter === "ok" &&
     envReady;
 
   const status = checks.readyForLaunch ? 200 : 503;
