@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
-import {
-  clearGuestCookies,
-  getGuestSettings,
-  getGuestSettingsPatch,
-  setGuestSettings,
-} from "@/lib/guest-session";
+import { getUserSettings, setGuestSettings, GuestSettings } from "@/lib/guest-session";
+
+export const dynamic = "force-dynamic";
 
 type SettingsPayload = {
   autoTrade?: boolean;
@@ -30,9 +26,8 @@ type SettingsPayload = {
   alertsEnabled?: boolean;
 };
 
-function sanitizeSettings(input: SettingsPayload) {
-  const output: SettingsPayload = {};
-
+function sanitizeSettings(input: SettingsPayload): GuestSettings {
+  const output: GuestSettings = {};
   if (typeof input.autoTrade === "boolean") output.autoTrade = input.autoTrade;
   if (typeof input.buyAmount === "number" && input.buyAmount > 0) output.buyAmount = input.buyAmount;
   if (typeof input.maxBuyPerToken === "number" && input.maxBuyPerToken > 0) output.maxBuyPerToken = input.maxBuyPerToken;
@@ -47,52 +42,23 @@ function sanitizeSettings(input: SettingsPayload) {
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) output.minLiquidity = input.minLiquidity;
   if (typeof input.dexBoostEnabled === "boolean") output.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
-  if (Array.isArray(input.sources)) {
-    output.sources = input.sources.filter((value) => typeof value === "string");
-  }
+  if (Array.isArray(input.sources)) output.sources = input.sources.filter((v) => typeof v === "string");
   if (typeof input.selectedBoostLevel === "string") output.selectedBoostLevel = input.selectedBoostLevel;
   if (typeof input.alertsEnabled === "boolean") output.alertsEnabled = input.alertsEnabled;
-
   return output;
 }
 
 export async function GET(req: Request) {
   const session = await auth(req);
+  const authenticated = !!session?.user;
   const cookieStore = cookies();
-
-  if (!session?.user?.id) {
-    const guest = getGuestSettings(cookieStore);
-    return NextResponse.json(guest);
-  }
-
-  const settings = await prisma.userSetting.findUnique({
-    where: { userId: session.user.id },
-  });
-
-  if (settings) {
-    return NextResponse.json(settings);
-  }
-
-  const guestPatch = getGuestSettingsPatch(cookieStore);
-  if (Object.keys(guestPatch).length > 0) {
-    const migrated = await prisma.userSetting.create({
-      data: {
-        userId: session.user.id,
-        ...guestPatch,
-        sources: guestPatch.sources ?? DEFAULT_USER_SETTINGS.sources,
-      },
-    });
-
-    const response = NextResponse.json({ ...migrated, migratedFromGuest: true });
-    clearGuestCookies(response);
-    return response;
-  }
-
-  return NextResponse.json(DEFAULT_USER_SETTINGS);
+  const settings = getUserSettings(cookieStore, authenticated);
+  return NextResponse.json(settings);
 }
 
 export async function POST(req: Request) {
   const session = await auth(req);
+  const authenticated = !!session?.user;
   const body = (await req.json()) as SettingsPayload;
   const sanitized = sanitizeSettings(body);
 
@@ -109,23 +75,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "maxMarketCap must be greater than minMarketCap" }, { status: 400 });
   }
 
-  if (!session?.user?.id) {
-    const response = NextResponse.json({ ...DEFAULT_USER_SETTINGS, ...sanitized, autoTrade: false });
-    setGuestSettings(response, sanitized);
-    return response;
-  }
+  const cookieStore = cookies();
+  const existing = getUserSettings(cookieStore, authenticated);
+  const merged = { ...existing, ...sanitized };
+  if (!authenticated) merged.autoTrade = false;
 
-  const saved = await prisma.userSetting.upsert({
-    where: { userId: session.user.id },
-    create: {
-      userId: session.user.id,
-      ...sanitized,
-      sources: sanitized.sources ?? DEFAULT_USER_SETTINGS.sources,
-    },
-    update: sanitized,
-  });
-
-  const response = NextResponse.json(saved);
-  clearGuestCookies(response);
+  const response = NextResponse.json(merged);
+  setGuestSettings(response, merged, authenticated);
   return response;
 }

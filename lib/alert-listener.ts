@@ -1,10 +1,4 @@
-/**
- * Alert Listener - manages the real-time blockchain listener lifecycle
- * with auto-restart on failure for production resilience.
- */
-
 import { startBlockchainListener, stopBlockchainListener, getListenerStatus } from "./listeners/blockchain-listener";
-import { prisma } from "./prisma";
 
 const RESTART_DELAY_MS = 15_000;
 let autoRestartTimer: ReturnType<typeof setTimeout> | null = null;
@@ -25,17 +19,6 @@ export class AlertListener {
     try {
       await startBlockchainListener();
       this.scheduleHealthCheck();
-
-      try {
-        const runtimeStatus = getListenerStatus();
-        await prisma.listenerStatus.upsert({
-          where: { name: "blockchain-listener" },
-          create: { name: "blockchain-listener", running: true, subscriptions: runtimeStatus.subscriptions },
-          update: { running: true, subscriptions: runtimeStatus.subscriptions },
-        });
-      } catch {
-        // ListenerStatus table may not exist yet — not fatal
-      }
     } catch (error) {
       this.isRunning = false;
       console.error("Failed to start alert listener:", error instanceof Error ? error.message : error);
@@ -78,17 +61,6 @@ export class AlertListener {
 
     try {
       await stopBlockchainListener();
-
-      try {
-        await prisma.listenerStatus.upsert({
-          where: { name: "blockchain-listener" },
-          create: { name: "blockchain-listener", running: false, subscriptions: 0 },
-          update: { running: false, subscriptions: 0 },
-        });
-      } catch {
-        // Not fatal
-      }
-
       this.isRunning = false;
       console.log("⏹️  Alert listener stopped");
     } catch (error) {
@@ -101,34 +73,19 @@ export class AlertListener {
   }
 }
 
-// Singleton instance
-let listenerInstance: AlertListener | null = null;
+const alertListener = new AlertListener();
+let ensureStartedPromise: Promise<void> | null = null;
 
-export function getAlertListener(): AlertListener {
-  if (!listenerInstance) {
-    listenerInstance = new AlertListener();
-  }
-  return listenerInstance;
-}
-
-export async function startAlertListener() {
-  const listener = getAlertListener();
-  await listener.start();
-}
-
-let listenerStartPromise: Promise<void> | null = null;
-
-export async function ensureAlertListenerStarted() {
-  const status = getListenerStatus();
-  if (status.running) return;
-
-  if (!listenerStartPromise) {
-    listenerStartPromise = startAlertListener().catch((err) => {
-      console.error("ensureAlertListenerStarted error:", err instanceof Error ? err.message : err);
-    }).finally(() => {
-      listenerStartPromise = null;
+export async function ensureAlertListenerStarted(): Promise<void> {
+  if (!ensureStartedPromise) {
+    ensureStartedPromise = alertListener.start().catch((err) => {
+      console.error("Alert listener start error:", err);
+      ensureStartedPromise = null;
     });
   }
+  return ensureStartedPromise;
+}
 
-  await listenerStartPromise;
+export function getAlertListenerStatus() {
+  return alertListener.getStatus();
 }

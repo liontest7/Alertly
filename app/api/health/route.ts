@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getMissingRequiredEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +68,6 @@ async function checkJupiter(apiUrl: string) {
 
 export async function GET() {
   const requiredEnv = [
-    "DATABASE_URL",
     "ENCRYPTION_KEY",
     "SOLANA_RPC_URL",
     "INTERNAL_API_KEY",
@@ -106,16 +104,7 @@ export async function GET() {
     return NextResponse.json(checks, { status: 200 });
   }
 
-  try {
-    const result = await withTimeout(
-      prisma.$queryRaw`SELECT 1`,
-      HEALTH_TIMEOUT_MS,
-    );
-    checks.database = "ok";
-  } catch (error) {
-    console.error("[health] Database error:", error);
-    checks.database = "error";
-  }
+  checks.database = "disabled";
 
   const rpcUrl = process.env.SOLANA_RPC_URL;
   if (rpcUrl) {
@@ -131,7 +120,6 @@ export async function GET() {
 
   const envReady = Object.values(envStatus).every(Boolean);
   checks.readyForLaunch =
-    checks.database === "ok" &&
     checks.solanaRpc === "ok" &&
     checks.jupiter === "ok" &&
     envReady;

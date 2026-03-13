@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { alertEmitter, getAlerts, StoredAlert } from "@/lib/alert-store";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
-import { getGuestSettingsPatchFromCookieHeader } from "@/lib/guest-session";
+import { getSettingsPatchFromCookieHeader } from "@/lib/guest-session";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
 
 export const dynamic = "force-dynamic";
@@ -68,46 +67,36 @@ export async function GET(req: Request) {
   }
 
   const session = await auth(req);
-  const userId = session?.user?.id;
+  const authenticated = !!session?.user;
+  const cookieHeader = req.headers.get("cookie");
+  const patch = getSettingsPatchFromCookieHeader(cookieHeader, authenticated);
+  const settings = { ...DEFAULT_USER_SETTINGS, ...patch };
 
-  let settings: any = DEFAULT_USER_SETTINGS;
-
-  if (userId) {
-    const dbSettings = await prisma.userSetting.findUnique({ where: { userId } }).catch(() => null);
-    if (dbSettings) {
-      settings = dbSettings;
-    }
-
-    if (settings.alertsEnabled === false) {
-      const pausedStream = new ReadableStream({
-        start(controller) {
-          const encode = (chunk: string) => new TextEncoder().encode(chunk);
-          controller.enqueue(encode(sseEvent("paused", { message: "Alerts are paused" })));
-          const heartbeat = setInterval(() => {
-            try {
-              controller.enqueue(encode(sseEvent("heartbeat", { t: Date.now(), paused: true })));
-            } catch {
-              clearInterval(heartbeat);
-            }
-          }, 15000);
-          req.signal.addEventListener("abort", () => {
+  if (settings.alertsEnabled === false) {
+    const pausedStream = new ReadableStream({
+      start(controller) {
+        const encode = (chunk: string) => new TextEncoder().encode(chunk);
+        controller.enqueue(encode(sseEvent("paused", { message: "Alerts are paused" })));
+        const heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encode(sseEvent("heartbeat", { t: Date.now(), paused: true })));
+          } catch {
             clearInterval(heartbeat);
-            try { controller.close(); } catch {}
-          });
-        },
-      });
-      return new NextResponse(pausedStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache, no-transform",
-          Connection: "keep-alive",
-        },
-      });
-    }
-  } else {
-    const cookieHeader = req.headers.get("cookie");
-    const guestPatch = getGuestSettingsPatchFromCookieHeader(cookieHeader);
-    settings = { ...DEFAULT_USER_SETTINGS, ...guestPatch };
+          }
+        }, 15000);
+        req.signal.addEventListener("abort", () => {
+          clearInterval(heartbeat);
+          try { controller.close(); } catch {}
+        });
+      },
+    });
+    return new NextResponse(pausedStream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
   }
 
   const filters: AlertFilters = {
@@ -122,7 +111,6 @@ export async function GET(req: Request) {
   const stream = new ReadableStream({
     start(controller) {
       let closed = false;
-
       const encode = (chunk: string) => new TextEncoder().encode(chunk);
 
       const safeEnqueue = (data: string) => {
@@ -136,7 +124,7 @@ export async function GET(req: Request) {
 
       safeEnqueue(sseEvent("connected", { t: Date.now() }));
 
-      const existingAlerts = getAlerts().filter(a => alertMatchesFilters(a, filters));
+      const existingAlerts = getAlerts().filter((a) => alertMatchesFilters(a, filters));
       if (existingAlerts.length > 0) {
         safeEnqueue(sseEvent("init", existingAlerts));
       }
@@ -157,9 +145,7 @@ export async function GET(req: Request) {
         closed = true;
         clearInterval(heartbeat);
         alertEmitter.off("alert", onNewAlert);
-        try {
-          controller.close();
-        } catch {}
+        try { controller.close(); } catch {}
       });
     },
   });

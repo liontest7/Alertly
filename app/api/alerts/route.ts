@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getLiveAlerts } from "@/lib/blockchain/solana";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
-import { getGuestSettings } from "@/lib/guest-session";
+import { getUserSettings } from "@/lib/guest-session";
 
 export const dynamic = "force-dynamic";
 
@@ -17,36 +16,22 @@ export async function GET(req: Request) {
     }
 
     const session = await auth(req);
-    const userId = session?.user?.id;
+    const authenticated = !!session?.user;
     const cookieStore = cookies();
+    const userSettings = getUserSettings(cookieStore, authenticated);
 
-    let userSettings = userId
-      ? await prisma.userSetting.findUnique({ where: { userId } })
-      : getGuestSettings(cookieStore);
-
-    if (userId && !userSettings) {
-      console.warn(`[alerts] User ${userId} has no settings, creating defaults`);
-      userSettings = await prisma.userSetting.create({
-        data: { userId },
-      });
-    }
-
-    if (userId && userSettings && (userSettings as any).alertsEnabled === false) {
+    if (userSettings.alertsEnabled === false) {
       return NextResponse.json([], { headers: { "Cache-Control": "no-store", "X-Alert-Mode": "paused" } });
     }
 
-    const alerts = await getLiveAlerts(
-      userSettings
-        ? {
-            minMarketCap: userSettings.minMarketCap,
-            maxMarketCap: userSettings.maxMarketCap,
-            minLiquidity: userSettings.minLiquidity,
-            minHolders: userSettings.minHolders,
-            dexBoostEnabled: userSettings.dexBoostEnabled,
-            dexListingEnabled: userSettings.dexListingEnabled,
-          }
-        : undefined,
-    );
+    const alerts = await getLiveAlerts({
+      minMarketCap: userSettings.minMarketCap,
+      maxMarketCap: userSettings.maxMarketCap,
+      minLiquidity: userSettings.minLiquidity,
+      minHolders: userSettings.minHolders,
+      dexBoostEnabled: userSettings.dexBoostEnabled,
+      dexListingEnabled: userSettings.dexListingEnabled,
+    });
 
     const formattedAlerts = alerts.map((a) => ({
       ...a,
@@ -60,14 +45,11 @@ export async function GET(req: Request) {
     return NextResponse.json(formattedAlerts, {
       headers: {
         "Cache-Control": "no-store",
-        "X-Alert-Mode": userId ? "user" : "guest",
+        "X-Alert-Mode": authenticated ? "user" : "guest",
       },
     });
   } catch (error) {
     console.error("Alerts API error:", error instanceof Error ? error.message : String(error));
-    if (error instanceof Error) {
-      console.error("Stack trace:", error.stack);
-    }
     return NextResponse.json([]);
   }
 }

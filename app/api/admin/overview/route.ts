@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAdmin, getAdminWallets } from "@/lib/admin/access";
-import { getAuthTokenFromRequest, verifyToken } from "@/lib/auth";
+import { requireAdmin } from "@/lib/admin/access";
 import { getListenerStatus } from "@/lib/listeners/blockchain-listener";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +16,14 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 async function checkSolanaRpc(rpcUrl?: string) {
   if (!rpcUrl) return { status: "missing" as const };
   try {
-    const response = await withTimeout(fetch(rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getVersion", params: [] }),
-    }), TIMEOUT_MS);
+    const response = await withTimeout(
+      fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getVersion", params: [] }),
+      }),
+      TIMEOUT_MS,
+    );
     if (!response.ok) return { status: "error" as const };
     const json = await response.json();
     return { status: json?.result ? ("ok" as const) : ("error" as const) };
@@ -34,7 +35,10 @@ async function checkSolanaRpc(rpcUrl?: string) {
 async function checkJupiter(apiUrl?: string) {
   const base = (apiUrl || "https://lite-api.jup.ag/swap/v1").replace(/\/$/, "");
   try {
-    const response = await withTimeout(fetch(`${base}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=100`), TIMEOUT_MS);
+    const response = await withTimeout(
+      fetch(`${base}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=100`),
+      TIMEOUT_MS,
+    );
     if (!response.ok) return { status: "error" as const };
     const json = await response.json();
     return { status: json?.outAmount ? ("ok" as const) : ("error" as const) };
@@ -46,75 +50,28 @@ async function checkJupiter(apiUrl?: string) {
 export async function GET(req: Request) {
   const access = await requireAdmin(req);
   if (!access.ok) {
-    const token = getAuthTokenFromRequest(req);
-    const payload = token ? await verifyToken(token) : null;
-    const wallet = payload?.wallet_address;
-    const adminWallets = getAdminWallets();
-    
-    console.error("Admin Overview Access Denied Deep Check:", { 
-      walletFromAuth: (access as any).session?.user?.walletAddress,
-      walletFromPayload: wallet,
-      allowed: adminWallets,
-      hasToken: !!token,
-      match: wallet ? adminWallets.includes(wallet) : false
-    });
-
-    return NextResponse.json({ 
-      message: "Forbidden", 
-      debug: {
-        yourWallet: payload?.wallet_address || "not_found",
-        isAdmin: false
-      }
-    }, { status: 403 });
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-  const now = new Date();
-  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const listenerStatus = getListenerStatus();
 
-  const [
-    usersTotal,
-    bannedUsers,
-    frozenUsers,
-    telegramLinked,
-    alerts24h,
-    trades24h,
-    listenerRows,
-    dbCheck,
-    rpcCheck,
-    jupiterCheck,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.user.count({ where: { isBanned: true } }),
-    prisma.user.count({ where: { isFrozen: true } }),
-    prisma.telegramLink.count(),
-    prisma.alertEvent.count({ where: { alertedAt: { gte: dayAgo } } }),
-    prisma.tradeExecutionLog.count({ where: { createdAt: { gte: dayAgo } } }),
-    prisma.listenerStatus.findMany({ take: 10, orderBy: { updatedAt: "desc" } }).catch(() => []),
-    prisma.$queryRaw`SELECT 1`.then(() => ({ status: "ok" as const })).catch(() => ({ status: "error" as const })),
+  const [solanaRpc, jupiter] = await Promise.all([
     checkSolanaRpc(process.env.SOLANA_RPC_URL),
     checkJupiter(process.env.JUPITER_API_URL),
   ]);
 
-  const listenerStatus = getListenerStatus();
-
   return NextResponse.json({
-    users: {
-      total: usersTotal,
-      banned: bannedUsers,
-      frozen: frozenUsers,
-      telegramLinked,
+    stats: {
+      totalUsers: 0,
+      activeToday: 0,
+      tradesLast24h: 0,
+      alertsLast24h: 0,
     },
-    activity: {
-      alerts24h,
-      trades24h,
+    listeners: [listenerStatus],
+    health: {
+      database: { status: "disabled" },
+      solanaRpc,
+      jupiter,
     },
-    listener: listenerStatus,
-    infra: {
-      database: dbCheck.status,
-      solanaRpc: rpcCheck.status,
-      jupiter: jupiterCheck.status,
-    },
-    listenerRows,
-    checkedAt: now.toISOString(),
   });
 }

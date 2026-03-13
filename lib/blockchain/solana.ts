@@ -1,7 +1,6 @@
-import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from "@solana/web3.js";
 import { getEnv, requireEnv } from "@/lib/env";
-import { prisma } from "@/lib/prisma";
-import { decryptKey } from "@/lib/blockchain/keys";
+
 import { getAlerts, StoredAlert } from "@/lib/alert-store";
 
 const RPC_ENDPOINT =
@@ -175,24 +174,6 @@ export async function getWalletBalance(address: string) {
   }
 }
 
-async function getUserTradingKeypair(userId: string) {
-  const wallet = await prisma.tradingWallet.findUnique({ where: { userId } });
-  if (!wallet) {
-    throw new Error("Trading wallet is not configured");
-  }
-
-  const decrypted = decryptKey(wallet.encryptedPrivateKey);
-  if (!decrypted) {
-    throw new Error("Trading wallet decryption failed");
-  }
-
-  const secret = Buffer.from(decrypted, "hex");
-  if (secret.length !== 64) {
-    throw new Error("Trading wallet private key format is invalid");
-  }
-
-  return Keypair.fromSecretKey(new Uint8Array(secret));
-}
 
 async function getTokenDecimals(mintAddress: string) {
   const mint = new PublicKey(mintAddress);
@@ -204,101 +185,3 @@ async function getTokenDecimals(mintAddress: string) {
   return decimals;
 }
 
-export async function executeTrade(params: {
-  userId: string;
-  action: "buy" | "sell";
-  tokenAddress: string;
-  amount: number;
-  slippage: number;
-}) {
-  try {
-    const keypair = await getUserTradingKeypair(params.userId);
-
-    const inputMint = params.action === "buy" ? SOL_MINT : params.tokenAddress;
-    const outputMint = params.action === "buy" ? params.tokenAddress : SOL_MINT;
-
-    let atomicAmount: number;
-    if (params.action === "buy") {
-      atomicAmount = Math.floor(params.amount * LAMPORTS_PER_SOL);
-    } else {
-      const decimals = await getTokenDecimals(params.tokenAddress);
-      atomicAmount = Math.floor(params.amount * 10 ** decimals);
-    }
-
-    if (!Number.isFinite(atomicAmount) || atomicAmount <= 0) {
-      return { success: false, message: "Invalid trade amount after conversion" };
-    }
-
-    const quoteResponse = await fetch(
-      `${JUPITER_API_URL}/quote?inputMint=${inputMint}&outputMint=${outputMint}&amount=${atomicAmount}&slippageBps=${Math.round(params.slippage * 100)}`,
-    );
-
-    if (!quoteResponse.ok) {
-      return {
-        success: false,
-        message: `Quote request failed: ${quoteResponse.status}`,
-      };
-    }
-
-    const quoteData = await quoteResponse.json();
-    if (!quoteData?.outAmount) {
-      return { success: false, message: "No route available for this trade" };
-    }
-
-    const swapResponse = await fetch(`${JUPITER_API_URL}/swap`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        quoteResponse: quoteData,
-        userPublicKey: keypair.publicKey.toBase58(),
-        wrapAndUnwrapSol: true,
-        dynamicComputeUnitLimit: true,
-      }),
-    });
-
-    if (!swapResponse.ok) {
-      return {
-        success: false,
-        message: `Swap request failed: ${swapResponse.status}`,
-      };
-    }
-
-    const swapData = await swapResponse.json();
-    const serializedSwap = swapData?.swapTransaction;
-    if (!serializedSwap) {
-      return { success: false, message: "Jupiter did not return a transaction" };
-    }
-
-    const transaction = VersionedTransaction.deserialize(Buffer.from(serializedSwap, "base64"));
-    transaction.sign([keypair]);
-
-    const latestBlockhash = await connection.getLatestBlockhash("confirmed");
-    const txSig = await connection.sendTransaction(transaction, {
-      maxRetries: 3,
-      skipPreflight: false,
-      preflightCommitment: "confirmed",
-    });
-
-    await connection.confirmTransaction(
-      {
-        signature: txSig,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-      },
-      "confirmed",
-    );
-
-    return {
-      success: true,
-      txSig,
-      message: `Successfully executed ${params.action} via Jupiter`,
-      quote: quoteData,
-    };
-  } catch (error) {
-    console.error("Jupiter trade failed:", error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Jupiter execution failed",
-    };
-  }
-}

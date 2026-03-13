@@ -1,76 +1,26 @@
-import { TokenAlert, executeTrade } from "../blockchain/solana";
+import { TokenAlert } from "../blockchain/solana";
 
-export interface AutoTradeConfig {
-  userId: string;
-  enabled: boolean;
-  buyAmount: number;
-  maxBuyPerToken: number;
-  maxSlippage: number;
-  takeProfit: number;
-  stopLoss: number;
-  trailingStop: boolean;
-  minMarketCap?: number;
-  maxMarketCap?: number;
-  minLiquidity?: number;
-  minHolders?: number;
-  dexBoostEnabled?: boolean;
-  dexListingEnabled?: boolean;
-}
+export function shouldAutoTrade(
+  alert: TokenAlert,
+  settings: {
+    autoTrade: boolean;
+    minMarketCap: number;
+    maxMarketCap: number;
+    minLiquidity: number;
+    minHolders: number;
+    buyAmount: number;
+    slippage: number;
+  }
+): boolean {
+  if (!settings.autoTrade) return false;
 
-function parseMoney(value: string): number | null {
-  const normalized = value.replace(/[$,\s]/g, "").toUpperCase();
-  const raw = parseFloat(normalized);
-  if (!Number.isFinite(raw)) return null;
+  const mc = parseFloat(alert.mc?.replace(/[$,KMB]/g, "") || "0");
+  const liquidity = parseFloat(alert.liquidity?.replace(/[$,KMB]/g, "") || "0");
 
-  if (normalized.endsWith("K")) return raw * 1_000;
-  if (normalized.endsWith("M")) return raw * 1_000_000;
-  if (normalized.endsWith("B")) return raw * 1_000_000_000;
-  return raw;
-}
+  if (settings.minMarketCap > 0 && mc < settings.minMarketCap) return false;
+  if (settings.maxMarketCap > 0 && mc > settings.maxMarketCap) return false;
+  if (settings.minLiquidity > 0 && liquidity < settings.minLiquidity) return false;
+  if (settings.minHolders > 0 && (alert.holders ?? 0) < settings.minHolders) return false;
 
-function isTypeEnabled(alertType: TokenAlert["type"], config: AutoTradeConfig): boolean {
-  if (alertType === "DEX BOOST" && config.dexBoostEnabled === false) return false;
-  if (alertType === "DEX LISTING" && config.dexListingEnabled === false) return false;
   return true;
-}
-
-export async function shouldAutoTrade(alert: TokenAlert, config: AutoTradeConfig): Promise<boolean> {
-  if (!config.enabled || !config.userId) return false;
-  if (!isTypeEnabled(alert.type, config)) return false;
-
-  const marketCap = parseMoney(alert.mc);
-  const liquidity = parseMoney(alert.liquidity);
-
-  if (typeof config.minMarketCap === "number" && marketCap !== null && marketCap < config.minMarketCap) {
-    return false;
-  }
-
-  if (typeof config.maxMarketCap === "number" && marketCap !== null && marketCap > config.maxMarketCap) {
-    return false;
-  }
-
-  if (typeof config.minLiquidity === "number" && liquidity !== null && liquidity < config.minLiquidity) {
-    return false;
-  }
-
-  if (typeof config.minHolders === "number" && alert.holders > 0 && alert.holders < config.minHolders) {
-    return false;
-  }
-
-  if (config.buyAmount <= 0 || config.buyAmount > config.maxBuyPerToken) {
-    return false;
-  }
-
-  return alert.trend !== "down";
-}
-
-export async function processAutoTrade(alert: TokenAlert, config: AutoTradeConfig) {
-  console.log(`Auto-trading trigger for ${alert.name} at ${alert.address}`);
-  return await executeTrade({
-    userId: config.userId,
-    action: "buy",
-    tokenAddress: alert.address,
-    amount: config.buyAmount,
-    slippage: config.maxSlippage,
-  });
 }
