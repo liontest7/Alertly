@@ -548,6 +548,31 @@ function WalletTab({ syncData, openDashboard }: { syncData: SyncData | null; ope
     }).catch(() => {});
   }
 
+  const walletSecurityNote = (
+    <div style={{
+      marginTop: 12,
+      padding: "10px 12px",
+      borderRadius: 10,
+      backgroundColor: "rgba(81,0,253,0.07)",
+      border: "1px solid rgba(81,0,253,0.25)",
+      display: "flex",
+      gap: 8,
+      alignItems: "flex-start",
+    }}>
+      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>🔐</span>
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: "0.05em", marginBottom: 3 }}>WALLET SYNC</div>
+        <div style={{ fontSize: 10, color: C.textMuted, lineHeight: 1.5 }}>
+          For security, the trading wallet private key is stored only in your browser on the Alertly website and cannot be transferred to extensions.
+          To use the same wallet here, open the dashboard and connect your wallet — all filters and settings will sync automatically.
+        </div>
+        <button style={{ ...s.btn("small"), marginTop: 8, fontSize: 10, padding: "4px 10px" }} onClick={openDashboard}>
+          Open Dashboard ↗
+        </button>
+      </div>
+    </div>
+  );
+
   if (!isAuth) {
     return (
       <div style={{ padding: "20px 16px" }}>
@@ -555,6 +580,7 @@ function WalletTab({ syncData, openDashboard }: { syncData: SyncData | null; ope
         <button style={{ ...s.btn("primary"), marginTop: 12 }} onClick={openDashboard}>
           Open Dashboard to Connect ↗
         </button>
+        {walletSecurityNote}
       </div>
     );
   }
@@ -566,6 +592,7 @@ function WalletTab({ syncData, openDashboard }: { syncData: SyncData | null; ope
         <button style={{ ...s.btn("primary"), marginTop: 12 }} onClick={openDashboard}>
           Generate Trading Wallet ↗
         </button>
+        {walletSecurityNote}
       </div>
     );
   }
@@ -641,6 +668,8 @@ function WalletTab({ syncData, openDashboard }: { syncData: SyncData | null; ope
       {trades.length === 0 && pnl && pnl.tradeCount24h === 0 && (
         <EmptyState icon="📊" message="No trades in the last 24 hours." />
       )}
+
+      {walletSecurityNote}
 
       <button style={{ ...s.btn("ghost"), width: "100%", fontSize: 11 }} onClick={openDashboard}>
         View Full Dashboard ↗
