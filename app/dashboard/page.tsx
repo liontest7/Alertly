@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
 import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
+import { TradesPanel } from "@/components/Dashboard/TradesPanel"
 
 const MAX_LOCAL_ALERTS = 500;
 const LS_KEY = 'alertly_feed_v2';
@@ -48,6 +49,7 @@ export default function DashboardPage() {
   });
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [togglingAlerts, setTogglingAlerts] = useState(false);
+  const [showTrades, setShowTrades] = useState(false);
 
   const [settings, setSettings] = useState<any>({
     autoTrade: false,
@@ -289,16 +291,49 @@ export default function DashboardPage() {
           <div className="flex-1 space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               <div className="lg:col-span-8 space-y-6">
-                <AlphaFeed
-                  alerts={alertsEnabled !== false ? alerts : []}
-                  loading={loading}
-                  settings={settings}
-                  user={user}
-                  alertsEnabled={alertsEnabled}
-                  onToggleAlerts={user ? handleToggleAlerts : undefined}
-                  togglingAlerts={togglingAlerts}
-                  onClearFeed={handleClearFeed}
-                />
+                {/* Flip toggle button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowTrades((v) => !v)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest border transition-all duration-200 shadow-lg ${
+                      showTrades
+                        ? "bg-[#5100fd] border-[#5100fd] text-white shadow-[#5100fd]/30"
+                        : "bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-[#5100fd]/60 hover:text-[#5100fd]"
+                    }`}
+                  >
+                    {showTrades ? "📡 Live Feed" : "📊 My Trades"}
+                  </button>
+                </div>
+
+                {/* Flip card container */}
+                <div style={{ perspective: "1200px" }}>
+                  <div style={{
+                    position: "relative",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 0.6s cubic-bezier(0.4,0,0.2,1)",
+                    transform: showTrades ? "rotateY(180deg)" : "rotateY(0deg)",
+                    minHeight: 400,
+                  }}>
+                    {/* Front — Live Feed */}
+                    <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", position: showTrades ? "absolute" : "relative", width: "100%", top: 0, left: 0 }}>
+                      <AlphaFeed
+                        alerts={alertsEnabled !== false ? alerts : []}
+                        loading={loading}
+                        settings={settings}
+                        user={user}
+                        alertsEnabled={alertsEnabled}
+                        onToggleAlerts={user ? handleToggleAlerts : undefined}
+                        togglingAlerts={togglingAlerts}
+                        onClearFeed={handleClearFeed}
+                      />
+                    </div>
+
+                    {/* Back — Trades Panel */}
+                    <div style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", position: showTrades ? "relative" : "absolute", width: "100%", top: 0, left: 0 }}>
+                      <TradesPanel user={user} settings={settings} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="lg:col-span-4 space-y-6">

@@ -5,7 +5,33 @@
 **Build:** Development (running on port 5000)  
 **Database:** PostgreSQL on Render (Oregon) - ✅ SYNCED AND WORKING
 
-## Latest Changes (March 13, 2026) — Cookie-Based Settings + Extension Overhaul
+## Latest Changes (March 13, 2026) — Trades Panel + Bidirectional Extension Sync
+
+### New: My Trades Panel (Flip Card UI)
+- **Flip animation** on the dashboard: button "📊 My Trades" / "📡 Live Feed" flips the card 180° (CSS 3D `rotateY`) to show trades panel behind Live Feed
+- **TradesPanel component** (`components/Dashboard/TradesPanel.tsx`):
+  - **Open Positions** tab: derives open positions from `TradeExecutionLog` DB (buys without equal sells per token)
+  - **Live PNL**: auto-fetches current token price from DexScreener every 30 seconds
+  - **SL/TP per position**: stored in a cookie (`alertly_positions_v1`, same base64url encoding as filter settings) — NOT localStorage, persists across browser clears
+  - **Actions per position**: Add +50%, Add +100%, Sell 25%, Sell 50%, Sell All — all call existing `/api/trade` endpoint
+  - **Edit SL/TP**: inline edit with save → writes to cookie
+  - **Expandable**: click arrow to see full trade history for that specific token
+  - **History tab**: last 50 trades with filter (All/Buys/Sells), links to Solscan for each tx
+  - **Realized P&L**: displayed in header (sum of sells - buys for all completed trades)
+  - **N/A handling**: if DexScreener returns error (rug pull / delisted token) shows "N/A" gracefully
+- **New API routes**:
+  - `app/api/trades/history/route.ts` — GET last 50 `TradeExecutionLog` entries for authenticated user
+  - `app/api/trades/price/route.ts` — GET DexScreener prices for up to 8 token addresses (edge runtime)
+- **No new DB tables**: reads existing `TradeExecutionLog`, position SL/TP in cookie
+
+### Extension v2.2.0 — Bidirectional Filter Sync
+- **Full bidirectional sync**: changed filter in extension → saved to website cookie → website reads it on next load
+- **Filter editing in extension popup**: all filter settings (DEX Boost, DEX Listing, Min MC, Max MC, Min Liquidity) are editable directly in the SETTINGS tab
+- **"Save & Sync to Website" button**: encodes settings using same base64url format as website and writes to `alertly_guest_settings` cookie via `chrome.cookies.set()`
+- **Sync indicator**: shows "↔ SYNCED WITH WEBSITE" when cookie is available; shows "✓ Saved & Synced" after save; shows error if website not visited yet (can't write cookie to unknown domain)
+- **MoneyInput component**: supports shorthand (50K, 1M) in filter value inputs
+
+## Previous: Cookie-Based Settings + Extension Overhaul
 
 ### Storage Architecture (No DB for User History)
 - **Dashboard localStorage limit**: increased from 100 → **500 alerts** (personal history per browser)
