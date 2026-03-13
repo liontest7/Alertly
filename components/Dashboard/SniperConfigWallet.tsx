@@ -28,7 +28,7 @@ function InfoTooltip({ text }: { text: string }) {
         <Info className="w-3.5 h-3.5" />
       </button>
       {show && (
-        <span className="absolute left-5 top-0 z-50 w-56 rounded-xl bg-zinc-900 border border-zinc-700 px-3 py-2 text-[10px] text-zinc-300 leading-relaxed shadow-xl whitespace-normal pointer-events-none">
+        <span className="absolute left-0 top-6 z-[9999] w-60 rounded-xl bg-zinc-900 border border-zinc-700 px-3 py-2 text-[10px] text-zinc-300 leading-relaxed shadow-xl whitespace-normal pointer-events-none">
           {text}
         </span>
       )}

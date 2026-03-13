@@ -429,6 +429,7 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
   const [refreshing, setRefreshing] = useState(false)
   const [historyFilter, setHistoryFilter] = useState<"all" | "buy" | "sell">("all")
   const [tradeMsg, setTradeMsg] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [hasWallet, setHasWallet] = useState<boolean | null>(null)
 
   const loadTrades = useCallback(async () => {
     setRefreshing(true)
@@ -465,6 +466,17 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
   }, [])
 
   useEffect(() => {
+    import("@/lib/browser-wallet").then(({ getBrowserWallet }) => {
+      setHasWallet(!!getBrowserWallet())
+    })
+
+    const onWalletChanged = () => {
+      import("@/lib/browser-wallet").then(({ getBrowserWallet }) => {
+        setHasWallet(!!getBrowserWallet())
+      })
+    }
+    window.addEventListener("alertly:wallet-changed", onWalletChanged)
+
     const saved = readPositionsMeta()
     setPositionsMeta(saved)
     loadTrades()
@@ -492,6 +504,7 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
 
     return () => {
       window.removeEventListener("alertly:trade-logged", onTradeLogged)
+      window.removeEventListener("alertly:wallet-changed", onWalletChanged)
       clearInterval(interval)
     }
   }, [])
@@ -609,7 +622,15 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
 
       {/* Content */}
       <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
-        {loading ? (
+        {hasWallet === false ? (
+          <div className="p-12 text-center space-y-3">
+            <BarChart2 className="w-8 h-8 text-zinc-700 mx-auto" />
+            <p className="text-sm font-black text-zinc-400 uppercase tracking-widest">No wallet connected</p>
+            <p className="text-xs text-zinc-600 leading-relaxed max-w-[200px] mx-auto">
+              Generate or import a wallet in the Sniper Configuration panel to start trading and tracking your history.
+            </p>
+          </div>
+        ) : loading ? (
           <div className="p-12 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-[#5100fd] mx-auto mb-4" />
             <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Loading trades…</p>

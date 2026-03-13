@@ -115,6 +115,18 @@ export function CopyTradingMiniCard() {
   const isAlertOnly = mode === "alert_only"
   const activeCount = traders.filter((t) => t.enabled).length
 
+  const activeTraders = traders.filter((t) => t.enabled)
+  const allAlertOnly = activeTraders.length > 0 && activeTraders.every((t) => t.mode === "alert_only")
+  const allTradeAlert = activeTraders.length > 0 && activeTraders.every((t) => t.mode === "trade_and_alert")
+
+  function statusLabel() {
+    if (!globalEnabled) return { dot: "bg-zinc-600", text: "Paused" }
+    if (activeCount === 0) return { dot: "bg-zinc-600", text: "Idle" }
+    const modeTag = allAlertOnly ? "Alert" : allTradeAlert ? "Trade" : "Mixed"
+    return { dot: "bg-green-500 animate-pulse", text: `${activeCount} Live · ${modeTag}` }
+  }
+  const status = statusLabel()
+
   return (
     <Card className="bg-zinc-950 border-zinc-900 p-5 rounded-[2rem] shadow-xl hover:border-zinc-800/50 transition-all group text-white">
       {/* Header */}
@@ -125,10 +137,8 @@ export function CopyTradingMiniCard() {
         </h3>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${activeCount > 0 && globalEnabled ? "bg-green-500 animate-pulse" : "bg-zinc-600"}`} />
-            <span className="text-[10px] font-black uppercase tracking-widest">
-              {activeCount > 0 && globalEnabled ? `${activeCount} Live` : "Idle"}
-            </span>
+            <div className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest">{status.text}</span>
           </div>
           <button
             onClick={handleGlobalToggle}
