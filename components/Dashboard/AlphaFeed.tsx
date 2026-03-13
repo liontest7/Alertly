@@ -96,7 +96,8 @@ export function AlphaFeed({
   }, [alerts.length, soundEnabled, lastAlertCount]);
   
   const dailyAlerts = alerts.filter(a => {
-    const alertTime = a.alertedAt ? new Date(a.alertedAt).getTime() : 0;
+    const ts = a.clientSeenAt || a.alertedAt;
+    const alertTime = ts ? new Date(ts).getTime() : 0;
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
     return alertTime > oneDayAgo;
   }).length;
@@ -279,7 +280,9 @@ export function AlphaFeed({
                     )}
 
                     <span className="text-xs text-zinc-500 font-black whitespace-nowrap tracking-widest ml-auto">
-                      {token.alertedAt ? new Date(token.alertedAt).toLocaleTimeString() : "Live"}
+                      {(token.clientSeenAt || token.alertedAt)
+                        ? new Date(token.clientSeenAt || token.alertedAt).toLocaleTimeString()
+                        : "Live"}
                     </span>
                   </div>
 

@@ -11,7 +11,7 @@ import { useAuthSession } from "@/components/providers"
 import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
 const MAX_LOCAL_ALERTS = 100;
-const LS_KEY = 'alertly_feed_v1';
+const LS_KEY = 'alertly_feed_v2';
 
 export default function DashboardPage() {
   const { user, loading: sessionLoading } = useAuthSession();
@@ -160,29 +160,38 @@ export default function DashboardPage() {
           if (!Array.isArray(serverAlerts) || serverAlerts.length === 0) return;
 
           setAlerts(prev => {
-            // Map local alerts by fingerprint to preserve original timestamps
+            // Map local alerts by fingerprint — they have a trusted clientSeenAt
             const localMap = new Map(prev.map((a: any) => [a.fingerprint, a]));
 
-            // For each server alert: if we already have it locally, keep the
-            // original alertedAt (the real first-seen time), and merge other fields
             const merged = serverAlerts.map((sa: any) => {
               const local = localMap.get(sa.fingerprint);
               if (local) {
-                return { ...sa, alertedAt: local.alertedAt };
+                // Already seen before: preserve the client-stamped time entirely
+                return {
+                  ...sa,
+                  clientSeenAt: local.clientSeenAt || local.alertedAt,
+                };
               }
-              return sa;
+              // New alert arriving via init (not yet in localStorage):
+              // stamp with the server's detection time as the baseline
+              return {
+                ...sa,
+                clientSeenAt: sa.alertedAt || new Date().toISOString(),
+              };
             });
 
-            // Append any local-only alerts not present in server's current buffer
+            // Keep local-only alerts (evicted from server buffer but still in localStorage)
             const serverFps = new Set(serverAlerts.map((a: any) => a.fingerprint));
             const localOnly = prev.filter((a: any) => !serverFps.has(a.fingerprint));
 
             const combined = [...merged, ...localOnly];
 
-            // Sort newest-first by alertedAt
-            combined.sort((a: any, b: any) =>
-              new Date(b.alertedAt).getTime() - new Date(a.alertedAt).getTime()
-            );
+            // Sort newest-first by the stable client-stamped time
+            combined.sort((a: any, b: any) => {
+              const ta = new Date(a.clientSeenAt || a.alertedAt).getTime();
+              const tb = new Date(b.clientSeenAt || b.alertedAt).getTime();
+              return tb - ta;
+            });
 
             return combined.slice(0, MAX_LOCAL_ALERTS);
           });
@@ -196,18 +205,23 @@ export default function DashboardPage() {
           const newAlert = JSON.parse(event.data);
           if (newAlert && newAlert.fingerprint) {
             setAlerts(prev => {
-              const existing = prev.findIndex((a: any) => a.fingerprint === newAlert.fingerprint);
-              if (existing !== -1) {
+              const existingIdx = prev.findIndex((a: any) => a.fingerprint === newAlert.fingerprint);
+              if (existingIdx !== -1) {
+                // Enrichment update: keep the original clientSeenAt, never overwrite it
                 const updated = [...prev];
-                // Update in-place but always keep the original alertedAt
-                updated[existing] = {
-                  ...updated[existing],
+                updated[existingIdx] = {
+                  ...updated[existingIdx],
                   ...newAlert,
-                  alertedAt: updated[existing].alertedAt,
+                  clientSeenAt: updated[existingIdx].clientSeenAt || updated[existingIdx].alertedAt,
                 };
                 return updated;
               }
-              const next = [newAlert, ...prev];
+              // Brand-new alert: stamp with client time right now
+              const stamped = {
+                ...newAlert,
+                clientSeenAt: new Date().toISOString(),
+              };
+              const next = [stamped, ...prev];
               return next.length > MAX_LOCAL_ALERTS ? next.slice(0, MAX_LOCAL_ALERTS) : next;
             });
             setLoading(false);
