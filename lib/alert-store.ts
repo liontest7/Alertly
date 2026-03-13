@@ -25,6 +25,10 @@ export interface StoredAlert {
   boostLevel?: string;
   boostAmount?: number;
   dex?: string;
+  wallet?: string;
+  walletBalance?: number;
+  buyAmountSol?: number;
+  spikePercent?: number;
 }
 
 const MAX_ALERTS = 200;

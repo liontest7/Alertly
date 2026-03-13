@@ -59,8 +59,8 @@ export default function DashboardPage() {
         setSettings(data);
         setAlertsEnabled(data.alertsEnabled !== false);
       }
-    } catch {
-      console.error("Failed to fetch settings");
+    } catch (err) {
+      console.error("Failed to fetch settings", err);
     }
   };
 
@@ -75,8 +75,8 @@ export default function DashboardPage() {
         tradeCount24h: Number(data.tradeCount24h || 0),
         available: Boolean(data.available),
       });
-    } catch {
-      console.error("Failed to fetch dashboard metrics");
+    } catch (err) {
+      console.error("Failed to fetch dashboard metrics", err);
     }
   };
 
@@ -95,8 +95,8 @@ export default function DashboardPage() {
       if (res.ok) {
         setSettings({ ...settings, autoTrade: newStatus });
       }
-    } catch {
-      console.error("Failed to update auto-trade");
+    } catch (err) {
+      console.error("Failed to update auto-trade", err);
     }
   }
 
@@ -117,8 +117,8 @@ export default function DashboardPage() {
           setAlerts([]);
         }
       }
-    } catch {
-      console.error("Failed to toggle alerts");
+    } catch (err) {
+      console.error("Failed to toggle alerts", err);
     } finally {
       setTogglingAlerts(false);
     }

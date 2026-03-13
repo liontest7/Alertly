@@ -12,16 +12,11 @@ function getCipherKey() {
 }
 
 export function encryptKey(privateKey: string): string {
-  try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv("aes-256-cbc", getCipherKey(), iv);
-    let encrypted = cipher.update(privateKey);
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString("hex") + ":" + encrypted.toString("hex");
-  } catch (e) {
-    console.error("Encryption failed", e);
-    return "";
-  }
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv("aes-256-cbc", getCipherKey(), iv);
+  let encrypted = cipher.update(privateKey);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
 }
 
 export function decryptKey(text: string): string {
