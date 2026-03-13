@@ -12,6 +12,7 @@ import { AlphaFeed } from "@/components/Dashboard/AlphaFeed"
 
 const MAX_LOCAL_ALERTS = 100;
 const LS_KEY = 'alertly_feed_v2';
+const OLD_LS_KEYS = ['alertly_feed_v1'];
 
 export default function DashboardPage() {
   const { user, loading: sessionLoading } = useAuthSession();
@@ -22,6 +23,12 @@ export default function DashboardPage() {
       router.push("/onboarding");
     }
   }, [user, sessionLoading, router]);
+
+  useEffect(() => {
+    try {
+      OLD_LS_KEYS.forEach(key => localStorage.removeItem(key));
+    } catch {}
+  }, []);
 
   const [alerts, setAlerts] = useState<any[]>(() => {
     try {
@@ -99,6 +106,14 @@ export default function DashboardPage() {
       console.error("Failed to update auto-trade", err);
     }
   }
+
+  const handleClearFeed = () => {
+    try {
+      localStorage.removeItem(LS_KEY);
+      OLD_LS_KEYS.forEach(key => localStorage.removeItem(key));
+    } catch {}
+    setAlerts([]);
+  };
 
   const handleToggleAlerts = async () => {
     if (!user) return;
@@ -282,6 +297,7 @@ export default function DashboardPage() {
                   alertsEnabled={alertsEnabled}
                   onToggleAlerts={user ? handleToggleAlerts : undefined}
                   togglingAlerts={togglingAlerts}
+                  onClearFeed={handleClearFeed}
                 />
               </div>
 

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff } from "lucide-react"
+import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff, Trash2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
@@ -54,6 +54,7 @@ export function AlphaFeed({
   alertsEnabled,
   onToggleAlerts,
   togglingAlerts,
+  onClearFeed,
 }: { 
   alerts: any[], 
   loading: boolean, 
@@ -62,6 +63,7 @@ export function AlphaFeed({
   alertsEnabled?: boolean,
   onToggleAlerts?: () => void,
   togglingAlerts?: boolean,
+  onClearFeed?: () => void,
 }) {
   const router = useRouter();
   const [executing, setExecuting] = useState<string | null>(null);
@@ -183,6 +185,15 @@ export function AlphaFeed({
             >
               {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
+            {onClearFeed && (
+              <button
+                onClick={onClearFeed}
+                className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-red-500/50 hover:text-red-400 transition-all text-zinc-500"
+                title="Clear feed & reset cache"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
             {user && onToggleAlerts && (
               <button
                 onClick={onToggleAlerts}
