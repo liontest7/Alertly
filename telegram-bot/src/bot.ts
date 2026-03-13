@@ -49,7 +49,7 @@ bot.on("polling_error", (err: any) => {
   console.error("[Bot] polling error:", err?.message || err);
 });
 
-bot.startPolling({ restart: false } as any);
+(bot as any).startPolling({ restart: false });
 
 const mainMenu = {
   reply_markup: {

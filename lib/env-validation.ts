@@ -13,7 +13,7 @@ const REQUIRED_ENV_VARS = [
 ] as const;
 
 export function validateEnvironment(): { valid: boolean; missing: string[] } {
-  const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+  const missing: string[] = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
   const hasAuthSecret = Boolean(process.env.AUTH_SECRET || process.env.JWT_SECRET);
 
   if (!hasAuthSecret) {

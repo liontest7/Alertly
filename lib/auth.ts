@@ -67,9 +67,8 @@ function getJwtSecret() {
 }
 
 async function computeSignature(header: string, body: string, secret: string) {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const data = encoder.encode(`${header}.${body}`);
+  const keyData = Buffer.from(secret);
+  const data = Buffer.from(`${header}.${body}`);
 
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
@@ -121,13 +120,13 @@ export async function verifyTokenWithSecret(token: string, secret: string): Prom
 
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret),
+    Buffer.from(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
 
-  const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
+  const signed = await crypto.subtle.sign("HMAC", key, Buffer.from(`${header}.${body}`));
   const expected = base64url(new Uint8Array(signed));
 
   if (expected !== signature) return null;

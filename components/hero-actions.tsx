@@ -59,7 +59,7 @@ export function HeroActions({ loading, user }: HeroActionsProps) {
       });
 
       if (loginRes.ok) {
-        await refreshSession(true);
+        await refreshSession();
         router.push("/dashboard");
       } else {
         const errorData = await loginRes.json();

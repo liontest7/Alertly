@@ -45,6 +45,9 @@ export interface TokenAlert {
   riskLevel?: string;
   buyAmountSol?: number;
   dex?: string;
+  wallet?: string;
+  walletBalance?: number;
+  spikePercent?: number;
 }
 
 export interface AlertFilterSettings {

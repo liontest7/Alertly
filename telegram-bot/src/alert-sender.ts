@@ -35,7 +35,7 @@ export async function sendAlertToUser(
 ⏰ Alert Time: ${new Date().toLocaleTimeString()}
     `.trim();
 
-    await bot.sendMessage(telegramId, message, {
+    await bot.sendMessage(Number(telegramId), message, {
       parse_mode: "Markdown",
     });
 

@@ -16,6 +16,7 @@ interface GlowingEffectProps {
   className?: string
   movementDuration?: number
   borderWidth?: number
+  disabled?: boolean
 }
 
 const GlowingEffect = memo(

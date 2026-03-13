@@ -121,7 +121,7 @@ export async function sendCurrentAlertsToNewUser(telegramId: string) {
       telegramId,
       buildTelegramMessage({
         address: alert.address,
-        pairAddress: alert.pairAddress,
+        pairAddress: alert.pairAddress ?? undefined,
         type: alert.type,
         name: alert.name,
         symbol: alert.symbol || undefined,

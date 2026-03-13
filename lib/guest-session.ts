@@ -1,6 +1,7 @@
 import type { NextResponse } from "next/server";
-import type { RequestCookies } from "next/dist/compiled/@edge-runtime/cookies";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
+
+type AnyRequestCookies = { get(name: string): { name: string; value: string } | undefined };
 
 export const GUEST_SETTINGS_COOKIE = "alertly_guest_settings";
 export const GUEST_ALERT_STATE_COOKIE = "alertly_guest_alert_state";
@@ -55,7 +56,7 @@ function pickAllowedGuestSettings(input: GuestSettings): GuestSettings {
   return out;
 }
 
-export function getGuestSettings(cookieStore: RequestCookies) {
+export function getGuestSettings(cookieStore: AnyRequestCookies) {
   const sanitized = getGuestSettingsPatch(cookieStore);
   return { ...DEFAULT_USER_SETTINGS, ...sanitized, autoTrade: false };
 }
@@ -85,7 +86,7 @@ function parseCookieHeader(cookieHeader?: string | null) {
   return map;
 }
 
-export function getGuestSettingsPatch(cookieStore: RequestCookies) {
+export function getGuestSettingsPatch(cookieStore: AnyRequestCookies) {
   const decoded = decodeCookieValue<GuestSettings>(cookieStore.get(GUEST_SETTINGS_COOKIE)?.value);
   return pickAllowedGuestSettings(decoded ?? {});
 }
@@ -116,7 +117,7 @@ export function clearGuestCookies(response: NextResponse) {
   });
 }
 
-function getGuestAlertState(cookieStore: RequestCookies): GuestAlertState {
+function getGuestAlertState(cookieStore: AnyRequestCookies): GuestAlertState {
   const parsed = decodeCookieValue<GuestAlertState>(cookieStore.get(GUEST_ALERT_STATE_COOKIE)?.value);
   const today = todayKey();
 
@@ -132,7 +133,7 @@ function getGuestAlertState(cookieStore: RequestCookies): GuestAlertState {
 }
 
 export function applyGuestAlertQuota(
-  cookieStore: RequestCookies,
+  cookieStore: AnyRequestCookies,
   alerts: Array<{ address: string; type: string } & Record<string, unknown>>,
 ) {
   const state = getGuestAlertState(cookieStore);

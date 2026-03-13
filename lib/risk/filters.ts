@@ -2,11 +2,11 @@
  * Risk-based Alert Filtering
  */
 
-import { TokenAlert } from "@/lib/listeners/blockchain-listener";
+import { TokenAlert } from "@/lib/blockchain/solana";
 import { calculateRiskScore, RiskScore, TokenMetrics } from "./scorer";
 
 export interface FilteredAlert extends TokenAlert {
-  riskScore: RiskScore;
+  riskScoreResult: RiskScore;
   passed: boolean;
   filteredBy?: string;
 }
@@ -28,7 +28,7 @@ export async function filterAlertsByRisk(
   for (const alert of alerts) {
     // Calculate risk for this token
     const metrics: TokenMetrics = {
-      address: alert.tokenAddress,
+      address: alert.address,
       holders: alert.holders,
     };
 
@@ -53,7 +53,8 @@ export async function filterAlertsByRisk(
 
     filtered.push({
       ...alert,
-      riskScore,
+      riskScore: riskScore.score,
+      riskScoreResult: riskScore,
       passed,
       filteredBy,
     });
@@ -66,5 +67,5 @@ export async function filterAlertsByRisk(
  * Get safe alerts only
  */
 export function getSafeAlerts(filtered: FilteredAlert[]): TokenAlert[] {
-  return filtered.filter((a) => a.passed).map(({ riskScore, passed, filteredBy, ...alert }) => alert);
+  return filtered.filter((a) => a.passed).map(({ riskScoreResult, passed, filteredBy, ...alert }) => alert);
 }

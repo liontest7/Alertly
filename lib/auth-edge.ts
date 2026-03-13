@@ -24,19 +24,18 @@ function getJwtSecret() {
 }
 
 async function computeSignature(header: string, body: string, secret: string) {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const data = encoder.encode(`${header}.${body}`);
+  const keyData = new TextEncoder().encode(secret);
+  const data = new TextEncoder().encode(`${header}.${body}`);
 
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    keyData,
+    keyData.buffer as ArrayBuffer,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
   );
 
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, data);
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, data.buffer as ArrayBuffer);
   return base64url(new Uint8Array(signature));
 }
 

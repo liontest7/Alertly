@@ -3,8 +3,7 @@
  * Calculates risk score 0-10 based on token metrics
  */
 
-import { Connection, PublicKey } from "@solana/web3.js";
-import { getConnection } from "@/lib/listeners/blockchain-listener";
+import { PublicKey } from "@solana/web3.js";
 
 export interface TokenMetrics {
   address: string;
@@ -208,14 +207,13 @@ export async function fetchTokenMetrics(
   tokenAddress: string
 ): Promise<TokenMetrics | null> {
   try {
-    const conn = getConnection();
-    const mint = new PublicKey(tokenAddress);
-
     // This is a placeholder - real implementation would:
     // 1. Fetch SPL Token account data
     // 2. Parse mint authority and freeze authority
     // 3. Get holder list
     // 4. Calculate percentages
+
+    void new PublicKey(tokenAddress); // validate address format
 
     return {
       address: tokenAddress,

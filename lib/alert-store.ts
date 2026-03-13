@@ -17,11 +17,11 @@ export interface StoredAlert {
   alertedAt: Date;
   riskScore: number;
   riskLevel: string;
-  pairAddress?: string;
-  priceUsd?: string;
-  website?: string;
-  twitter?: string;
-  telegram?: string;
+  pairAddress?: string | null;
+  priceUsd?: string | null;
+  website?: string | null;
+  twitter?: string | null;
+  telegram?: string | null;
   boostLevel?: string;
   boostAmount?: number;
   dex?: string;

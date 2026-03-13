@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createTradingWallet } from "@/lib/blockchain/trading-wallet";
+import { decryptKey } from "@/lib/blockchain/keys";
 import { Keypair } from "@solana/web3.js";
 
 export async function POST(req: Request) {
@@ -11,7 +12,7 @@ export async function POST(req: Request) {
       const wallet = await createTradingWallet(session.user.id, session.user.walletAddress);
       return NextResponse.json({
         address: wallet.walletAddress,
-        privateKey: wallet.privateKey,
+        privateKey: decryptKey(wallet.encryptedPrivateKey),
         createdAt: wallet.createdAt
       }, { status: 200 });
     } else {

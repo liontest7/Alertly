@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const adminWallets = getAdminWallets();
     
     console.error("Admin Overview Access Denied Deep Check:", { 
-      walletFromAuth: access.session?.user?.walletAddress,
+      walletFromAuth: (access as any).session?.user?.walletAddress,
       walletFromPayload: wallet,
       allowed: adminWallets,
       hasToken: !!token,
