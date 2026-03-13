@@ -7,16 +7,12 @@ const platforms = (tokenAddress: string) => [
   {
     name: "Pump.fun",
     logo: "https://pump.fun/favicon.ico",
-    href: tokenAddress ? `https://pump.fun/${tokenAddress}` : "https://pump.fun",
-    bg: "bg-[#e879f9]/10 hover:bg-[#e879f9]/20 border-[#e879f9]/25",
-    text: "text-[#e879f9]",
+    href: tokenAddress ? `https://pump.fun/coin/${tokenAddress}` : "https://pump.fun",
   },
   {
     name: "DexScreener",
     logo: "https://dexscreener.com/favicon.ico",
     href: tokenAddress ? `https://dexscreener.com/solana/${tokenAddress}` : "https://dexscreener.com",
-    bg: "bg-[#00c896]/10 hover:bg-[#00c896]/20 border-[#00c896]/25",
-    text: "text-[#00c896]",
   },
   {
     name: "Raydium",
@@ -24,15 +20,11 @@ const platforms = (tokenAddress: string) => [
     href: tokenAddress
       ? `https://raydium.io/swap/?inputMint=sol&outputMint=${tokenAddress}`
       : "https://raydium.io",
-    bg: "bg-[#5100fd]/10 hover:bg-[#5100fd]/20 border-[#5100fd]/25",
-    text: "text-[#818cf8]",
   },
   {
     name: "Jupiter",
     logo: "https://jup.ag/favicon.ico",
     href: tokenAddress ? `https://jup.ag/swap/SOL-${tokenAddress}` : "https://jup.ag",
-    bg: "bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border-[#22c55e]/25",
-    text: "text-[#22c55e]",
   },
 ];
 
@@ -82,7 +74,7 @@ export function TokenSection() {
                 href={p.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${p.bg}`}
+                className="flex flex-col items-center gap-3 p-5 rounded-2xl border border-[#5100fd]/30 bg-[#5100fd]/10 hover:bg-[#5100fd]/20 hover:border-[#5100fd]/60 transition-all duration-200 cursor-pointer"
               >
                 <img
                   src={p.logo}
@@ -94,7 +86,7 @@ export function TokenSection() {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
-                <span className={`text-sm font-semibold ${p.text}`}>{p.name}</span>
+                <span className="text-sm font-semibold text-white/90">{p.name}</span>
               </a>
             ))}
           </div>
