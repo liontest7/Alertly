@@ -146,16 +146,31 @@ export function AlphaFeed({
   return (
     <div className="space-y-6">
       <Card className="bg-zinc-950 border-zinc-900 overflow-hidden shadow-2xl rounded-[2rem]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-zinc-900 flex flex-wrap justify-between items-center gap-3 bg-zinc-950/20">
-          <div className="flex items-center gap-3">
+        {/* Header + Filters — single row */}
+        <div className="px-6 py-4 border-b border-zinc-900 flex flex-wrap items-center gap-3 bg-zinc-950/20">
+          {/* Live dot + title */}
+          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="p-2.5 rounded-xl bg-green-500/10 border border-green-500/20">
               <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
             </div>
-            <h2 className="text-xl font-black tracking-tight text-white uppercase italic">Live Alpha Feed</h2>
+            <h2 className="text-xl font-black tracking-tight text-white uppercase italic">Live Feed</h2>
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-3 text-sm font-black text-zinc-400">
+
+          {/* Filter chips inline */}
+          <div className="flex items-center gap-2 flex-1">
+            {FILTER_CHIPS.map(f => (
+              <FilterChip
+                key={f.key}
+                label={f.label}
+                active={activeFilter === f.key}
+                onClick={() => setActiveFilter(f.key)}
+              />
+            ))}
+          </div>
+
+          {/* Stats + controls */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 text-sm font-black text-zinc-400">
               <span>Total: <span className="text-white">{loading && alerts.length === 0 ? '...' : alerts.length}</span></span>
               <span className="text-zinc-700">|</span>
               <span>24h: <span className="text-[#5100fd]">{loading && alerts.length === 0 ? '...' : dailyAlerts}</span></span>
@@ -188,18 +203,6 @@ export function AlphaFeed({
               </button>
             )}
           </div>
-        </div>
-
-        {/* Filter chips — always at top */}
-        <div className="flex flex-wrap gap-2.5 px-6 py-3.5 border-b border-zinc-900/60 bg-zinc-950/10">
-          {FILTER_CHIPS.map(f => (
-            <FilterChip 
-              key={f.key}
-              label={f.label}
-              active={activeFilter === f.key}
-              onClick={() => setActiveFilter(f.key)}
-            />
-          ))}
         </div>
         
         <div className="max-h-[620px] overflow-y-auto divide-y divide-zinc-900/50 scrollbar-hide">
