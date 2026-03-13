@@ -16,6 +16,9 @@ model User {
   telegramId          String?              @unique
   extensionId         String?              @unique
   lastLogin           DateTime?
+  isBanned            Boolean              @default(false)
+  isFrozen            Boolean              @default(false)
+  adminNote           String?
   copyTraders         CopyTrader[]
   telegramLink        TelegramLink?
   telegramLinkRequest TelegramLinkRequest?
