@@ -16,8 +16,10 @@ const RATE_LIMIT_BACKOFF_MS = 15_000;
 
 // For boosts: track last known totalAmount per token — alert only on real increase
 const lastBoostTotalAmounts = new Map<string, number>();
+const MAX_BOOST_TRACKING = 5_000;
 // For listings: still deduplicate (each token listed only once per session)
 const seenListingFingerprints = new Set<string>();
+const MAX_LISTING_FINGERPRINTS = 10_000;
 
 let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
@@ -182,6 +184,10 @@ async function pollDexBoostsTop() {
       if (totalAmount <= lastSeen) continue;
 
       const delta = lastSeen < 0 ? totalAmount : totalAmount - lastSeen;
+      if (lastBoostTotalAmounts.size >= MAX_BOOST_TRACKING) {
+        const firstKey = lastBoostTotalAmounts.keys().next().value;
+        if (firstKey) lastBoostTotalAmounts.delete(firstKey);
+      }
       lastBoostTotalAmounts.set(addr, totalAmount);
       newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
@@ -231,6 +237,10 @@ async function pollDexBoostsLatest() {
       if (totalAmount <= lastSeen) continue;
 
       const delta = lastSeen < 0 ? totalAmount : totalAmount - lastSeen;
+      if (lastBoostTotalAmounts.size >= MAX_BOOST_TRACKING) {
+        const firstKey = lastBoostTotalAmounts.keys().next().value;
+        if (firstKey) lastBoostTotalAmounts.delete(firstKey);
+      }
       lastBoostTotalAmounts.set(addr, totalAmount);
       newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
@@ -277,6 +287,10 @@ async function pollDexTokenProfiles() {
 
       const fp = `${addr}|DEX_LISTING`;
       if (seenListingFingerprints.has(fp)) continue;
+      if (seenListingFingerprints.size >= MAX_LISTING_FINGERPRINTS) {
+        const firstVal = seenListingFingerprints.values().next().value;
+        if (firstVal) seenListingFingerprints.delete(firstVal);
+      }
       seenListingFingerprints.add(fp);
       newProfiles.push({ addr });
     }

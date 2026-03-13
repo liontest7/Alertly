@@ -234,7 +234,7 @@ export async function fetchTokenMetrics(
         ? Math.min(100, (liquidityUsd / Math.max(mc, 1)) * 100)
         : 0;
 
-    const estimatedHolders = txns24h > 0 ? Math.min(txns24h * 3, 10000) : 50;
+    const estimatedHolders = txns24h > 0 ? Math.min(Math.ceil(txns24h / 2), 5000) : 10;
 
     return {
       address: tokenAddress,
