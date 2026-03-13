@@ -42,7 +42,7 @@ export function TokenSection() {
   return (
     <section
       id="token-section"
-      className="relative z-20 pt-16 pb-24 bg-black/10 backdrop-blur-sm"
+      className="relative z-20 pt-8 pb-24 bg-black/10 backdrop-blur-sm"
     >
       <div className="container mx-auto px-6 lg:px-12">
         <div className="max-w-4xl mx-auto rounded-3xl border border-zinc-900 bg-black/80 backdrop-blur-xl p-12 text-center text-white relative overflow-hidden">

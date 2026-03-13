@@ -163,9 +163,8 @@ export default function Home() {
           </h1>
 
           <p className="text-lg md:text-xl text-white mb-14 animate-fade-in-up animation-delay-200 max-w-xl">
-            Alertly streams live market intelligence from Solana DEX activity and
-auto-syncs your settings across dashboard, Telegram bot, and browser extension.
-Connect your wallet to start trading automatically with real-time signals.
+            Real-time DEX alerts streamed to your dashboard, Telegram, and browser
+            — set your filters once and trade automatically on every signal.
             <span className="block mt-4 text-sm font-medium text-[#5100fd] opacity-90 uppercase tracking-widest">
               Real-Time Alerts • Smart Filters • Auto-Trade • Copy Trading
             </span>

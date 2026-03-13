@@ -10,12 +10,12 @@ export function Capabilities() {
   return (
     <section
       id="capabilities"
-      className="relative z-20 py-32 bg-black/10 backdrop-blur-sm"
+      className="relative z-20 pt-32 pb-16 bg-black/10 backdrop-blur-sm"
     >
       <div className="container mx-auto px-6 lg:px-12">
         <div className="max-w-3xl mb-16">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-light mb-8 text-balance text-white">
-            One System. Every Alert Surface.
+          <h2 className="text-5xl md:text-6xl lg:text-7xl font-light mb-8 text-white">
+            One System.<br />Every Alert Surface.
           </h2>
           <p className="text-xl md:text-2xl text-white/90 leading-relaxed max-w-2xl">
             Trade from anywhere. Web, Telegram, or browser — your filters, alerts,
