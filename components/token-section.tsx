@@ -1,9 +1,43 @@
+"use client";
+
 import { siteConfig } from "@/lib/config";
-import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
+const platforms = (tokenAddress: string) => [
+  {
+    name: "Pump.fun",
+    logo: "https://pump.fun/favicon.ico",
+    href: tokenAddress ? `https://pump.fun/${tokenAddress}` : "https://pump.fun",
+    bg: "bg-[#e879f9]/10 hover:bg-[#e879f9]/20 border-[#e879f9]/25",
+    text: "text-[#e879f9]",
+  },
+  {
+    name: "DexScreener",
+    logo: "https://dexscreener.com/favicon.ico",
+    href: tokenAddress ? `https://dexscreener.com/solana/${tokenAddress}` : "https://dexscreener.com",
+    bg: "bg-[#00c896]/10 hover:bg-[#00c896]/20 border-[#00c896]/25",
+    text: "text-[#00c896]",
+  },
+  {
+    name: "Raydium",
+    logo: "https://raydium.io/favicon.ico",
+    href: tokenAddress
+      ? `https://raydium.io/swap/?inputMint=sol&outputMint=${tokenAddress}`
+      : "https://raydium.io",
+    bg: "bg-[#5100fd]/10 hover:bg-[#5100fd]/20 border-[#5100fd]/25",
+    text: "text-[#818cf8]",
+  },
+  {
+    name: "Jupiter",
+    logo: "https://jup.ag/favicon.ico",
+    href: tokenAddress ? `https://jup.ag/swap/SOL-${tokenAddress}` : "https://jup.ag",
+    bg: "bg-[#22c55e]/10 hover:bg-[#22c55e]/20 border-[#22c55e]/25",
+    text: "text-[#22c55e]",
+  },
+];
+
 export function TokenSection() {
-  const hasTokenAddress = Boolean(siteConfig.token.address);
+  const tokenAddress = siteConfig.token.address;
 
   return (
     <section
@@ -37,39 +71,32 @@ export function TokenSection() {
           <div className="mb-12 font-mono text-sm bg-zinc-900/50 py-3 px-6 rounded-full border border-zinc-800 inline-block text-white shadow-inner">
             CA:{" "}
             <span className="text-[#5100fd] font-bold select-all">
-              {hasTokenAddress ? siteConfig.token.address : "Token address will be published at launch"}
+              {tokenAddress || "Token address will be published at launch"}
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Button
-              onClick={() =>
-                (window.location.href = `https://jup.ag/swap/SOL-${siteConfig.token.symbol}`)
-              }
-              className="bg-white text-black hover:bg-zinc-200 rounded-full px-8 py-6 font-bold text-lg"
-            >
-              Buy ${siteConfig.token.symbol} Token
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!hasTokenAddress}
-              onClick={() =>
-                (window.location.href = `https://raydium.io/swap/?inputMint=sol&outputMint=${siteConfig.token.address}`)
-              }
-              className="border-zinc-800 bg-[#5100fd] text-white hover:bg-[#6610ff] rounded-full px-8 py-6 font-bold text-lg disabled:opacity-50"
-            >
-              Trade on Raydium
-            </Button>
-            <Button
-              variant="outline"
-              disabled={!hasTokenAddress}
-              onClick={() =>
-                (window.location.href = `https://dexscreener.com/solana/${siteConfig.token.address}`)
-              }
-              className="border-zinc-800 hover:bg-zinc-900 rounded-full px-8 py-6 text-white text-lg disabled:opacity-50"
-            >
-              View on DexScreener
-            </Button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {platforms(tokenAddress).map((p) => (
+              <a
+                key={p.name}
+                href={p.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex flex-col items-center gap-3 p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${p.bg}`}
+              >
+                <img
+                  src={p.logo}
+                  alt={p.name}
+                  width={28}
+                  height={28}
+                  className="rounded-md"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <span className={`text-sm font-semibold ${p.text}`}>{p.name}</span>
+              </a>
+            ))}
           </div>
         </div>
       </div>

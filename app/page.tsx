@@ -8,9 +8,31 @@ import { TokenSection } from "@/components/token-section";
 import { useEffect, useState } from "react";
 import { useAuthSession } from "@/components/providers";
 
+const STAY_WORDS = ["sharp.", "early.", "Alertly."];
+
 export default function Home() {
   const { user, loading } = useAuthSession();
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  const [wordIdx, setWordIdx] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const word = STAY_WORDS[wordIdx];
+    let timer: NodeJS.Timeout;
+    if (!deleting && typed.length < word.length) {
+      timer = setTimeout(() => setTyped(word.slice(0, typed.length + 1)), 110);
+    } else if (!deleting && typed.length === word.length) {
+      timer = setTimeout(() => setDeleting(true), 1800);
+    } else if (deleting && typed.length > 0) {
+      timer = setTimeout(() => setTyped(typed.slice(0, -1)), 65);
+    } else if (deleting && typed.length === 0) {
+      setDeleting(false);
+      setWordIdx((i) => (i + 1) % STAY_WORDS.length);
+    }
+    return () => clearTimeout(timer);
+  }, [typed, deleting, wordIdx]);
 
   useEffect(() => {
     let ticking = false;
@@ -129,8 +151,15 @@ export default function Home() {
 
       <div className="relative z-20 container mx-auto px-6 lg:px-12 pt-6 md:pt-12 pb-32 min-h-screen flex flex-col justify-center">
         <div className="max-w-3xl">
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-light mb-8 leading-[1.1] animate-fade-in-up text-balance text-white">
-            Solana Alerts. Real Signals. Better Entries.
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-light mb-8 leading-[1.1] animate-fade-in-up text-white">
+            Stay{" "}
+            <span className="text-[#5100fd] whitespace-nowrap">
+              {typed}
+              <span
+                className="inline-block align-middle ml-[2px] animate-pulse"
+                style={{ width: "3px", height: "0.85em", backgroundColor: "#5100fd", borderRadius: "2px", verticalAlign: "middle" }}
+              />
+            </span>
           </h1>
 
           <p className="text-lg md:text-xl text-white mb-12 animate-fade-in-up animation-delay-200 max-w-xl">
