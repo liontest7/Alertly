@@ -23,25 +23,17 @@ const TYPE_COLORS: Record<string, string> = {
   "DEX_BOOST": "bg-[#5100fd] text-white",
   "DEX LISTING": "bg-blue-600 text-white",
   "DEX_LISTING": "bg-blue-600 text-white",
-  "VOLUME SPIKE": "bg-purple-600 text-white",
-  "VOLUME_SPIKE": "bg-purple-600 text-white",
-  "WHALE BUY": "bg-orange-500 text-white",
-  "WHALE_BUY": "bg-orange-500 text-white",
 }
 
 const TYPE_LABELS: Record<string, string> = {
   "DEX_BOOST": "DEX BOOST",
   "DEX_LISTING": "DEX LISTING",
-  "VOLUME_SPIKE": "VOLUME SPIKE",
-  "WHALE_BUY": "WHALE BUY",
 }
 
 const FILTER_CHIPS = [
   { key: "All", label: "All" },
   { key: "DEX BOOST", label: "DEX Boost" },
   { key: "DEX LISTING", label: "DEX Listing" },
-  { key: "VOLUME SPIKE", label: "Vol Spike" },
-  { key: "WHALE BUY", label: "Whale" },
 ]
 
 function shortAddr(addr?: string) {
@@ -234,7 +226,6 @@ export function AlphaFeed({
             const displaySecondary = symbol && name && name !== symbol ? name : null;
             const normalizedType = normalizeType(token.type);
             const typeColor = TYPE_COLORS[normalizedType] || TYPE_COLORS[(token.type || "").toUpperCase()] || "bg-zinc-800 text-white";
-            const isWhale = normalizedType === "WHALE BUY";
 
             return (
               <div key={`${token.address}-${i}`} className="group p-5 hover:bg-[#5100fd]/[0.03] transition-all flex items-center gap-4 border-l-4 border-transparent hover:border-[#5100fd] cursor-pointer">
@@ -304,22 +295,6 @@ export function AlphaFeed({
                       <span className="text-xs text-zinc-500 font-mono">{shortAddr(token.address)}</span>
                     </div>
                   </div>
-
-                  {/* Whale-specific info */}
-                  {isWhale && (token.walletBalance || token.wallet) && (
-                    <div className="flex items-center gap-3 text-xs mt-1 bg-orange-500/10 rounded-lg px-3 py-1.5 border border-orange-500/20">
-                      {token.wallet && (
-                        <span className="text-orange-400 font-mono text-xs">
-                          🐳 {shortAddr(token.wallet)}
-                        </span>
-                      )}
-                      {token.walletBalance && (
-                        <span className="text-orange-300 font-black text-xs">
-                          {Number(token.walletBalance).toFixed(0)} SOL
-                        </span>
-                      )}
-                    </div>
-                  )}
 
                   {/* Boost reason */}
                   {normalizedType === "DEX BOOST" && token.dex && (

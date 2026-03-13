@@ -8,6 +8,8 @@ import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
 
 export const dynamic = "force-dynamic";
 
+const DAILY_ALERT_LIMIT = 50;
+
 function sseEvent(name: string, data: unknown) {
   return `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
 }
@@ -60,23 +62,54 @@ function alertMatchesFilters(alert: StoredAlert, filters: AlertFilters): boolean
   return true;
 }
 
+async function incrementDailyCount(userId: string): Promise<void> {
+  try {
+    const settings = await prisma.userSetting.findUnique({ where: { userId } });
+    if (!settings) return;
+    const now = new Date();
+    const lastReset = settings.lastAlertReset ? new Date(settings.lastAlertReset) : now;
+    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceReset >= 24) {
+      await prisma.userSetting.update({
+        where: { userId },
+        data: { dailyAlertCount: 1, lastAlertReset: now },
+      });
+    } else {
+      await prisma.userSetting.update({
+        where: { userId },
+        data: { dailyAlertCount: { increment: 1 } },
+      });
+    }
+  } catch {}
+}
+
 export async function GET(req: Request) {
   try {
     await ensureAlertListenerStarted();
   } catch {
-    // stream can still work from in-memory store
+    // stream can still work
   }
 
   const session = await auth(req);
   const userId = session?.user?.id;
 
   let settings: any = DEFAULT_USER_SETTINGS;
+  let isPremium = false;
+  let sessionAlertCount = 0;
 
   if (userId) {
     const dbSettings = await prisma.userSetting.findUnique({ where: { userId } }).catch(() => null);
-    if (dbSettings) settings = dbSettings;
+    if (dbSettings) {
+      settings = dbSettings;
+      isPremium = dbSettings.isPremium === true;
 
-    if (dbSettings && dbSettings.alertsEnabled === false) {
+      const now = new Date();
+      const lastReset = dbSettings.lastAlertReset ? new Date(dbSettings.lastAlertReset) : now;
+      const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+      sessionAlertCount = hoursSinceReset >= 24 ? 0 : (dbSettings.dailyAlertCount || 0);
+    }
+
+    if (settings.alertsEnabled === false) {
       const pausedStream = new ReadableStream({
         start(controller) {
           const encode = (chunk: string) => new TextEncoder().encode(chunk);
@@ -106,6 +139,8 @@ export async function GET(req: Request) {
     const cookieHeader = req.headers.get("cookie");
     const guestPatch = getGuestSettingsPatchFromCookieHeader(cookieHeader);
     settings = { ...DEFAULT_USER_SETTINGS, ...guestPatch };
+    isPremium = false;
+    sessionAlertCount = 0;
   }
 
   const filters: AlertFilters = {
@@ -116,6 +151,8 @@ export async function GET(req: Request) {
     dexBoostEnabled: settings.dexBoostEnabled,
     dexListingEnabled: settings.dexListingEnabled,
   };
+
+  let localAlertCount = sessionAlertCount;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -132,11 +169,23 @@ export async function GET(req: Request) {
         }
       };
 
-      safeEnqueue(sseEvent("connected", { t: Date.now() }));
+      safeEnqueue(sseEvent("connected", { t: Date.now(), isPremium, dailyUsed: localAlertCount, dailyLimit: isPremium ? null : DAILY_ALERT_LIMIT }));
 
       const onNewAlert = (alert: StoredAlert) => {
         if (closed) return;
+
+        if (!isPremium && localAlertCount >= DAILY_ALERT_LIMIT) {
+          safeEnqueue(sseEvent("quota_reached", { limit: DAILY_ALERT_LIMIT, used: localAlertCount }));
+          return;
+        }
+
         if (!alertMatchesFilters(alert, filters)) return;
+
+        localAlertCount++;
+        if (userId) {
+          incrementDailyCount(userId).catch(() => null);
+        }
+
         safeEnqueue(sseEvent("alert", alert));
       };
 

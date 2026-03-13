@@ -65,9 +65,7 @@ export async function broadcastAlert(alert: any) {
       // Check if user wants this alert type
       const shouldSend =
         (alert.alertType === "dex-boost" && settings.dexBoostEnabled) ||
-        (alert.alertType === "dex-listing" && settings.dexListingEnabled) ||
-        (alert.alertType === "volume-spike" && settings.volumeSpikeEnabled) ||
-        (alert.alertType === "whale" && settings.whaleAlertEnabled);
+        (alert.alertType === "dex-listing" && settings.dexListingEnabled);
 
       if (shouldSend) {
         await sendAlertToUser(String(link.telegramId), alert);

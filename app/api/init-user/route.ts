@@ -39,8 +39,6 @@ export async function POST(req: Request) {
         stopLoss: 25,
         trailingStop: false,
         autoSellMinutes: 0,
-        volumeSpikeEnabled: true,
-        whaleAlertEnabled: true,
         dexBoostEnabled: true,
         dexListingEnabled: true,
       },

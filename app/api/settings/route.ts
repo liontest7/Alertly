@@ -23,12 +23,6 @@ type SettingsPayload = {
   maxMarketCap?: number;
   minHolders?: number;
   minLiquidity?: number;
-  volumeSpikeEnabled?: boolean;
-  volumeSpikeThreshold?: number;
-  volumeSpikeWindowSeconds?: number;
-  whaleAlertEnabled?: boolean;
-  whaleMinSolBalance?: number;
-  whaleWalletAddresses?: string[];
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
   sources?: string[];
@@ -51,14 +45,6 @@ function sanitizeSettings(input: SettingsPayload) {
   if (typeof input.maxMarketCap === "number" && input.maxMarketCap >= 0) output.maxMarketCap = input.maxMarketCap;
   if (typeof input.minHolders === "number" && input.minHolders >= 0) output.minHolders = Math.floor(input.minHolders);
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) output.minLiquidity = input.minLiquidity;
-  if (typeof input.volumeSpikeEnabled === "boolean") output.volumeSpikeEnabled = input.volumeSpikeEnabled;
-  if (typeof input.volumeSpikeThreshold === "number" && input.volumeSpikeThreshold > 0) output.volumeSpikeThreshold = input.volumeSpikeThreshold;
-  if (typeof input.volumeSpikeWindowSeconds === "number" && input.volumeSpikeWindowSeconds > 0) output.volumeSpikeWindowSeconds = Math.floor(input.volumeSpikeWindowSeconds);
-  if (typeof input.whaleAlertEnabled === "boolean") output.whaleAlertEnabled = input.whaleAlertEnabled;
-  if (typeof input.whaleMinSolBalance === "number" && input.whaleMinSolBalance >= 0) output.whaleMinSolBalance = input.whaleMinSolBalance;
-  if (Array.isArray(input.whaleWalletAddresses)) {
-    output.whaleWalletAddresses = input.whaleWalletAddresses.filter((value) => typeof value === "string");
-  }
   if (typeof input.dexBoostEnabled === "boolean") output.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
   if (Array.isArray(input.sources)) {

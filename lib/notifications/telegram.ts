@@ -11,9 +11,6 @@ export type AlertBroadcastPayload = {
   liquidity: string;
   vol: string;
   alertedAt: Date;
-  wallet?: string;
-  walletBalance?: number;
-  buyAmountSol?: number;
   imageUrl?: string;
 };
 
@@ -24,14 +21,10 @@ function shouldSendByType(
   settings: {
     dexBoostEnabled: boolean;
     dexListingEnabled: boolean;
-    volumeSpikeEnabled: boolean;
-    whaleAlertEnabled: boolean;
   },
 ) {
   if (type === "DEX_BOOST") return settings.dexBoostEnabled;
   if (type === "DEX_LISTING") return settings.dexListingEnabled;
-  if (type === "VOLUME_SPIKE") return settings.volumeSpikeEnabled;
-  if (type === "WHALE_BUY") return settings.whaleAlertEnabled;
   return true;
 }
 
@@ -53,12 +46,6 @@ function buildTelegramMessage(alert: AlertBroadcastPayload) {
     `*Liquidity:* ${alert.liquidity}`,
     `*Volume 24h:* ${alert.vol}`,
   ];
-
-  if (alert.type === "WHALE_BUY") {
-    if (alert.wallet) lines.push(`*Whale Wallet:* \`${shortAddress(alert.wallet)}\``);
-    if (typeof alert.walletBalance === "number") lines.push(`*SOL Balance:* ${alert.walletBalance.toFixed(0)} SOL`);
-    if (typeof alert.buyAmountSol === "number") lines.push(`*Buy Amount:* ~${alert.buyAmountSol.toFixed(2)} SOL`);
-  }
 
   lines.push(`*Time:* ${alert.alertedAt.toISOString()}`);
   const dexLink = alert.pairAddress || alert.address;

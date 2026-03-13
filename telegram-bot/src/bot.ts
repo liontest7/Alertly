@@ -31,10 +31,6 @@ const DEFAULT_USER_SETTINGS = {
   stopLoss: 25,
   trailingStop: false,
   autoSellMinutes: 0,
-  volumeSpikeEnabled: true,
-  volumeSpikeThreshold: 50,
-  whaleAlertEnabled: true,
-  whaleMinSolBalance: 500,
   dexBoostEnabled: true,
   dexListingEnabled: true,
   sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
@@ -68,10 +64,6 @@ const mainMenu = {
       [{ text: "-- Alerts --", callback_data: "none" }],
       [{ text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" }],
       [
-        { text: "🔊 Vol Spike", callback_data: "toggle_vol" },
-        { text: "🐋 Whale", callback_data: "toggle_whale" },
-      ],
-      [
         { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
         { text: "💎 Dex Listing", callback_data: "toggle_list" },
       ],
@@ -84,10 +76,6 @@ const mainMenu = {
       [
         { text: "📉 Min MC", callback_data: "set_min_mc" },
         { text: "📈 Max MC", callback_data: "set_max_mc" },
-      ],
-      [
-        { text: "📊 Vol Spike %", callback_data: "set_vol_threshold" },
-        { text: "🐳 Min Whale SOL", callback_data: "set_whale_sol" },
       ],
     ],
   },
@@ -156,8 +144,6 @@ const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) 
     const s = await fetchBotSettings(telegramId);
     const unlinkedNotice = isUnlinked ? "\n⚠️ *Account not linked yet* - /start to link your dashboard\n" : "";
 
-    const whaleMinSol = s.whaleMinSolBalance ?? s.whaleMinSol ?? 500;
-    const volThreshold = s.volumeSpikeThreshold || 50;
     const alertsStatus = s.alertsEnabled !== false ? "▶️ Active" : "⏸️ Paused";
     const planLabel = s.isPremium ? "⭐ VIP" : `🆓 Free (${s.dailyAlertCount || 0}/${DAILY_ALERT_LIMIT} today)`;
 
@@ -177,11 +163,7 @@ const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) 
 🎯 Trailing Stop: ${s.trailingStop ? "✅ ON" : "❌ OFF"}
 ⏱️ Auto-Sell: ${s.autoSellMinutes > 0 ? `${s.autoSellMinutes} min` : "OFF"}
 
-*Active Alerts*
-🔊 Volume Spike: ${s.volumeSpikeEnabled ? "✅" : "❌"}
-   └ Threshold: +${volThreshold}% / 60s
-🐋 Whale Alert: ${s.whaleAlertEnabled ? "✅" : "❌"}
-   └ Min Balance: ${whaleMinSol} SOL (all wallets)
+*Active Alert Monitors*
 ⚡ Dex Boost: ${s.dexBoostEnabled ? "✅" : "❌"}
    └ Level: ${formatBoostLevel(s.selectedBoostLevel || "all")}
 💎 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
@@ -192,7 +174,7 @@ const getSettingsText = async (telegramId: string, isUnlinked: boolean = false) 
 💧 Min Liquidity: ${s.minLiquidity > 0 ? `$${(s.minLiquidity / 1000).toFixed(0)}K` : "No limit"}
 👥 Min Holders: ${s.minHolders || 1}
 
-Stay sharp. Stay early. Stay Alerty.`;
+Stay sharp. Stay early. Stay Alertly.`;
   } catch {
     return "❌ Telegram account is not linked yet.\n\nIn the web app, open Telegram Link and run the generated command:\n`/link <token>`";
   }
@@ -278,12 +260,6 @@ bot.on("callback_query", async (query) => {
     } else if (data === "toggle_ts") {
       update = { trailingStop: !s.trailingStop };
       answer = `Trailing Stop ${!s.trailingStop ? "ON" : "OFF"}`;
-    } else if (data === "toggle_vol") {
-      update = { volumeSpikeEnabled: !s.volumeSpikeEnabled };
-      answer = `Vol Spike ${!s.volumeSpikeEnabled ? "ON" : "OFF"}`;
-    } else if (data === "toggle_whale") {
-      update = { whaleAlertEnabled: !s.whaleAlertEnabled };
-      answer = `Whale Alert ${!s.whaleAlertEnabled ? "ON" : "OFF"}`;
     } else if (data === "toggle_boost") {
       update = { dexBoostEnabled: !s.dexBoostEnabled };
       answer = `Dex Boost ${!s.dexBoostEnabled ? "ON" : "OFF"}`;
@@ -364,8 +340,6 @@ bot.on("callback_query", async (query) => {
         min_liquidity: "Enter Min Liquidity in USD (e.g., 0 = no filter, 5000 = $5K):",
         min_mc: "Enter Min Market Cap in USD (e.g., 0 = no filter, 10000 = $10K):",
         max_mc: "Enter Max Market Cap in USD (e.g., 0 = no filter, 1000000 = $1M):",
-        vol_threshold: "Enter Volume Spike threshold % (e.g., 50 = alert when volume +50% in 60s):",
-        whale_sol: "Enter Min Whale SOL balance (e.g., 500 = alert when wallet has 500+ SOL):",
       };
       
       const prompt = promptMap[field];
@@ -385,8 +359,6 @@ bot.on("callback_query", async (query) => {
               min_liquidity: "minLiquidity",
               min_mc: "minMarketCap",
               max_mc: "maxMarketCap",
-              vol_threshold: "volumeSpikeThreshold",
-              whale_sol: "whaleMinSolBalance",
             };
             await updateBotSettings(telegramId, { [fieldMap[field]]: val });
             const newText = await getSettingsText(telegramId);

@@ -17,8 +17,6 @@ const connection = new Connection(RPC_ENDPOINT, "confirmed");
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 export type TokenAlertType =
-  | "VOLUME SPIKE"
-  | "WHALE BUY"
   | "DEX BOOST"
   | "DEX LISTING";
 
@@ -45,11 +43,8 @@ export interface TokenAlert {
   fingerprint?: string;
   riskScore?: number;
   riskLevel?: string;
-  wallet?: string;
-  walletBalance?: number;
   buyAmountSol?: number;
   dex?: string;
-  spikePercent?: number;
 }
 
 export interface AlertFilterSettings {
@@ -57,17 +52,11 @@ export interface AlertFilterSettings {
   maxMarketCap?: number;
   minLiquidity?: number;
   minHolders?: number;
-  volumeSpikeEnabled?: boolean;
-  whaleAlertEnabled?: boolean;
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
-  volumeSpikeThreshold?: number;
-  whaleMinSolBalance?: number;
 }
 
 const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
-  VOLUME_SPIKE: "VOLUME SPIKE",
-  WHALE_BUY: "WHALE BUY",
   DEX_BOOST: "DEX BOOST",
   DEX_LISTING: "DEX LISTING",
 };
@@ -97,8 +86,6 @@ function getAgeLabel(alertedAt: Date): string {
 
 function isAlertEnabledBySettings(type: TokenAlertType, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
-  if (type === "VOLUME SPIKE" && filters.volumeSpikeEnabled === false) return false;
-  if (type === "WHALE BUY" && filters.whaleAlertEnabled === false) return false;
   if (type === "DEX BOOST" && filters.dexBoostEnabled === false) return false;
   if (type === "DEX LISTING" && filters.dexListingEnabled === false) return false;
   return true;
@@ -113,22 +100,6 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   if (typeof filters.minMarketCap === "number" && filters.minMarketCap > 0 && mcValue !== null && mcValue < filters.minMarketCap) return false;
   if (typeof filters.maxMarketCap === "number" && filters.maxMarketCap > 0 && mcValue !== null && mcValue > filters.maxMarketCap) return false;
   if (typeof filters.minLiquidity === "number" && filters.minLiquidity > 0 && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
-
-  if (
-    alert.type === "VOLUME SPIKE" &&
-    typeof filters.volumeSpikeThreshold === "number" &&
-    filters.volumeSpikeThreshold > 0 &&
-    typeof alert.spikePercent === "number" &&
-    alert.spikePercent < filters.volumeSpikeThreshold
-  ) return false;
-
-  if (
-    alert.type === "WHALE BUY" &&
-    typeof filters.whaleMinSolBalance === "number" &&
-    filters.whaleMinSolBalance > 0 &&
-    typeof alert.walletBalance === "number" &&
-    alert.walletBalance < filters.whaleMinSolBalance
-  ) return false;
 
   return true;
 }

@@ -13,8 +13,6 @@ export interface AutoTradeConfig {
   maxMarketCap?: number;
   minLiquidity?: number;
   minHolders?: number;
-  volumeSpikeEnabled?: boolean;
-  whaleAlertEnabled?: boolean;
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
 }
@@ -31,10 +29,8 @@ function parseMoney(value: string): number | null {
 }
 
 function isTypeEnabled(alertType: TokenAlert["type"], config: AutoTradeConfig): boolean {
-  if (alertType === "VOLUME SPIKE" && config.volumeSpikeEnabled === false) return false;
   if (alertType === "DEX BOOST" && config.dexBoostEnabled === false) return false;
   if (alertType === "DEX LISTING" && config.dexListingEnabled === false) return false;
-  if (alertType === "WHALE BUY" && config.whaleAlertEnabled === false) return false;
   return true;
 }
 

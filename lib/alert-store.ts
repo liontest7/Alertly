@@ -22,12 +22,8 @@ export interface StoredAlert {
   website?: string;
   twitter?: string;
   telegram?: string;
-  wallet?: string;
-  buyAmountSol?: number;
-  walletBalance?: number;
   boostLevel?: string;
   dex?: string;
-  spikePercent?: number;
 }
 
 const MAX_ALERTS = 200;

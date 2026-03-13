@@ -47,12 +47,8 @@ export async function GET(req: Request) {
             maxMarketCap: userSettings.maxMarketCap,
             minLiquidity: userSettings.minLiquidity,
             minHolders: userSettings.minHolders,
-            volumeSpikeEnabled: userSettings.volumeSpikeEnabled,
-            whaleAlertEnabled: userSettings.whaleAlertEnabled,
             dexBoostEnabled: userSettings.dexBoostEnabled,
             dexListingEnabled: userSettings.dexListingEnabled,
-            volumeSpikeThreshold: userSettings.volumeSpikeThreshold,
-            whaleMinSolBalance: userSettings.whaleMinSolBalance,
           }
         : undefined,
     );

@@ -30,10 +30,6 @@ function sanitizeUpdate(input: Record<string, unknown>) {
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) output.minLiquidity = input.minLiquidity;
   if (typeof input.trailingStop === "boolean") output.trailingStop = input.trailingStop;
   if (typeof input.autoSellMinutes === "number" && input.autoSellMinutes >= 0) output.autoSellMinutes = Math.floor(input.autoSellMinutes);
-  if (typeof input.volumeSpikeEnabled === "boolean") output.volumeSpikeEnabled = input.volumeSpikeEnabled;
-  if (typeof input.volumeSpikeThreshold === "number" && input.volumeSpikeThreshold > 0) output.volumeSpikeThreshold = input.volumeSpikeThreshold;
-  if (typeof input.whaleAlertEnabled === "boolean") output.whaleAlertEnabled = input.whaleAlertEnabled;
-  if (Array.isArray(input.whaleWalletAddresses)) output.whaleWalletAddresses = input.whaleWalletAddresses.filter((v) => typeof v === "string");
   if (typeof input.dexBoostEnabled === "boolean") output.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
   if (typeof input.selectedBoostLevel === "string") output.selectedBoostLevel = input.selectedBoostLevel;

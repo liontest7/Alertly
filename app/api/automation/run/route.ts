@@ -102,8 +102,6 @@ export async function POST(req: Request) {
         maxMarketCap: settings.maxMarketCap,
         minLiquidity: settings.minLiquidity,
         minHolders: settings.minHolders,
-        volumeSpikeEnabled: settings.volumeSpikeEnabled,
-        whaleAlertEnabled: settings.whaleAlertEnabled,
         dexBoostEnabled: settings.dexBoostEnabled,
         dexListingEnabled: settings.dexListingEnabled,
       });
@@ -132,8 +130,6 @@ export async function POST(req: Request) {
           maxMarketCap: settings.maxMarketCap,
           minLiquidity: settings.minLiquidity,
           minHolders: settings.minHolders,
-          volumeSpikeEnabled: settings.volumeSpikeEnabled,
-          whaleAlertEnabled: settings.whaleAlertEnabled,
           dexBoostEnabled: settings.dexBoostEnabled,
           dexListingEnabled: settings.dexListingEnabled,
         });
@@ -177,8 +173,6 @@ export async function POST(req: Request) {
           maxMarketCap: settings.maxMarketCap,
           minLiquidity: settings.minLiquidity,
           minHolders: settings.minHolders,
-          volumeSpikeEnabled: settings.volumeSpikeEnabled,
-          whaleAlertEnabled: settings.whaleAlertEnabled,
           dexBoostEnabled: settings.dexBoostEnabled,
           dexListingEnabled: settings.dexListingEnabled,
         });

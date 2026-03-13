@@ -40,11 +40,6 @@ export default function OnboardingPage() {
     stopLoss: 25,
     minLiquidity: 0,
     minHolders: 1,
-    volumeSpikeEnabled: true,
-    volumeSpikeThreshold: 50,
-    volumeSpikeWindowSeconds: 60,
-    whaleAlertEnabled: true,
-    whaleMinSolBalance: 500,
     dexBoostEnabled: true,
     dexListingEnabled: true,
     boostLevels: ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"]
@@ -65,8 +60,16 @@ export default function OnboardingPage() {
         if (data && !data.message) {
           setSettings(prev => ({
             ...prev,
-            ...data,
+            autoTrade: data.autoTrade ?? prev.autoTrade,
+            buyAmount: data.buyAmount ?? prev.buyAmount,
+            maxBuyPerToken: data.maxBuyPerToken ?? prev.maxBuyPerToken,
             maxSlippage: data.slippage ?? prev.maxSlippage,
+            takeProfit: data.takeProfit ?? prev.takeProfit,
+            stopLoss: data.stopLoss ?? prev.stopLoss,
+            minLiquidity: data.minLiquidity ?? prev.minLiquidity,
+            minHolders: data.minHolders ?? prev.minHolders,
+            dexBoostEnabled: data.dexBoostEnabled ?? prev.dexBoostEnabled,
+            dexListingEnabled: data.dexListingEnabled ?? prev.dexListingEnabled,
             boostLevels: data.selectedBoostLevel === "all"
               ? ["Level 1", "Level 2", "Level 3", "Level 4", "Top Boost"]
               : (data.selectedBoostLevel ? [data.selectedBoostLevel] : prev.boostLevels),
@@ -96,11 +99,6 @@ export default function OnboardingPage() {
           stopLoss: settings.stopLoss,
           minLiquidity: settings.minLiquidity,
           minHolders: settings.minHolders,
-          volumeSpikeEnabled: settings.volumeSpikeEnabled,
-          volumeSpikeThreshold: settings.volumeSpikeThreshold,
-          volumeSpikeWindowSeconds: settings.volumeSpikeWindowSeconds,
-          whaleAlertEnabled: settings.whaleAlertEnabled,
-          whaleMinSolBalance: settings.whaleMinSolBalance,
           dexBoostEnabled: settings.dexBoostEnabled,
           dexListingEnabled: settings.dexListingEnabled,
           selectedBoostLevel: allSelected ? "all" : (settings.boostLevels[0] || "all"),
@@ -173,97 +171,12 @@ export default function OnboardingPage() {
             </div>
             
             <div className="space-y-8">
-              {/* Intelligence Monitors */}
+              {/* Alert Monitors */}
               <div className="space-y-5">
                 <Label className="text-zinc-500 uppercase text-[11px] font-black tracking-[0.2em] flex items-center gap-2">
-                  <Target className="w-3.5 h-3.5" /> Intelligence Monitors
+                  <Target className="w-3.5 h-3.5" /> Alert Monitors
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Volume Spikes */}
-                  <div className="space-y-4">
-                    <MonitorToggle 
-                      label="Volume Spikes" 
-                      active={settings.volumeSpikeEnabled} 
-                      onToggle={() => setSettings({...settings, volumeSpikeEnabled: !settings.volumeSpikeEnabled})} 
-                    />
-                    {settings.volumeSpikeEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
-                        <div className="space-y-3">
-                          <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Alert on Pairs:</Label>
-                            <div className="flex flex-wrap gap-2">
-                              <span className="px-4 py-2 rounded-xl border text-[11px] font-black bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]">
-                                SOL
-                              </span>
-                            </div>
-                            <p className="text-[9px] text-zinc-500 mt-1">Solana network only</p>
-                          </div>
-                          <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Spike Threshold (%):</Label>
-                            <Input 
-                              className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-black rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all" 
-                              value={settings.volumeSpikeThreshold}
-                              onChange={(e) => setSettings({...settings, volumeSpikeThreshold: parseInt(e.target.value) || 0})}
-                              type="number" 
-                              placeholder="e.g., 50"
-                            />
-                            <p className="text-[9px] text-zinc-500 mt-1">Alert when volume spikes by this % in the time window below</p>
-                          </div>
-                          <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Time Window:</Label>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { label: "30s", value: 30 },
-                                { label: "60s", value: 60 },
-                                { label: "5 min", value: 300 },
-                                { label: "10 min", value: 600 },
-                              ].map(opt => (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  onClick={() => setSettings({...settings, volumeSpikeWindowSeconds: opt.value})}
-                                  className={`px-4 py-2 rounded-xl border text-[11px] font-black transition-all ${
-                                    settings.volumeSpikeWindowSeconds === opt.value
-                                      ? 'bg-[#5100fd] border-[#5100fd] text-white shadow-[0_0_20px_rgba(81,0,253,0.5)]'
-                                      : 'bg-zinc-800 border-zinc-700 text-white hover:border-zinc-500'
-                                  }`}
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
-                            </div>
-                            <p className="text-[9px] text-zinc-500 mt-1">Detection window for volume change</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Whale Movement */}
-                  <div className="space-y-4">
-                    <MonitorToggle 
-                      label="Whale Movement" 
-                      active={settings.whaleAlertEnabled} 
-                      onToggle={() => setSettings({...settings, whaleAlertEnabled: !settings.whaleAlertEnabled})} 
-                    />
-                    {settings.whaleAlertEnabled && (
-                      <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
-                        <div className="space-y-3">
-                          <div>
-                            <Label className="text-[10px] font-black text-white uppercase tracking-widest block mb-2">Min SOL in Wallet:</Label>
-                            <Input 
-                              className="h-10 bg-zinc-800 border-zinc-700 text-sm text-white font-black rounded-xl focus:border-[#5100fd] focus:ring-2 focus:ring-[#5100fd]/20 transition-all" 
-                              value={settings.whaleMinSolBalance}
-                              onChange={(e) => setSettings({...settings, whaleMinSolBalance: parseInt(e.target.value) || 0})}
-                              type="number" 
-                              placeholder="e.g., 500"
-                            />
-                            <p className="text-[9px] text-zinc-500 mt-1">Alert when wallet holds this much SOL and buys a meme coin</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
 
                   {/* DEX Boosts */}
                   <div className="space-y-4">
@@ -307,7 +220,7 @@ export default function OnboardingPage() {
                       <div className="pl-4 space-y-3 animate-in fade-in slide-in-from-left-2 duration-300 bg-zinc-900 border border-zinc-800 p-5 rounded-2xl shadow-xl">
                         <div className="space-y-2">
                           <Label className="text-[10px] font-black text-white uppercase tracking-wider block">Listing Options:</Label>
-                          <p className="text-[9px] text-zinc-400 leading-relaxed">Monitor new DEX paid listings on Solana. Alert on new token pair creation.</p>
+                          <p className="text-[9px] text-zinc-400 leading-relaxed">Alert when a token pays for a DexScreener token profile (new paid DEX listing).</p>
                           <div className="flex flex-wrap gap-2 pt-2">
                             <span className="px-3 py-1.5 rounded-lg border border-[#5100fd]/40 bg-[#5100fd]/10 text-[10px] font-black text-[#5100fd]">
                               All Paid Listings
