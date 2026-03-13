@@ -138,6 +138,16 @@ export default function DashboardPage() {
         setLoading(false);
       });
 
+      stream.addEventListener('init', (event: any) => {
+        try {
+          const initialAlerts = JSON.parse(event.data);
+          if (Array.isArray(initialAlerts) && initialAlerts.length > 0) {
+            setAlerts(initialAlerts.slice(0, MAX_LOCAL_ALERTS));
+            setLoading(false);
+          }
+        } catch {}
+      });
+
       stream.addEventListener('alert', (event: any) => {
         try {
           const newAlert = JSON.parse(event.data);

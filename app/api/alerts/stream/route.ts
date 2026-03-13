@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { alertEmitter, StoredAlert } from "@/lib/alert-store";
+import { alertEmitter, getAlerts, StoredAlert } from "@/lib/alert-store";
 import { ensureAlertListenerStarted } from "@/lib/alert-listener";
 import { getGuestSettingsPatchFromCookieHeader } from "@/lib/guest-session";
 import { DEFAULT_USER_SETTINGS } from "@/lib/settings/defaults";
@@ -170,6 +170,11 @@ export async function GET(req: Request) {
       };
 
       safeEnqueue(sseEvent("connected", { t: Date.now(), isPremium, dailyUsed: localAlertCount, dailyLimit: isPremium ? null : DAILY_ALERT_LIMIT }));
+
+      const existingAlerts = getAlerts().filter(a => alertMatchesFilters(a, filters));
+      if (existingAlerts.length > 0) {
+        safeEnqueue(sseEvent("init", existingAlerts));
+      }
 
       const onNewAlert = (alert: StoredAlert) => {
         if (closed) return;
