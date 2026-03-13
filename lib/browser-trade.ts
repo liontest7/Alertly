@@ -84,13 +84,14 @@ export async function executeBrowserTrade(
       maxRetries: 3,
     })
 
-    try {
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-      await connection.confirmTransaction(
-        { signature: txSig, blockhash, lastValidBlockHeight },
-        "confirmed",
-      )
-    } catch {
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+    const confirmation = await connection.confirmTransaction(
+      { signature: txSig, blockhash, lastValidBlockHeight },
+      "confirmed",
+    )
+
+    if (confirmation.value.err) {
+      return { success: false, txSig, message: `Transaction failed on-chain: ${JSON.stringify(confirmation.value.err)}` }
     }
 
     return { success: true, txSig, message: "Trade executed successfully" }

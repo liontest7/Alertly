@@ -12,6 +12,8 @@ export async function POST(req: Request) {
   try {
     const { privateKey } = await req.json();
 
+    if (!privateKey) return NextResponse.json({ message: "Key required" }, { status: 400 });
+
     const user = await prisma.user.findUnique({ where: { id: session.user.id } });
     if (!user) {
       await prisma.user.create({
@@ -21,24 +23,26 @@ export async function POST(req: Request) {
         },
       });
     }
-    if (!privateKey) return NextResponse.json({ message: "Key required" }, { status: 400 });
 
     let walletAddress = "";
+    let hexPrivateKey = "";
     try {
-      // Handle both hex and base58
-      let secret;
-      if (privateKey.length === 128) { // hex
-        secret = Buffer.from(privateKey, 'hex');
+      let secret: Buffer;
+      if (privateKey.length === 128 && /^[0-9a-fA-F]+$/.test(privateKey)) {
+        secret = Buffer.from(privateKey, "hex");
+        hexPrivateKey = privateKey;
       } else {
-        secret = bs58.decode(privateKey);
+        const decoded = bs58.decode(privateKey);
+        secret = Buffer.from(decoded);
+        hexPrivateKey = secret.toString("hex");
       }
-      const kp = Keypair.fromSecretKey(secret);
+      const kp = Keypair.fromSecretKey(new Uint8Array(secret));
       walletAddress = kp.publicKey.toBase58();
     } catch (e) {
       return NextResponse.json({ message: "Invalid private key format" }, { status: 400 });
     }
 
-    const encrypted = encryptKey(privateKey);
+    const encrypted = encryptKey(hexPrivateKey);
     if (!encrypted) return NextResponse.json({ message: "Failed to secure key" }, { status: 500 });
 
     const wallet = await prisma.tradingWallet.upsert({

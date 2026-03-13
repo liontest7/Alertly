@@ -53,7 +53,7 @@ function alertMatchesFilters(alert: StoredAlert, filters: AlertFilters): boolean
     if (liq !== null && liq < filters.minLiquidity) return false;
   }
 
-  if (filters.minHolders && filters.minHolders > 1) {
+  if (filters.minHolders && filters.minHolders > 0) {
     if (alert.holders < filters.minHolders) return false;
   }
 
