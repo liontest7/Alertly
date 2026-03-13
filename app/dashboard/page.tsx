@@ -150,6 +150,29 @@ export default function DashboardPage() {
   }, [alerts]);
 
   const streamRef = useRef<EventSource | null>(null);
+  const [reconnectTick, setReconnectTick] = useState(0);
+
+  // Shared merge helper used by both SSE init and polling fallback
+  const mergeServerAlerts = (serverAlerts: any[]) => {
+    setAlerts(prev => {
+      const localMap = new Map(prev.map((a: any) => [a.fingerprint, a]));
+      const merged = serverAlerts.map((sa: any) => {
+        const local = localMap.get(sa.fingerprint);
+        if (local) return { ...sa, clientSeenAt: local.clientSeenAt || local.alertedAt };
+        return { ...sa, clientSeenAt: sa.alertedAt || new Date().toISOString() };
+      });
+      const serverFps = new Set(serverAlerts.map((a: any) => a.fingerprint));
+      const localOnly = prev.filter((a: any) => !serverFps.has(a.fingerprint));
+      const combined = [...merged, ...localOnly];
+      combined.sort((a: any, b: any) => {
+        const ta = new Date(a.clientSeenAt || a.alertedAt).getTime();
+        const tb = new Date(b.clientSeenAt || b.alertedAt).getTime();
+        return tb - ta;
+      });
+      return combined.slice(0, MAX_LOCAL_ALERTS);
+    });
+    setLoading(false);
+  };
 
   // Settings + metrics: fetch once on mount, independent of SSE
   useEffect(() => {
@@ -159,6 +182,20 @@ export default function DashboardPage() {
     return () => clearInterval(metricsInterval);
   }, []);
 
+  // Polling fallback: even if SSE drops, sync from REST every 30s
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/alerts');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) mergeServerAlerts(data);
+      } catch {}
+    };
+    const pollInterval = setInterval(poll, 30000);
+    return () => clearInterval(pollInterval);
+  }, []);
+
   useEffect(() => {
     if (streamRef.current) {
       streamRef.current.close();
@@ -166,57 +203,36 @@ export default function DashboardPage() {
     }
 
     let stream: EventSource | null = null;
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
+
+    // Watchdog: if no event for 40s (server heartbeats every 15s), force reconnect
+    const resetWatchdog = () => {
+      if (watchdog) clearTimeout(watchdog);
+      watchdog = setTimeout(() => {
+        if (stream) { stream.close(); streamRef.current = null; }
+        setReconnectTick(t => t + 1);
+      }, 40000);
+    };
+
     try {
       stream = new EventSource('/api/alerts/stream');
       streamRef.current = stream;
+      resetWatchdog();
 
       stream.addEventListener('connected', () => {
         setLoading(false);
+        resetWatchdog();
       });
 
       stream.addEventListener('init', (event: any) => {
         try {
           const serverAlerts = JSON.parse(event.data);
-          if (!Array.isArray(serverAlerts) || serverAlerts.length === 0) return;
-
-          setAlerts(prev => {
-            // Map local alerts by fingerprint — they have a trusted clientSeenAt
-            const localMap = new Map(prev.map((a: any) => [a.fingerprint, a]));
-
-            const merged = serverAlerts.map((sa: any) => {
-              const local = localMap.get(sa.fingerprint);
-              if (local) {
-                // Already seen before: preserve the client-stamped time entirely
-                return {
-                  ...sa,
-                  clientSeenAt: local.clientSeenAt || local.alertedAt,
-                };
-              }
-              // New alert arriving via init (not yet in localStorage):
-              // stamp with the server's detection time as the baseline
-              return {
-                ...sa,
-                clientSeenAt: sa.alertedAt || new Date().toISOString(),
-              };
-            });
-
-            // Keep local-only alerts (evicted from server buffer but still in localStorage)
-            const serverFps = new Set(serverAlerts.map((a: any) => a.fingerprint));
-            const localOnly = prev.filter((a: any) => !serverFps.has(a.fingerprint));
-
-            const combined = [...merged, ...localOnly];
-
-            // Sort newest-first by the stable client-stamped time
-            combined.sort((a: any, b: any) => {
-              const ta = new Date(a.clientSeenAt || a.alertedAt).getTime();
-              const tb = new Date(b.clientSeenAt || b.alertedAt).getTime();
-              return tb - ta;
-            });
-
-            return combined.slice(0, MAX_LOCAL_ALERTS);
-          });
-
-          setLoading(false);
+          if (Array.isArray(serverAlerts) && serverAlerts.length > 0) {
+            mergeServerAlerts(serverAlerts);
+          } else {
+            setLoading(false);
+          }
+          resetWatchdog();
         } catch {}
       });
 
@@ -227,7 +243,6 @@ export default function DashboardPage() {
             setAlerts(prev => {
               const existingIdx = prev.findIndex((a: any) => a.fingerprint === newAlert.fingerprint);
               if (existingIdx !== -1) {
-                // Enrichment update: keep the original clientSeenAt, never overwrite it
                 const updated = [...prev];
                 updated[existingIdx] = {
                   ...updated[existingIdx],
@@ -236,40 +251,46 @@ export default function DashboardPage() {
                 };
                 return updated;
               }
-              // Brand-new alert: stamp with client time right now
-              const stamped = {
-                ...newAlert,
-                clientSeenAt: new Date().toISOString(),
-              };
+              const stamped = { ...newAlert, clientSeenAt: new Date().toISOString() };
               const next = [stamped, ...prev];
               return next.length > MAX_LOCAL_ALERTS ? next.slice(0, MAX_LOCAL_ALERTS) : next;
             });
             setLoading(false);
+            resetWatchdog();
           }
         } catch {}
       });
 
       stream.addEventListener('heartbeat', () => {
         setLoading(false);
+        resetWatchdog();
       });
 
       stream.addEventListener('paused', () => {
         setLoading(false);
         setAlerts([]);
+        resetWatchdog();
       });
 
       stream.onerror = () => {
         setLoading(false);
+        // Give EventSource 15s to auto-reconnect before forcing a hard reconnect
+        if (watchdog) clearTimeout(watchdog);
+        watchdog = setTimeout(() => {
+          if (stream) { stream.close(); streamRef.current = null; }
+          setReconnectTick(t => t + 1);
+        }, 15000);
       };
     } catch {
       setLoading(false);
     }
 
     return () => {
+      if (watchdog) clearTimeout(watchdog);
       if (stream) stream.close();
       streamRef.current = null;
     }
-  }, [user, alertsEnabled])
+  }, [user, alertsEnabled, reconnectTick])
 
   if (sessionLoading) {
     return (
