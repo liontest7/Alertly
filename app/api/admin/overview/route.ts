@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/access";
 import { getListenerStatus } from "@/lib/listeners/blockchain-listener";
+import { getAlerts } from "@/lib/alert-store";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +16,8 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
-async function checkSolanaRpc(rpcUrl?: string) {
-  if (!rpcUrl) return { status: "missing" as const };
+async function checkSolanaRpc(rpcUrl?: string): Promise<string> {
+  if (!rpcUrl) return "missing";
   try {
     const response = await withTimeout(
       fetch(rpcUrl, {
@@ -24,26 +27,46 @@ async function checkSolanaRpc(rpcUrl?: string) {
       }),
       TIMEOUT_MS,
     );
-    if (!response.ok) return { status: "error" as const };
+    if (!response.ok) return "error";
     const json = await response.json();
-    return { status: json?.result ? ("ok" as const) : ("error" as const) };
+    return json?.result ? "ok" : "error";
   } catch {
-    return { status: "error" as const };
+    return "error";
   }
 }
 
-async function checkJupiter(apiUrl?: string) {
+async function checkJupiter(apiUrl?: string): Promise<string> {
   const base = (apiUrl || "https://lite-api.jup.ag/swap/v1").replace(/\/$/, "");
   try {
     const response = await withTimeout(
-      fetch(`${base}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=100`),
+      fetch(`${base}/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000&slippageBps=100`),
       TIMEOUT_MS,
     );
-    if (!response.ok) return { status: "error" as const };
+    if (!response.ok) return "error";
     const json = await response.json();
-    return { status: json?.outAmount ? ("ok" as const) : ("error" as const) };
+    return json?.outAmount ? "ok" : "error";
   } catch {
-    return { status: "error" as const };
+    return "error";
+  }
+}
+
+function getTelegramSubscriberCount(): number {
+  try {
+    const path = join(process.cwd(), "telegram-bot", "data", "subscribers.json");
+    if (!existsSync(path)) return 0;
+    const data = JSON.parse(readFileSync(path, "utf-8"));
+    return Object.keys(data).length;
+  } catch {
+    return 0;
+  }
+}
+
+function getAlerts24h(): number {
+  try {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return getAlerts().filter((a) => a.alertedAt.getTime() > cutoff).length;
+  } catch {
+    return 0;
   }
 }
 
@@ -54,6 +77,8 @@ export async function GET(req: Request) {
   }
 
   const listenerStatus = getListenerStatus();
+  const telegramLinked = getTelegramSubscriberCount();
+  const alerts24h = getAlerts24h();
 
   const [solanaRpc, jupiter] = await Promise.all([
     checkSolanaRpc(process.env.SOLANA_RPC_URL),
@@ -61,17 +86,28 @@ export async function GET(req: Request) {
   ]);
 
   return NextResponse.json({
-    stats: {
-      totalUsers: 0,
-      activeToday: 0,
-      tradesLast24h: 0,
-      alertsLast24h: 0,
+    users: {
+      total: telegramLinked,
+      banned: 0,
+      frozen: 0,
+      telegramLinked,
     },
-    listeners: [listenerStatus],
-    health: {
-      database: { status: "disabled" },
+    activity: {
+      alerts24h,
+      trades24h: 0,
+    },
+    listener: {
+      running: listenerStatus.running,
+      subscriptions: listenerStatus.subscriptions ?? 0,
+      uptime: listenerStatus.uptime,
+      mode: listenerStatus.mode ?? "dexscreener-api-polling",
+      monitors: listenerStatus.monitors,
+    },
+    infra: {
+      database: "disabled",
       solanaRpc,
       jupiter,
     },
+    checkedAt: new Date().toISOString(),
   });
 }

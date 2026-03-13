@@ -3,7 +3,7 @@ import { getEnv, requireEnv } from "@/lib/env";
 
 import { getAlerts, StoredAlert } from "@/lib/alert-store";
 
-const RPC_ENDPOINT =
+const RPC_PRIMARY =
   getEnv("SOLANA_RPC_URL") ||
   getEnv("NEXT_PUBLIC_SOLANA_RPC_URL") ||
   requireEnv("SOLANA_RPC_URL", {
@@ -11,9 +11,25 @@ const RPC_ENDPOINT =
     devFallback: "https://api.mainnet-beta.solana.com",
   });
 
+const RPC_FALLBACK =
+  getEnv("SOLANA_RPC_FALLBACK_URL") ||
+  getEnv("NEXT_PUBLIC_SOLANA_RPC_FALLBACK_URL") ||
+  "https://api.mainnet-beta.solana.com";
+
 const JUPITER_API_URL = getEnv("JUPITER_API_URL", "https://lite-api.jup.ag/swap/v1");
-const connection = new Connection(RPC_ENDPOINT, "confirmed");
+const connection = new Connection(RPC_PRIMARY, "confirmed");
+const fallbackConnection = RPC_FALLBACK !== RPC_PRIMARY ? new Connection(RPC_FALLBACK, "confirmed") : null;
 const SOL_MINT = "So11111111111111111111111111111111111111112";
+
+async function withRpcFallback<T>(fn: (conn: Connection) => Promise<T>): Promise<T> {
+  try {
+    return await fn(connection);
+  } catch (primaryErr) {
+    if (!fallbackConnection) throw primaryErr;
+    console.warn("[RPC] Primary failed, trying fallback:", primaryErr instanceof Error ? primaryErr.message : String(primaryErr));
+    return await fn(fallbackConnection);
+  }
+}
 
 export type TokenAlertType =
   | "DEX BOOST"
@@ -167,7 +183,7 @@ export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<Toke
 export async function getWalletBalance(address: string) {
   try {
     const publicKey = new PublicKey(address);
-    const balance = await connection.getBalance(publicKey);
+    const balance = await withRpcFallback((conn) => conn.getBalance(publicKey));
     return balance / LAMPORTS_PER_SOL;
   } catch {
     return 0;
@@ -177,7 +193,7 @@ export async function getWalletBalance(address: string) {
 
 async function getTokenDecimals(mintAddress: string) {
   const mint = new PublicKey(mintAddress);
-  const info = await connection.getParsedAccountInfo(mint);
+  const info = await withRpcFallback((conn) => conn.getParsedAccountInfo(mint));
   const decimals = (info.value?.data as any)?.parsed?.info?.decimals;
   if (typeof decimals !== "number") {
     throw new Error("Failed to resolve token decimals");
