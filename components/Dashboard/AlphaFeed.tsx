@@ -74,8 +74,16 @@ export function AlphaFeed({
   const [lastAlertCount, setLastAlertCount] = useState(0);
   const [activeFilter, setActiveFilter] = useState<string>('All');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [tradeToast, setTradeToast] = useState<{ message: string; success: boolean } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTradedRef = useRef<Set<string>>(new Set());
   const prevAlertsRef = useRef<any[]>([]);
+
+  const showTradeToast = (message: string, success: boolean) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setTradeToast({ message, success });
+    toastTimerRef.current = setTimeout(() => setTradeToast(null), 5000);
+  };
   
   useEffect(() => {
     if (alerts.length > lastAlertCount && soundEnabled && lastAlertCount > 0) {
@@ -169,13 +177,13 @@ export function AlphaFeed({
 
   const handleQuickBuy = async (token: any) => {
     if (!token.address) {
-      alert("This alert does not have a valid token address.")
+      showTradeToast("This alert does not have a valid token address.", false);
       return
     }
     const { getBrowserWallet } = await import("@/lib/browser-wallet");
     const bwallet = getBrowserWallet();
     if (!bwallet) {
-      alert("No trading wallet found.\nGenerate or import a wallet in the Sniper Configuration panel first.")
+      showTradeToast("No trading wallet found. Generate or import a wallet in the Sniper Configuration panel first.", false);
       return
     }
     const tokenName = token.symbol || token.name || shortAddr(token.address)
@@ -202,12 +210,12 @@ export function AlphaFeed({
         tokenSymbol: token.symbol,
       });
       if (result.success) {
-        alert(`Trade Successful!\nToken: ${tokenName}\nTx: ${result.txSig?.substring(0, 16)}...`)
+        showTradeToast(`Bought ${tokenName} — Tx: ${result.txSig?.substring(0, 16)}...`, true);
       } else {
-        alert(`Trade failed: ${result.message}`)
+        showTradeToast(`Trade failed: ${result.message}`, false);
       }
     } catch {
-      alert("Trade execution failed. Check your wallet balance and try again.")
+      showTradeToast("Trade execution failed. Check your wallet balance and try again.", false);
     } finally {
       setExecuting(null)
     }
@@ -215,6 +223,17 @@ export function AlphaFeed({
 
   return (
     <div className="space-y-6">
+      {tradeToast && (
+        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border text-sm font-black max-w-sm transition-all ${
+          tradeToast.success
+            ? 'bg-green-950 border-green-500/40 text-green-300'
+            : 'bg-red-950 border-red-500/40 text-red-300'
+        }`}>
+          <span>{tradeToast.success ? '✓' : '✗'}</span>
+          <span>{tradeToast.message}</span>
+          <button onClick={() => setTradeToast(null)} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>
+        </div>
+      )}
       <Card className="bg-zinc-950 border-zinc-900 overflow-hidden shadow-2xl rounded-[2rem]">
         {/* Header + Filters — single row */}
         <div className="px-6 py-4 border-b border-zinc-900 flex flex-wrap items-center gap-3 bg-zinc-950/20">

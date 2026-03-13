@@ -36,7 +36,6 @@ function setRateLimited() {
 function isPotentialPublicKey(value: string): boolean {
   if (!value) return false;
   if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) return false;
-  if (/[A-Z]{6,}/.test(value)) return false;
   if (/(.)\1{5,}/.test(value)) return false;
   return true;
 }

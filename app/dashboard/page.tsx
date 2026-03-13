@@ -303,11 +303,34 @@ export default function DashboardPage() {
   const balanceValue = metrics.available ? `${metrics.totalBalanceSol.toFixed(4)} SOL` : "0.0000 SOL";
   const profitPrefix = metrics.profit24hSol > 0 ? "+" : "";
   const profitValue = `${profitPrefix}${metrics.profit24hSol.toFixed(4)} SOL`;
+  const profitIsPositive = metrics.profit24hSol >= 0;
 
   return (
     <main className="min-h-screen bg-[#050505] text-white selection:bg-[#5100fd]/30">
       <div className="container mx-auto px-6 pt-32 pb-12">
         <div className="flex flex-col gap-8">
+
+          {metrics.available && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <StatCard
+                label="Trading Wallet Balance"
+                value={balanceValue}
+                subValue="Available to trade"
+              />
+              <StatCard
+                label="24h PnL"
+                value={profitValue}
+                subValue="Realized from trades"
+                trend={profitIsPositive ? "Profit" : "Loss"}
+                isPositive={profitIsPositive}
+              />
+              <StatCard
+                label="Trades (24h)"
+                value={String(metrics.tradeCount24h)}
+                subValue="Buys executed"
+              />
+            </div>
+          )}
 
           <div className="flex-1 space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
