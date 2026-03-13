@@ -1,24 +1,29 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { TrendingUp, Trash2, Info, AlertTriangle } from "lucide-react"
+import { TrendingUp, Trash2, Info } from "lucide-react"
 import { useState, useEffect } from "react"
 import type { CopyTrader, CopyTraderMode } from "@/lib/browser-copy-trading"
 
-function InfoBanner({ type, children }: { type: "info" | "warning"; children: React.ReactNode }) {
-  const styles = {
-    info: "bg-blue-950/40 border-blue-500/30 text-blue-300",
-    warning: "bg-amber-950/40 border-amber-500/30 text-amber-300",
-  }
-  const icons = {
-    info: <Info className="w-3 h-3 shrink-0 mt-0.5" />,
-    warning: <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />,
-  }
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
   return (
-    <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-[10px] leading-relaxed ${styles[type]}`}>
-      {icons[type]}
-      <span>{children}</span>
-    </div>
+    <span className="relative inline-flex items-center">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+        className="flex items-center justify-center w-4 h-4 text-zinc-500 hover:text-blue-400 transition-colors"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <span className="absolute left-5 top-0 z-50 w-56 rounded-xl bg-zinc-900 border border-zinc-700 px-3 py-2 text-[10px] text-zinc-300 leading-relaxed shadow-xl whitespace-normal pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -28,6 +33,7 @@ export function CopyTradingMiniCard() {
   const [buyAmount, setBuyAmount] = useState("0.5")
   const [mode, setMode] = useState<CopyTraderMode>("trade_and_alert")
   const [loading, setLoading] = useState(false)
+  const [globalEnabled, setGlobalEnabled] = useState(true)
   const [copyAlerts, setCopyAlerts] = useState<{ traderAddress: string; tokenAddress: string }[]>([])
 
   async function refreshTraders() {
@@ -36,6 +42,7 @@ export function CopyTradingMiniCard() {
   }
 
   async function ensureWatcher(traderList: CopyTrader[]) {
+    if (!globalEnabled) return
     if (traderList.filter((t) => t.enabled).length === 0) return
     const { startCopyTradingWatcher, isCopyTradingWatcherRunning } = await import("@/lib/browser-copy-trading")
     if (!isCopyTradingWatcherRunning()) startCopyTradingWatcher()
@@ -65,6 +72,17 @@ export function CopyTradingMiniCard() {
     }
   }, [])
 
+  async function handleGlobalToggle() {
+    const next = !globalEnabled
+    setGlobalEnabled(next)
+    if (!next) {
+      const { stopCopyTradingWatcher } = await import("@/lib/browser-copy-trading")
+      stopCopyTradingWatcher()
+    } else {
+      ensureWatcher(traders)
+    }
+  }
+
   async function handleAdd() {
     if (!address.trim()) return
     setLoading(true)
@@ -76,7 +94,7 @@ export function CopyTradingMiniCard() {
         mode,
         enabled: true,
       })
-      startCopyTradingWatcher()
+      if (globalEnabled) startCopyTradingWatcher()
       setAddress("")
     } finally {
       setLoading(false)
@@ -91,7 +109,7 @@ export function CopyTradingMiniCard() {
   async function handleToggle(addr: string, enabled: boolean) {
     const { updateCopyTrader, startCopyTradingWatcher } = await import("@/lib/browser-copy-trading")
     updateCopyTrader(addr, { enabled })
-    if (enabled) startCopyTradingWatcher()
+    if (enabled && globalEnabled) startCopyTradingWatcher()
   }
 
   const isAlertOnly = mode === "alert_only"
@@ -99,24 +117,31 @@ export function CopyTradingMiniCard() {
 
   return (
     <Card className="bg-zinc-950 border-zinc-900 p-5 rounded-[2rem] shadow-xl hover:border-zinc-800/50 transition-all group text-white">
+      {/* Header */}
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-[12px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-[#5100fd]" /> Copy Trading
+          <InfoTooltip text="Runs in this browser only. Keep this tab open. Wallet keys are stored locally and never sent to our servers." />
         </h3>
-        <div className="flex items-center gap-1.5">
-          <div className={`w-1.5 h-1.5 rounded-full ${activeCount > 0 ? "bg-green-500 animate-pulse" : "bg-zinc-600"}`} />
-          <span className="text-[10px] font-black uppercase tracking-widest">
-            {activeCount > 0 ? `${activeCount} Live` : "Idle"}
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className={`w-1.5 h-1.5 rounded-full ${activeCount > 0 && globalEnabled ? "bg-green-500 animate-pulse" : "bg-zinc-600"}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest">
+              {activeCount > 0 && globalEnabled ? `${activeCount} Live` : "Idle"}
+            </span>
+          </div>
+          <button
+            onClick={handleGlobalToggle}
+            title={globalEnabled ? "Copy Trading ON — click to pause all" : "Copy Trading OFF — click to resume"}
+            className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-all shadow-lg ${globalEnabled ? "bg-[#5100fd]" : "bg-zinc-800"}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white transition-all shadow-md ${globalEnabled ? "translate-x-5" : "translate-x-0"}`} />
+          </button>
         </div>
       </div>
 
-      <InfoBanner type="info">
-        Runs <strong>in this browser only</strong>. Keep this tab open. Wallet keys are stored locally and never sent to our servers.
-      </InfoBanner>
-
       {traders.length > 0 && (
-        <div className="space-y-2 mt-3">
+        <div className="space-y-2">
           {traders.map((trader) => (
             <div
               key={trader.address}
@@ -161,7 +186,7 @@ export function CopyTradingMiniCard() {
       )}
 
       {traders.length === 0 && (
-        <p className="text-[12px] text-zinc-500 font-bold italic text-center mt-3 mb-1">No active copy traders</p>
+        <p className="text-[12px] text-zinc-500 font-bold italic text-center mt-1 mb-1">No active copy traders</p>
       )}
 
       {copyAlerts.length > 0 && (
@@ -216,9 +241,7 @@ export function CopyTradingMiniCard() {
         </div>
 
         {!isAlertOnly && (
-          <InfoBanner type="warning">
-            <strong>Trade & Alert</strong> will use your Sniper wallet to copy buy orders. Keep this tab open for it to work.
-          </InfoBanner>
+          <p className="text-[10px] text-amber-400/70">Trade & Alert uses your Sniper wallet — keep this tab open.</p>
         )}
 
         <button

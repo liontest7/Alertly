@@ -19,7 +19,10 @@ export async function executeBrowserTrade(
     const { Keypair, Connection, VersionedTransaction, LAMPORTS_PER_SOL } =
       await import("@solana/web3.js")
 
-    const secretKey = new Uint8Array(Buffer.from(wallet.privateKey, "base64"))
+    const b64 = wallet.privateKey
+    const binary = atob(b64)
+    const secretKey = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) secretKey[i] = binary.charCodeAt(i)
     const keypair = Keypair.fromSecretKey(secretKey)
 
     const rpcUrl =
@@ -70,7 +73,9 @@ export async function executeBrowserTrade(
       return { success: false, message: "No transaction returned from Jupiter" }
     }
 
-    const txBuf = Buffer.from(swapTransaction, "base64")
+    const txBinary = atob(swapTransaction)
+    const txBuf = new Uint8Array(txBinary.length)
+    for (let i = 0; i < txBinary.length; i++) txBuf[i] = txBinary.charCodeAt(i)
     const tx = VersionedTransaction.deserialize(txBuf)
     tx.sign([keypair])
 

@@ -609,12 +609,7 @@ export function TradesPanel({ user, settings }: { user: any; settings: any }) {
 
       {/* Content */}
       <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 50px)" }}>
-        {!user ? (
-          <div className="p-12 text-center">
-            <BarChart2 className="w-8 h-8 text-zinc-700 mx-auto mb-4" />
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Connect wallet to view trades</p>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="p-12 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-[#5100fd] mx-auto mb-4" />
             <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Loading trades…</p>

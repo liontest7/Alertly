@@ -6,6 +6,19 @@ export type BrowserWallet = {
   createdAt: string
 }
 
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = ""
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary)
+}
+
+function base64ToUint8(b64: string): Uint8Array {
+  const binary = atob(b64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 export function getBrowserWallet(): BrowserWallet | null {
   if (typeof window === "undefined") return null
   try {
@@ -32,7 +45,7 @@ export async function generateBrowserWallet(): Promise<BrowserWallet> {
   const keypair = Keypair.generate()
   const wallet: BrowserWallet = {
     address: keypair.publicKey.toBase58(),
-    privateKey: Buffer.from(keypair.secretKey).toString("base64"),
+    privateKey: uint8ToBase64(keypair.secretKey),
     createdAt: new Date().toISOString(),
   }
   saveBrowserWallet(wallet)
@@ -50,9 +63,8 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
       const arr = JSON.parse(trimmed)
       secretKey = new Uint8Array(arr)
     } else {
-      const buf = Buffer.from(trimmed, "base64")
-      if (buf.length !== 64) throw new Error("bad length")
-      secretKey = new Uint8Array(buf)
+      secretKey = base64ToUint8(trimmed)
+      if (secretKey.length !== 64) throw new Error("bad length")
     }
   } catch {
     throw new Error("Invalid private key. Expected base64 (64 bytes) or JSON byte array.")
@@ -61,7 +73,7 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
   const keypair = Keypair.fromSecretKey(secretKey)
   const wallet: BrowserWallet = {
     address: keypair.publicKey.toBase58(),
-    privateKey: Buffer.from(secretKey).toString("base64"),
+    privateKey: uint8ToBase64(secretKey),
     createdAt: new Date().toISOString(),
   }
   saveBrowserWallet(wallet)

@@ -1,6 +1,6 @@
 "use client"
 
-import { Zap, Settings, Copy, Check, Eye, EyeOff, Download, Upload, Trash2, AlertTriangle, Info, RefreshCw } from "lucide-react"
+import { Zap, Settings, Copy, Check, Eye, EyeOff, Download, Upload, Trash2, Info, RefreshCw } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import type { BrowserWallet } from "@/lib/browser-wallet"
@@ -14,22 +14,25 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
 }
 
-function InfoBanner({ type, children }: { type: "warning" | "info" | "danger"; children: React.ReactNode }) {
-  const styles = {
-    warning: "bg-amber-950/40 border-amber-500/30 text-amber-300",
-    info: "bg-blue-950/40 border-blue-500/30 text-blue-300",
-    danger: "bg-red-950/40 border-red-500/30 text-red-300",
-  }
-  const icons = {
-    warning: <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />,
-    info: <Info className="w-3 h-3 shrink-0 mt-0.5" />,
-    danger: <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />,
-  }
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false)
   return (
-    <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-[10px] leading-relaxed ${styles[type]}`}>
-      {icons[type]}
-      <span>{children}</span>
-    </div>
+    <span className="relative inline-flex items-center">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+        className="flex items-center justify-center w-4 h-4 rounded-full text-zinc-500 hover:text-blue-400 transition-colors"
+      >
+        <Info className="w-3.5 h-3.5" />
+      </button>
+      {show && (
+        <span className="absolute left-5 top-0 z-50 w-56 rounded-xl bg-zinc-900 border border-zinc-700 px-3 py-2 text-[10px] text-zinc-300 leading-relaxed shadow-xl whitespace-normal pointer-events-none">
+          {text}
+        </span>
+      )}
+    </span>
   )
 }
 
@@ -144,6 +147,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-[#5100fd]" /> Sniper Configuration
+          <InfoTooltip text="Your wallet is stored only in this browser. The private key never reaches our servers. Keep this tab open for Auto-Trade to work." />
         </h3>
         <div className="flex items-center gap-2.5">
           <button
@@ -167,10 +171,6 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
       {/* ── No wallet yet ── */}
       {!wallet && (
         <div className="space-y-3">
-          <InfoBanner type="info">
-            Your trading wallet is generated and stored <strong>only in this browser</strong>. The private key never reaches our servers. Keep this tab open for Auto-Trade to work.
-          </InfoBanner>
-
           {!showImport ? (
             <div className="space-y-2">
               <p className="text-[11px] text-zinc-400">Create a new wallet or import one you already own.</p>
@@ -307,9 +307,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
 
           {/* Quiet storage reminder */}
           {!showKey && (
-            <InfoBanner type="info">
-              Stored <strong>only in this browser</strong>. Use <em>Export</em> to save a backup. Keep this tab open while Auto-Trade is active.
-            </InfoBanner>
+            <p className="text-[10px] text-zinc-500">Stored only in this browser. Use Export to back up your key.</p>
           )}
 
           {/* Remove */}
@@ -364,18 +362,10 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
         </div>
 
         {settings.autoTrade && wallet && (
-          <div className="mt-2">
-            <InfoBanner type="info">
-              Auto-Trade is <strong>ON</strong>. New alerts will trigger trades automatically in this browser. Keep this tab open.
-            </InfoBanner>
-          </div>
+          <p className="mt-1.5 text-[10px] text-green-400/80">● Auto-Trade ON — keep this tab open for trades to execute.</p>
         )}
         {settings.autoTrade && !wallet && (
-          <div className="mt-2">
-            <InfoBanner type="warning">
-              Generate or import a wallet above to activate Auto-Trade.
-            </InfoBanner>
-          </div>
+          <p className="mt-1.5 text-[10px] text-amber-400/80">● Generate or import a wallet above to activate Auto-Trade.</p>
         )}
       </div>
 
