@@ -68,3 +68,8 @@ ALERTLY_API_BASE_URL = "https://alertly-5zmw.onrender.com"
 NEXT_PUBLIC_APP_URL = "https://alertly-5zmw.onrender.com"
 JWT_SECRET = "4baf7f0c4b7e5d2b1e9e7a0f3c8d9e6b7c5d4a2f"
 ADMIN_WALLETS = "DajB37qp74UzwND3N1rVWtLdxr55nhvuK2D4x476zmns"
+
+[deployment]
+deploymentTarget = "vm"
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]

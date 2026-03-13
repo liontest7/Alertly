@@ -27,6 +27,31 @@ type AdminLogs = {
   failedTrades: Array<{ id: string; action: string; status: string; message?: string | null; createdAt: string }>;
 };
 
+type TestResult = {
+  name: string;
+  status: "pass" | "fail" | "skip";
+  duration: number;
+  error?: string;
+};
+
+type TestSuite = {
+  file: string;
+  tests: TestResult[];
+  passed: number;
+  failed: number;
+  skipped: number;
+  duration: number;
+};
+
+type TestRunResult = {
+  ok: boolean;
+  duration: number;
+  suites: TestSuite[];
+  summary: { total: number; passed: number; failed: number; skipped: number };
+  ranAt: string;
+  error?: string;
+};
+
 type UserTrades = {
   userId: string;
   summary: {
@@ -60,6 +85,8 @@ export default function AdminPage() {
   const [tradesModal, setTradesModal] = useState<{ userId: string; wallet: string } | null>(null);
   const [tradesData, setTradesData] = useState<UserTrades | null>(null);
   const [tradesLoading, setTradesLoading] = useState(false);
+  const [testResult, setTestResult] = useState<TestRunResult | null>(null);
+  const [testRunning, setTestRunning] = useState(false);
 
   const fetchOverview = async () => {
     const res = await fetch("/api/admin/overview", { cache: "no-store" });
@@ -142,6 +169,17 @@ export default function AdminPage() {
       fetchUserTrades(tradesModal.userId);
     }
   }, [tradesModal]);
+
+  const runTests = async (suite: "unit" | "integration" | "all") => {
+    setTestRunning(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`/api/admin/tests/run?suite=${suite}`, { method: "POST" });
+      if (res.ok) setTestResult(await res.json());
+    } finally {
+      setTestRunning(false);
+    }
+  };
 
   const title = useMemo(() => `Admin Panel • ${overview?.listener?.running ? "LIVE" : "OFFLINE"}`, [overview]);
 
@@ -321,6 +359,109 @@ export default function AdminPage() {
         <LogCard title="Recent Alerts" items={(logs?.recentAlerts || []).map((x) => `${x.type} • ${x.name} • ${x.riskLevel}`)} />
         <LogCard title="Recent Blockchain Events" items={(logs?.recentEvents || []).map((x) => `${x.eventType} • ${x.dex}`)} />
         <LogCard title="Failed Trades" items={(logs?.failedTrades || []).map((x) => `${x.action} • ${x.status} • ${x.message || "-"}`)} />
+      </section>
+
+      {/* Test Runner */}
+      <section className="space-y-3">
+        <div className="font-bold text-zinc-300">Test Runner</div>
+        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <button
+              onClick={() => runTests("unit")}
+              disabled={testRunning}
+              className="px-4 py-2 rounded-lg bg-[#5100fd] text-white text-sm font-bold disabled:opacity-50 hover:bg-[#5100fd]/80 transition-colors"
+            >
+              {testRunning ? "Running…" : "Run Unit Tests"}
+            </button>
+            <button
+              onClick={() => runTests("integration")}
+              disabled={testRunning}
+              className="px-4 py-2 rounded-lg bg-zinc-700 text-white text-sm font-bold disabled:opacity-50 hover:bg-zinc-600 transition-colors"
+            >
+              {testRunning ? "Running…" : "Run Integration Tests"}
+            </button>
+            <button
+              onClick={() => runTests("all")}
+              disabled={testRunning}
+              className="px-4 py-2 rounded-lg bg-zinc-800 text-white text-sm font-bold disabled:opacity-50 hover:bg-zinc-700 transition-colors"
+            >
+              {testRunning ? "Running…" : "Run All Tests"}
+            </button>
+            {testResult && (
+              <span className="text-xs text-zinc-500 ml-auto">
+                Last run: {new Date(testResult.ranAt).toLocaleTimeString()} • {(testResult.duration / 1000).toFixed(1)}s
+              </span>
+            )}
+          </div>
+
+          {testRunning && (
+            <div className="flex items-center gap-3 py-4 text-zinc-400 text-sm">
+              <div className="w-4 h-4 border-2 border-[#5100fd] border-t-transparent rounded-full animate-spin" />
+              Running tests… this may take up to 30 seconds
+            </div>
+          )}
+
+          {testResult && !testRunning && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-zinc-900 rounded-lg p-3 text-center">
+                  <div className="text-xs text-zinc-500 mb-1">Total</div>
+                  <div className="text-xl font-black text-white">{testResult.summary.total}</div>
+                </div>
+                <div className="bg-zinc-900 rounded-lg p-3 text-center">
+                  <div className="text-xs text-zinc-500 mb-1">Passed</div>
+                  <div className="text-xl font-black text-green-400">{testResult.summary.passed}</div>
+                </div>
+                <div className="bg-zinc-900 rounded-lg p-3 text-center">
+                  <div className="text-xs text-zinc-500 mb-1">Failed</div>
+                  <div className="text-xl font-black text-red-400">{testResult.summary.failed}</div>
+                </div>
+                <div className="bg-zinc-900 rounded-lg p-3 text-center">
+                  <div className="text-xs text-zinc-500 mb-1">Skipped</div>
+                  <div className="text-xl font-black text-yellow-400">{testResult.summary.skipped}</div>
+                </div>
+              </div>
+
+              {testResult.error && (
+                <div className="bg-red-950/40 border border-red-800 rounded-lg p-3 text-red-400 text-xs">
+                  {testResult.error}
+                </div>
+              )}
+
+              {testResult.suites.map((suite) => (
+                <div key={suite.file} className="bg-zinc-900 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 bg-zinc-800">
+                    <span className="font-mono text-xs text-zinc-300">{suite.file}</span>
+                    <div className="flex gap-3 text-xs">
+                      <span className="text-green-400">{suite.passed} passed</span>
+                      {suite.failed > 0 && <span className="text-red-400">{suite.failed} failed</span>}
+                      <span className="text-zinc-500">{suite.duration}ms</span>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-zinc-800">
+                    {suite.tests.map((t, i) => (
+                      <div key={i} className="px-4 py-2 flex items-start gap-3 text-xs">
+                        <span className={`flex-shrink-0 font-bold ${
+                          t.status === "pass" ? "text-green-400" :
+                          t.status === "fail" ? "text-red-400" : "text-yellow-400"
+                        }`}>
+                          {t.status === "pass" ? "✓" : t.status === "fail" ? "✗" : "○"}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-zinc-300">{t.name}</div>
+                          {t.error && (
+                            <pre className="mt-1 text-red-400 text-xs whitespace-pre-wrap break-all">{t.error}</pre>
+                          )}
+                        </div>
+                        <span className="text-zinc-600 flex-shrink-0">{t.duration}ms</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Trades Modal */}

@@ -12,7 +12,11 @@
     "check:alerts-latency": "node scripts/alerts-latency-check.mjs",
     "build:extension": "cd chrome-extension && npm run build",
     "check:prod-smoke": "node scripts/prod-smoke-check.mjs",
-    "check:slo": "node scripts/slo-load-check.mjs"
+    "check:slo": "node scripts/slo-load-check.mjs",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.4.0",
@@ -92,10 +96,12 @@
     "@types/pg": "^8.18.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^4.1.0",
     "pino-pretty": "^13.1.3",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "tw-animate-css": "^1.3.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }
