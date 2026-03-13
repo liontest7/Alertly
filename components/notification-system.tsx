@@ -39,74 +39,99 @@ export function NotificationSystem() {
   const router = useRouter();
   const { user } = useAuthSession();
 
-  const startTimeRef = useRef<number>(Date.now());
+  const sessionStartRef = useRef<number>(Date.now());
   const initializedRef = useRef(false);
-  const notifiedTokensRef = useRef<Set<string>>(new Set());
+  const notifiedFingerprintsRef = useRef<Set<string>>(new Set());
   const lastFingerprintRef = useRef<string | null>(null);
 
   const [notification, setNotification] = useState<AlertNotification | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-
-    startTimeRef.current = Date.now();
+    if (!user) {
+      initializedRef.current = false;
+      lastFingerprintRef.current = null;
+      notifiedFingerprintsRef.current = new Set();
+      return;
+    }
+    sessionStartRef.current = Date.now();
     initializedRef.current = false;
+    notifiedFingerprintsRef.current = new Set();
+    lastFingerprintRef.current = null;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
 
     const checkAlerts = async () => {
       try {
         const res = await fetch("/api/alerts");
         if (!res.ok) return;
         const data = await res.json();
-        const latest = Array.isArray(data) ? data[0] : null;
-        if (!latest) return;
+        if (!Array.isArray(data) || data.length === 0) return;
 
+        const latest = data[0];
         const fingerprint: string = latest.fingerprint || `${latest.address}:${latest.type}`;
 
         if (!initializedRef.current) {
           lastFingerprintRef.current = fingerprint;
           initializedRef.current = true;
-          const tokenKey = `${latest.address}:${latest.type}`;
-          notifiedTokensRef.current.add(tokenKey);
           return;
         }
 
         if (fingerprint === lastFingerprintRef.current) return;
         lastFingerprintRef.current = fingerprint;
 
+        if (notifiedFingerprintsRef.current.has(fingerprint)) return;
+
         const alertedAt = latest.alertedAt ? new Date(latest.alertedAt).getTime() : 0;
-        if (alertedAt === 0 || alertedAt < startTimeRef.current) return;
+        const mustBeNewerThan = sessionStartRef.current + 5_000;
+        if (alertedAt === 0 || alertedAt < mustBeNewerThan) return;
 
-        const tokenKey = `${latest.address}:${latest.type}`;
-        if (notifiedTokensRef.current.has(tokenKey)) return;
-        notifiedTokensRef.current.add(tokenKey);
+        if (!latest.address || !latest.type) return;
 
-        if (latest.name === "Loading..." || !latest.name) {
-          await new Promise((r) => setTimeout(r, 2500));
-          const res2 = await fetch("/api/alerts");
-          if (!res2.ok) return;
-          const data2 = await res2.json();
-          const refreshed = Array.isArray(data2) ? data2.find((a: any) => a.address === latest.address) : null;
-          if (refreshed && refreshed.name && refreshed.name !== "Loading...") {
-            Object.assign(latest, refreshed);
-          }
+        notifiedFingerprintsRef.current.add(fingerprint);
+        if (notifiedFingerprintsRef.current.size > 300) {
+          const first = notifiedFingerprintsRef.current.values().next().value;
+          if (first) notifiedFingerprintsRef.current.delete(first);
         }
+
+        let name = latest.name;
+        let symbol = latest.symbol;
+
+        if (!name || name === "Loading...") {
+          await new Promise((r) => setTimeout(r, 3000));
+          try {
+            const res2 = await fetch("/api/alerts");
+            if (res2.ok) {
+              const data2 = await res2.json();
+              const refreshed = Array.isArray(data2)
+                ? data2.find((a: any) => a.address === latest.address)
+                : null;
+              if (refreshed?.name && refreshed.name !== "Loading...") {
+                name = refreshed.name;
+                symbol = refreshed.symbol;
+              }
+            }
+          } catch {}
+        }
+
+        if (!name || name === "Loading...") return;
 
         const isOnDashboard = pathname === "/dashboard";
         if (!isOnDashboard) {
           playNotificationSound();
           setNotification({
             fingerprint,
-            title: `New ${latest.type || "Alert"}`,
-            message: `${latest.name || ""} ${latest.symbol ? `($${latest.symbol})` : ""} — MC: ${latest.mc || "-"} | Liq: ${latest.liquidity || "-"}`,
+            title: `New ${(latest.type || "Alert").replace(/_/g, " ")}`,
+            message: `${name}${symbol ? ` ($${symbol})` : ""} — MC: ${latest.mc || "—"} | Liq: ${latest.liquidity || "—"}`,
             address: latest.address || "",
           });
           setTimeout(() => setNotification(null), 8000);
         }
-      } catch {
-      }
+      } catch {}
     };
 
-    const interval = setInterval(checkAlerts, 6000);
+    const interval = setInterval(checkAlerts, 8000);
     return () => clearInterval(interval);
   }, [user, pathname]);
 

@@ -16,10 +16,10 @@ const RATE_LIMIT_BACKOFF_MS = 15_000;
 
 // For boosts: track last known totalAmount per token — alert only on real increase
 const lastBoostTotalAmounts = new Map<string, number>();
-const MAX_BOOST_TRACKING = 5_000;
+const MAX_BOOST_TRACKING = 500;
 // For listings: still deduplicate (each token listed only once per session)
 const seenListingFingerprints = new Set<string>();
-const MAX_LISTING_FINGERPRINTS = 10_000;
+const MAX_LISTING_FINGERPRINTS = 1_000;
 
 let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;

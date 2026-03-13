@@ -119,6 +119,7 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   if (typeof filters.minMarketCap === "number" && filters.minMarketCap > 0 && mcValue !== null && mcValue < filters.minMarketCap) return false;
   if (typeof filters.maxMarketCap === "number" && filters.maxMarketCap > 0 && mcValue !== null && mcValue > filters.maxMarketCap) return false;
   if (typeof filters.minLiquidity === "number" && filters.minLiquidity > 0 && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
+  if (typeof filters.minHolders === "number" && filters.minHolders > 0 && alert.holders > 0 && alert.holders < filters.minHolders) return false;
 
   return true;
 }

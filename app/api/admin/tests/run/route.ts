@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/access";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { readFileSync, unlinkSync, existsSync } from "fs";
-import { join } from "path";
 
 const execAsync = promisify(exec);
 
@@ -81,6 +79,24 @@ function parseVitestJson(raw: any): { suites: SuiteResult[]; passed: number; fai
   return { suites, passed: totalPassed, failed: totalFailed, skipped: totalSkipped };
 }
 
+function extractJson(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inStr = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escape) { escape = false; continue; }
+    if (c === "\\" && inStr) { escape = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === "{") depth++;
+    if (c === "}") { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
   const access = await requireAdmin(req);
   if (!access.ok) {
@@ -96,29 +112,32 @@ export async function POST(req: Request) {
     ? "tests/integration"
     : "tests";
 
-  const outputFile = join("/tmp", `vitest-results-${Date.now()}.json`);
   const startTime = Date.now();
   let runError = false;
-  let stderrText = "";
+  let stdout = "";
+  let stderr = "";
 
   try {
     const result = await execAsync(
-      `node_modules/.bin/vitest run ${testPath} --reporter=json --outputFile=${outputFile}`,
-      { cwd: process.cwd(), timeout: 55_000 }
+      `node_modules/.bin/vitest run ${testPath} --reporter=json`,
+      { cwd: process.cwd(), timeout: 55_000, maxBuffer: 10 * 1024 * 1024 }
     );
-    stderrText = result.stderr || "";
+    stdout = result.stdout || "";
+    stderr = result.stderr || "";
   } catch (err: any) {
-    stderrText = err.stderr || "";
+    stdout = err.stdout || "";
+    stderr = err.stderr || "";
     runError = true;
   }
 
   const totalDuration = Date.now() - startTime;
 
-  if (!existsSync(outputFile)) {
-    const fallbackMsg = stderrText.slice(0, 800) || "Test runner did not produce output. Check that test files exist.";
+  const jsonStr = extractJson(stdout);
+  if (!jsonStr) {
+    const preview = (stderr || stdout).slice(0, 1000);
     return NextResponse.json({
       ok: false,
-      error: fallbackMsg,
+      error: preview || "Test runner produced no output. Ensure test files exist under the selected path.",
       duration: totalDuration,
       suites: [],
       summary: { total: 0, passed: 0, failed: 0, skipped: 0 },
@@ -128,19 +147,16 @@ export async function POST(req: Request) {
 
   let parsed: any = null;
   try {
-    const raw = readFileSync(outputFile, "utf-8");
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(jsonStr);
   } catch {
     return NextResponse.json({
       ok: false,
-      error: "Could not parse test output file.",
+      error: "Test output was not valid JSON. Raw: " + jsonStr.slice(0, 500),
       duration: totalDuration,
       suites: [],
       summary: { total: 0, passed: 0, failed: 0, skipped: 0 },
       ranAt: new Date().toISOString(),
     });
-  } finally {
-    try { unlinkSync(outputFile); } catch {}
   }
 
   const { suites, passed, failed, skipped } = parseVitestJson(parsed);

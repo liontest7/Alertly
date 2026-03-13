@@ -6,7 +6,6 @@ export default defineConfig({
     globals: true,
     environment: "node",
     testTimeout: 15000,
-    reporters: ["verbose"],
     include: ["tests/**/*.test.ts"],
   },
   resolve: {

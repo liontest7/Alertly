@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-
-/* ─── Types ─────────────────────────────────────────── */
+import { useEffect, useRef, useState } from "react";
 
 type AdminOverview = {
   users: { total: number; banned: number; frozen: number; telegramLinked: number };
@@ -24,9 +22,9 @@ type AdminUser = {
 };
 
 type AdminLogs = {
-  recentAlerts: Array<{ id: string; type: string; name: string; riskLevel: string; alertedAt: string }>;
-  recentEvents: Array<{ id: string; eventType: string; dex: string; timestamp: string }>;
-  failedTrades: Array<{ id: string; action: string; status: string; message?: string | null; createdAt: string }>;
+  alerts: Array<{ id: string; type: string; name: string; symbol?: string; mc?: string; liquidity?: string; alertedAt: string }>;
+  trades: Array<any>;
+  blockchainEvents: Array<any>;
 };
 
 type TestResult = { name: string; status: "pass" | "fail" | "skip"; duration: number; error?: string };
@@ -43,104 +41,60 @@ type UserTrades = {
   trades: Array<{ id: string; action: string; tokenAddress: string; alertType: string; amount: number; slippage: number; status: string; txSig?: string | null; message?: string | null; createdAt: string }>;
 };
 
-/* ─── Design tokens ──────────────────────────────────── */
-
-const C = {
-  bg: "#050505",
-  surface: "#0e0e14",
-  card: "#111118",
-  border: "#1e1e2e",
-  accent: "#5100fd",
-  accentMid: "rgba(81,0,253,0.15)",
-  accentBorder: "rgba(81,0,253,0.35)",
-  text: "#f0f0f8",
-  muted: "#8b8ba0",
-  dim: "#4a4a60",
-  green: "#22c55e",
-  red: "#ef4444",
-  yellow: "#eab308",
-  blue: "#3b82f6",
-};
-
-/* ─── Tiny helpers ───────────────────────────────────── */
-
-function StatusDot({ on, pulse }: { on: boolean; pulse?: boolean }) {
+function Spinner({ size = 16 }: { size?: number }) {
   return (
     <span
-      className={pulse && on ? "animate-pulse" : ""}
-      style={{
-        display: "inline-block", width: 8, height: 8, borderRadius: "50%",
-        backgroundColor: on ? C.green : C.red, flexShrink: 0,
-      }}
+      className="inline-block rounded-full border-2 border-[#5100fd] border-t-transparent animate-spin"
+      style={{ width: size, height: size, flexShrink: 0 }}
     />
   );
 }
 
-function InfraStatus({ label, value }: { label: string; value: string }) {
+function StatusBadge({ on }: { on: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${on ? "bg-green-500/10 text-green-400 border border-green-500/25" : "bg-red-500/10 text-red-400 border border-red-500/25"}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${on ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+      {on ? "Live" : "Offline"}
+    </span>
+  );
+}
+
+function Pill({ label, variant }: { label: string; variant: "green" | "red" | "yellow" | "purple" | "gray" }) {
+  const cls = {
+    green: "bg-green-500/10 text-green-400 border-green-500/25",
+    red: "bg-red-500/10 text-red-400 border-red-500/25",
+    yellow: "bg-yellow-500/10 text-yellow-400 border-yellow-500/25",
+    purple: "bg-[#5100fd]/10 text-[#5100fd] border-[#5100fd]/25",
+    gray: "bg-zinc-800 text-zinc-400 border-zinc-700",
+  }[variant];
+  return <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${cls}`}>{label}</span>;
+}
+
+function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: boolean }) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+      <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">{label}</div>
+      <div className={`text-3xl font-black leading-none ${accent ? "text-[#5100fd]" : "text-white"}`}>{value}</div>
+      {sub && <div className="text-[10px] text-zinc-600 mt-1.5">{sub}</div>}
+    </div>
+  );
+}
+
+function InfraRow({ label, value }: { label: string; value: string }) {
   const ok = value === "ok";
-  const color = ok ? C.green : value === "missing" ? C.yellow : C.red;
+  const missing = value === "missing";
+  const color = ok ? "text-green-400" : missing ? "text-yellow-400" : "text-red-400";
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
-      <span style={{ fontSize: 12, color: C.muted }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.05em" }}>{value}</span>
+    <div className="flex items-center justify-between py-2.5 border-b border-zinc-800 last:border-0">
+      <span className="text-xs text-zinc-500">{label}</span>
+      <span className={`text-[10px] font-bold uppercase tracking-wider ${color}`}>{value}</span>
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 14 }}>
-      {children}
-    </div>
-  );
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4">{children}</div>;
 }
-
-function Card({ label, value, sub, color = C.text }: { label: string; value: number | string; sub?: string; color?: string }) {
-  return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 20px" }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: C.dim, marginTop: 5 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function Pill({ children, color }: { children: React.ReactNode; color: string }) {
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 6,
-      backgroundColor: `${color}20`, color, border: `1px solid ${color}40`,
-    }}>{children}</span>
-  );
-}
-
-function ActionBtn({ children, onClick, variant = "default" }: {
-  children: React.ReactNode; onClick: () => void;
-  variant?: "default" | "danger" | "success" | "warning" | "accent";
-}) {
-  const colors: Record<string, { bg: string; text: string }> = {
-    default: { bg: C.surface, text: C.muted },
-    danger: { bg: "rgba(239,68,68,0.15)", text: C.red },
-    success: { bg: "rgba(34,197,94,0.15)", text: C.green },
-    warning: { bg: "rgba(234,179,8,0.15)", text: C.yellow },
-    accent: { bg: C.accentMid, text: C.accent },
-  };
-  const { bg, text } = colors[variant];
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700,
-        backgroundColor: bg, color: text, border: `1px solid ${text}40`,
-        cursor: "pointer", transition: "opacity 0.15s",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/* ─── Main component ─────────────────────────────────── */
 
 export default function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -159,13 +113,12 @@ export default function AdminPage() {
   const [testSuite, setTestSuite] = useState<"unit" | "integration" | "all">("unit");
   const [expandedSuite, setExpandedSuite] = useState<string | null>(null);
   const [controlLoading, setControlLoading] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const fetchOverview = async () => {
     const res = await fetch("/api/admin/overview", { cache: "no-store" });
-    if (!res.ok) {
-      if (res.status === 403) { setOverview(null); setLoading(false); return; }
-      throw new Error("Failed");
-    }
+    if (res.status === 403) { setAccessDenied(true); setLoading(false); return; }
+    if (!res.ok) throw new Error("Failed");
     setOverview(await res.json());
     setLastRefresh(new Date());
   };
@@ -175,7 +128,7 @@ export default function AdminPage() {
     if (q) params.set("q", q);
     if (statusFilter !== "all") params.set("status", statusFilter);
     const res = await fetch(`/api/admin/users?${params.toString()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("Forbidden");
+    if (!res.ok) return;
     const data = await res.json();
     const list = data.users || [];
     setUsers(list);
@@ -266,30 +219,26 @@ export default function AdminPage() {
     await fetchUsers();
   };
 
-  /* ── Loading / Access denied ── */
-
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center", color: C.muted }}>
-          <div style={{ width: 32, height: 32, border: `3px solid ${C.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 12px" }} />
-          <div style={{ fontSize: 13 }}>Loading admin panel…</div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size={32} />
+          <p className="text-zinc-500 text-sm">Loading admin panel…</p>
         </div>
       </div>
     );
   }
 
-  if (!overview) {
+  if (accessDenied || !overview) {
     return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 32 }}>
-        <div style={{ fontSize: 32 }}>🔐</div>
-        <div style={{ fontSize: 20, fontWeight: 900, color: C.text }}>Access Denied</div>
-        <div style={{ fontSize: 13, color: C.muted, textAlign: "center", maxWidth: 320 }}>
-          Your wallet is not on the admin list. Connect an authorized wallet to access this panel.
-        </div>
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4 p-8">
+        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-2xl">🔐</div>
+        <h1 className="text-xl font-black text-white">Access Denied</h1>
+        <p className="text-zinc-500 text-sm text-center max-w-xs">Your wallet is not on the admin allowlist. Connect an authorized wallet to continue.</p>
         <button
           onClick={() => window.location.reload()}
-          style={{ marginTop: 8, padding: "10px 24px", borderRadius: 10, background: C.accent, color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer", border: "none" }}
+          className="mt-2 px-6 py-2.5 rounded-xl bg-[#5100fd] text-white font-bold text-sm hover:bg-[#5100fd]/80 transition-colors"
         >
           Retry
         </button>
@@ -297,162 +246,140 @@ export default function AdminPage() {
     );
   }
 
-  const liveColor = overview.listener.running ? C.green : C.red;
+  const recentAlerts = logs?.alerts ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif" }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } } * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
-
-      {/* ── Header ── */}
-      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", background: C.surface }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.text, letterSpacing: "-0.02em" }}>Alertly Admin</div>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 20,
-            backgroundColor: overview.listener.running ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
-            border: `1px solid ${overview.listener.running ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"}`,
-          }}>
-            <StatusDot on={overview.listener.running} pulse />
-            <span style={{ fontSize: 10, fontWeight: 800, color: liveColor, letterSpacing: "0.06em" }}>
-              {overview.listener.running ? "LIVE" : "OFFLINE"}
-            </span>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Header */}
+      <div className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-base font-black tracking-tight">Alertly Admin</span>
+            <StatusBadge on={overview.listener.running} />
           </div>
-        </div>
-        <div style={{ fontSize: 11, color: C.dim }}>
-          {lastRefresh ? `Refreshed ${lastRefresh.toLocaleTimeString()}` : ""}
+          <div className="flex items-center gap-3">
+            {lastRefresh && (
+              <span className="text-[10px] text-zinc-600">Refreshed {lastRefresh.toLocaleTimeString()}</span>
+            )}
+            <button
+              onClick={() => { fetchOverview().catch(() => null); fetchLogs().catch(() => null); fetchUsers().catch(() => null); }}
+              className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700"
+            >
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 28 }}>
+      <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
 
-        {/* ── Stats row ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
-          <Card label="Telegram Users" value={overview.users.total} />
-          <Card label="Alerts 24h" value={overview.activity.alerts24h} color={C.accent} />
-          <Card label="Trades 24h" value={overview.activity.trades24h} color={C.green} />
-          <Card label="Banned" value={overview.users.banned} color={overview.users.banned > 0 ? C.red : C.dim} />
-          <Card label="Uptime" value={overview.listener.uptime || "—"} sub={overview.listener.mode || undefined} />
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatCard label="Telegram Users" value={overview.users.total} />
+          <StatCard label="Alerts 24h" value={overview.activity.alerts24h} accent />
+          <StatCard label="Trades 24h" value={overview.activity.trades24h} />
+          <StatCard label="Banned" value={overview.users.banned} sub={overview.users.banned > 0 ? "action needed" : "none"} />
+          <StatCard label="Uptime" value={overview.listener.uptime || "—"} sub={overview.listener.mode || undefined} />
         </div>
 
-        {/* ── Listener + Infrastructure ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-
-          {/* Listener control */}
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-            <SectionTitle>Listener Control</SectionTitle>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <StatusDot on={overview.listener.running} pulse />
-              <span style={{ fontSize: 13, fontWeight: 700, color: liveColor }}>
+        {/* Listener + Infra */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Listener */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <SectionHeader>Listener Control</SectionHeader>
+            <div className="flex items-center gap-2.5 mb-5">
+              <span className={`w-2 h-2 rounded-full ${overview.listener.running ? "bg-green-400 animate-pulse" : "bg-red-400"}`} />
+              <span className={`text-sm font-bold ${overview.listener.running ? "text-green-400" : "text-red-400"}`}>
                 {overview.listener.running ? "Running" : "Stopped"}
               </span>
               {overview.listener.uptime && (
-                <span style={{ fontSize: 11, color: C.dim }}>· {overview.listener.uptime}</span>
+                <span className="text-xs text-zinc-600">· {overview.listener.uptime}</span>
               )}
             </div>
 
             {overview.listener.monitors && overview.listener.monitors.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: C.dim, fontWeight: 600, marginBottom: 8, letterSpacing: "0.05em" }}>ACTIVE MONITORS</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {overview.listener.monitors.map((m) => (
-                    <div key={m} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: C.muted }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: C.accent, flexShrink: 0, display: "inline-block" }} />
-                      {m}
-                    </div>
-                  ))}
-                </div>
+              <div className="mb-5 space-y-1.5">
+                <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-2">Active Monitors</div>
+                {overview.listener.monitors.map((m) => (
+                  <div key={m} className="flex items-center gap-2 text-xs text-zinc-400">
+                    <span className="w-1 h-1 rounded-full bg-[#5100fd]" />
+                    {m}
+                  </div>
+                ))}
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 8 }}>
-              <ActionBtn variant="success" onClick={() => controlListener("start")}>
-                {controlLoading ? "…" : "▶ Start"}
-              </ActionBtn>
-              <ActionBtn variant="danger" onClick={() => controlListener("stop")}>
-                {controlLoading ? "…" : "■ Stop"}
-              </ActionBtn>
-              <ActionBtn variant="warning" onClick={() => controlListener("restart")}>
-                {controlLoading ? "…" : "↺ Restart"}
-              </ActionBtn>
+            <div className="flex gap-2">
+              <button
+                onClick={() => controlListener("start")}
+                disabled={controlLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-green-500/10 text-green-400 border border-green-500/25 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+              >
+                {controlLoading ? <Spinner size={10} /> : "▶"} Start
+              </button>
+              <button
+                onClick={() => controlListener("stop")}
+                disabled={controlLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {controlLoading ? <Spinner size={10} /> : "■"} Stop
+              </button>
+              <button
+                onClick={() => controlListener("restart")}
+                disabled={controlLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-colors disabled:opacity-50"
+              >
+                {controlLoading ? <Spinner size={10} /> : "↺"} Restart
+              </button>
             </div>
           </div>
 
           {/* Infrastructure */}
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-            <SectionTitle>Infrastructure</SectionTitle>
-            <InfraStatus label="Database" value={overview.infra.database} />
-            <InfraStatus label="Solana RPC" value={overview.infra.solanaRpc} />
-            <InfraStatus label="Jupiter API" value={overview.infra.jupiter} />
-            <div style={{ fontSize: 10, color: C.dim, marginTop: 12 }}>
-              Last check: {new Date(overview.checkedAt).toLocaleTimeString()}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <SectionHeader>Infrastructure</SectionHeader>
+            <InfraRow label="Database" value={overview.infra.database} />
+            <InfraRow label="Solana RPC" value={overview.infra.solanaRpc} />
+            <InfraRow label="Jupiter API" value={overview.infra.jupiter} />
+            <div className="text-[10px] text-zinc-600 mt-3">
+              Last checked: {new Date(overview.checkedAt).toLocaleTimeString()}
             </div>
           </div>
         </div>
 
-        {/* ── Recent alerts ── */}
-        {logs && logs.recentAlerts.length > 0 && (
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-            <SectionTitle>Recent Alerts</SectionTitle>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {logs.recentAlerts.slice(0, 12).map((a) => {
-                const riskColor = a.riskLevel === "HIGH" ? C.red : a.riskLevel === "MEDIUM" ? C.yellow : C.green;
-                const isBoost = a.type === "DEX_BOOST";
-                return (
-                  <div key={a.id} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "8px 12px", borderRadius: 10,
-                    background: C.surface, border: `1px solid ${C.border}`,
-                  }}>
-                    <span style={{ fontSize: 12 }}>{isBoost ? "⚡" : "🆕"}</span>
-                    <span style={{ flex: 1, fontSize: 12, color: C.text, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {a.name}
-                    </span>
-                    <Pill color={riskColor}>{a.riskLevel || "—"}</Pill>
-                    <span style={{ fontSize: 10, color: C.dim, flexShrink: 0 }}>
-                      {new Date(a.alertedAt).toLocaleTimeString()}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {logs && logs.failedTrades.length > 0 && (
-          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-            <SectionTitle>Failed Trades</SectionTitle>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {logs.failedTrades.slice(0, 8).map((t) => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 10, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: "uppercase" }}>{t.action}</span>
-                  <span style={{ flex: 1, fontSize: 11, color: C.muted }}>{t.message || t.status || "—"}</span>
-                  <span style={{ fontSize: 10, color: C.dim }}>{new Date(t.createdAt).toLocaleTimeString()}</span>
+        {/* Recent Alerts */}
+        {recentAlerts.length > 0 && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <SectionHeader>Recent Alerts</SectionHeader>
+            <div className="space-y-2">
+              {recentAlerts.slice(0, 12).map((a: any) => (
+                <div key={a.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
+                  <span className="text-sm">{a.type === "DEX_BOOST" ? "⚡" : "🆕"}</span>
+                  <span className="flex-1 text-xs font-semibold text-white truncate">{a.name || a.symbol || a.id}</span>
+                  {a.mc && <span className="text-[10px] text-zinc-500 hidden sm:block">MC {a.mc}</span>}
+                  <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                    {new Date(a.alertedAt).toLocaleTimeString()}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ── User management ── */}
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-          <SectionTitle>User Management</SectionTitle>
-          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+        {/* User Management */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <SectionHeader>User Management</SectionHeader>
+
+          <div className="flex gap-2 mb-4">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search wallet / id / telegram…"
-              style={{
-                flex: 1, background: C.surface, border: `1px solid ${C.border}`,
-                borderRadius: 10, padding: "8px 14px", color: C.text, fontSize: 12, outline: "none",
-              }}
+              className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-[#5100fd]/50 transition-colors"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                background: C.surface, border: `1px solid ${C.border}`,
-                borderRadius: 10, padding: "8px 14px", color: C.muted, fontSize: 12, outline: "none",
-              }}
+              className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-400 outline-none focus:border-[#5100fd]/50 transition-colors"
             >
               <option value="all">All</option>
               <option value="active">Active</option>
@@ -462,16 +389,16 @@ export default function AdminPage() {
           </div>
 
           {users.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: C.dim, fontSize: 12 }}>
+            <div className="text-center py-10 text-zinc-600 text-sm">
               No users found — user records require database integration.
             </div>
           ) : (
-            <div style={{ overflowX: "auto", borderRadius: 10, border: `1px solid ${C.border}` }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <div className="overflow-x-auto rounded-xl border border-zinc-800">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr style={{ background: C.surface }}>
+                  <tr className="bg-zinc-950">
                     {["Wallet", "Telegram", "Status", "Trades", "Note", "Actions"].map((h) => (
-                      <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, fontWeight: 700, color: C.muted, letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                      <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -479,49 +406,49 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {users.map((u) => {
-                    const stateColor = u.isBanned ? C.red : u.isFrozen ? C.yellow : C.green;
-                    const stateLabel = u.isBanned ? "BANNED" : u.isFrozen ? "FROZEN" : "ACTIVE";
+                    const stateVariant = u.isBanned ? "red" : u.isFrozen ? "yellow" : "green";
+                    const stateLabel = u.isBanned ? "Banned" : u.isFrozen ? "Frozen" : "Active";
                     return (
-                      <tr key={u.id} style={{ borderTop: `1px solid ${C.border}` }}>
-                        <td style={{ padding: "10px 14px", fontFamily: "monospace", fontSize: 11, color: C.muted }}>
+                      <tr key={u.id} className="border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-4 py-3 font-mono text-zinc-400">
                           {u.walletAddress.slice(0, 8)}…{u.walletAddress.slice(-6)}
                         </td>
-                        <td style={{ padding: "10px 14px", color: C.muted }}>
-                          {u.telegramLink?.telegramId || <span style={{ color: C.dim }}>—</span>}
+                        <td className="px-4 py-3 text-zinc-500">
+                          {u.telegramLink?.telegramId || <span className="text-zinc-700">—</span>}
                         </td>
-                        <td style={{ padding: "10px 14px" }}>
-                          <Pill color={stateColor}>{stateLabel}</Pill>
+                        <td className="px-4 py-3">
+                          <Pill label={stateLabel} variant={stateVariant as any} />
                         </td>
-                        <td style={{ padding: "10px 14px" }}>
+                        <td className="px-4 py-3">
                           <button
                             onClick={() => setTradesModal({ userId: u.id, wallet: u.walletAddress })}
-                            style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 10px", color: C.muted, fontSize: 11, cursor: "pointer" }}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors text-[10px] font-bold"
                           >
                             {u._count?.tradeExecutionLogs ?? 0} trades
                           </button>
                         </td>
-                        <td style={{ padding: "10px 14px", minWidth: 180 }}>
+                        <td className="px-4 py-3 min-w-[160px]">
                           <textarea
                             value={notes[u.id] || ""}
                             onChange={(e) => setNotes((prev) => ({ ...prev, [u.id]: e.target.value }))}
                             rows={2}
-                            style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 7, padding: "6px 8px", color: C.text, fontSize: 11, resize: "vertical", outline: "none" }}
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-300 resize-y outline-none focus:border-[#5100fd]/40 transition-colors"
                           />
                           <button
                             onClick={() => saveNote(u.id)}
-                            style={{ marginTop: 4, padding: "3px 10px", borderRadius: 6, background: C.accentMid, color: C.accent, fontSize: 10, fontWeight: 700, border: `1px solid ${C.accentBorder}`, cursor: "pointer" }}
+                            className="mt-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#5100fd]/10 text-[#5100fd] border border-[#5100fd]/25 hover:bg-[#5100fd]/20 transition-colors"
                           >
                             Save
                           </button>
                         </td>
-                        <td style={{ padding: "10px 14px" }}>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1.5">
                             {u.isBanned
-                              ? <ActionBtn variant="success" onClick={() => updateStatus(u.id, "unban")}>Unban</ActionBtn>
-                              : <ActionBtn variant="danger" onClick={() => updateStatus(u.id, "ban")}>Ban</ActionBtn>}
+                              ? <button onClick={() => updateStatus(u.id, "unban")} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-green-500/10 text-green-400 border border-green-500/25 hover:bg-green-500/20 transition-colors">Unban</button>
+                              : <button onClick={() => updateStatus(u.id, "ban")} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20 transition-colors">Ban</button>}
                             {u.isFrozen
-                              ? <ActionBtn variant="accent" onClick={() => updateStatus(u.id, "unfreeze")}>Unfreeze</ActionBtn>
-                              : <ActionBtn variant="warning" onClick={() => updateStatus(u.id, "freeze")}>Freeze</ActionBtn>}
+                              ? <button onClick={() => updateStatus(u.id, "unfreeze")} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#5100fd]/10 text-[#5100fd] border border-[#5100fd]/25 hover:bg-[#5100fd]/20 transition-colors">Unfreeze</button>
+                              : <button onClick={() => updateStatus(u.id, "freeze")} className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/20 transition-colors">Freeze</button>}
                           </div>
                         </td>
                       </tr>
@@ -533,22 +460,20 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* ── Test Runner ── */}
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-          <SectionTitle>Test Runner</SectionTitle>
+        {/* Test Runner */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+          <SectionHeader>Test Runner</SectionHeader>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 16 }}>
+          <div className="flex flex-wrap gap-2 items-center mb-5">
             {(["unit", "integration", "all"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setTestSuite(s)}
-                style={{
-                  padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer",
-                  background: testSuite === s ? C.accent : C.surface,
-                  color: testSuite === s ? "#fff" : C.muted,
-                  border: `1px solid ${testSuite === s ? C.accent : C.border}`,
-                  textTransform: "capitalize",
-                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-colors ${
+                  testSuite === s
+                    ? "bg-[#5100fd] text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700"
+                }`}
               >
                 {s === "all" ? "All Tests" : `${s.charAt(0).toUpperCase() + s.slice(1)} Tests`}
               </button>
@@ -557,108 +482,94 @@ export default function AdminPage() {
             <button
               onClick={runTests}
               disabled={testRunning}
-              style={{
-                padding: "7px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: testRunning ? "not-allowed" : "pointer",
-                background: testRunning ? C.surface : C.accentMid,
-                color: testRunning ? C.dim : C.accent,
-                border: `1px solid ${testRunning ? C.border : C.accentBorder}`,
-                display: "flex", alignItems: "center", gap: 8,
-              }}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold bg-[#5100fd]/10 text-[#5100fd] border border-[#5100fd]/25 hover:bg-[#5100fd]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {testRunning && (
-                <span style={{ width: 12, height: 12, border: `2px solid ${C.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
-              )}
-              {testRunning ? "Running…" : "▶ Run"}
+              {testRunning ? <Spinner size={12} /> : "▶"}
+              {testRunning ? "Running…" : "Run Tests"}
             </button>
 
             {testResult && (
-              <span style={{ fontSize: 10, color: C.dim, marginLeft: "auto" }}>
-                Last run: {new Date(testResult.ranAt).toLocaleTimeString()} · {(testResult.duration / 1000).toFixed(1)}s
+              <span className="text-[10px] text-zinc-600 ml-auto">
+                {new Date(testResult.ranAt).toLocaleTimeString()} · {(testResult.duration / 1000).toFixed(1)}s
               </span>
             )}
           </div>
 
           {testRunning && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 0", color: C.muted, fontSize: 12 }}>
-              <span style={{ width: 16, height: 16, border: `2px solid ${C.accent}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block", flexShrink: 0 }} />
-              Running {testSuite} tests… this may take up to 30 seconds
+            <div className="flex items-center gap-3 py-4 text-zinc-500 text-sm">
+              <Spinner size={16} />
+              Running {testSuite} tests — this may take up to 30 seconds…
             </div>
           )}
 
           {testResult && !testRunning && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Summary */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-4 gap-2">
                 {[
-                  { label: "Total", value: testResult.summary.total, color: C.text },
-                  { label: "Passed", value: testResult.summary.passed, color: C.green },
-                  { label: "Failed", value: testResult.summary.failed, color: C.red },
-                  { label: "Skipped", value: testResult.summary.skipped, color: C.yellow },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ background: C.surface, borderRadius: 10, padding: "12px 16px", textAlign: "center", border: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color }}>{value}</div>
+                  { label: "Total", value: testResult.summary.total, cls: "text-white" },
+                  { label: "Passed", value: testResult.summary.passed, cls: "text-green-400" },
+                  { label: "Failed", value: testResult.summary.failed, cls: "text-red-400" },
+                  { label: "Skipped", value: testResult.summary.skipped, cls: "text-yellow-400" },
+                ].map(({ label, value, cls }) => (
+                  <div key={label} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center">
+                    <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mb-2">{label}</div>
+                    <div className={`text-2xl font-black ${cls}`}>{value}</div>
                   </div>
                 ))}
               </div>
 
-              {/* Overall result badge */}
-              <div style={{
-                padding: "10px 16px", borderRadius: 10,
-                background: testResult.ok ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
-                border: `1px solid ${testResult.ok ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
-                <span style={{ fontSize: 16 }}>{testResult.ok ? "✅" : "❌"}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: testResult.ok ? C.green : C.red }}>
-                  {testResult.ok ? "All tests passed" : `${testResult.summary.failed} test${testResult.summary.failed !== 1 ? "s" : ""} failed`}
+              {/* Result badge */}
+              <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border ${testResult.ok ? "bg-green-500/5 border-green-500/20" : "bg-red-500/5 border-red-500/20"}`}>
+                <span className="text-base">{testResult.ok ? "✅" : "❌"}</span>
+                <span className={`text-sm font-bold ${testResult.ok ? "text-green-400" : "text-red-400"}`}>
+                  {testResult.ok
+                    ? "All tests passed"
+                    : `${testResult.summary.failed} test${testResult.summary.failed !== 1 ? "s" : ""} failed`}
                 </span>
               </div>
 
               {testResult.error && (
-                <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10, padding: "12px 16px", fontSize: 11, color: C.red, fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 font-mono text-xs text-red-400 whitespace-pre-wrap break-all">
                   {testResult.error}
                 </div>
               )}
 
               {/* Suite breakdown */}
               {testResult.suites.map((suite) => (
-                <div key={suite.file} style={{ border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden" }}>
+                <div key={suite.file} className="border border-zinc-800 rounded-xl overflow-hidden">
                   <button
                     onClick={() => setExpandedSuite(expandedSuite === suite.file ? null : suite.file)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "10px 16px", background: C.surface, border: "none", cursor: "pointer", color: C.text,
-                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-zinc-950 hover:bg-zinc-900 transition-colors text-left"
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <StatusDot on={suite.failed === 0} />
-                      <span style={{ fontFamily: "monospace", fontSize: 11, color: C.muted }}>{suite.file}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className={`w-2 h-2 rounded-full ${suite.failed === 0 ? "bg-green-400" : "bg-red-400"}`} />
+                      <span className="font-mono text-xs text-zinc-400">{suite.file}</span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11 }}>
-                      <span style={{ color: C.green }}>{suite.passed} passed</span>
-                      {suite.failed > 0 && <span style={{ color: C.red }}>{suite.failed} failed</span>}
-                      <span style={{ color: C.dim }}>{suite.duration}ms</span>
-                      <span style={{ color: C.dim, fontSize: 14 }}>{expandedSuite === suite.file ? "▲" : "▼"}</span>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-green-400">{suite.passed} passed</span>
+                      {suite.failed > 0 && <span className="text-red-400">{suite.failed} failed</span>}
+                      <span className="text-zinc-600">{suite.duration}ms</span>
+                      <span className="text-zinc-500">{expandedSuite === suite.file ? "▲" : "▼"}</span>
                     </div>
                   </button>
 
                   {expandedSuite === suite.file && (
-                    <div style={{ background: C.card }}>
+                    <div className="bg-zinc-900">
                       {suite.tests.map((t, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 16px", borderTop: `1px solid ${C.border}` }}>
-                          <span style={{ fontSize: 13, flexShrink: 0, color: t.status === "pass" ? C.green : t.status === "fail" ? C.red : C.yellow }}>
+                        <div key={i} className="flex items-start gap-2.5 px-4 py-2.5 border-t border-zinc-800">
+                          <span className={`text-sm flex-shrink-0 ${t.status === "pass" ? "text-green-400" : t.status === "fail" ? "text-red-400" : "text-yellow-400"}`}>
                             {t.status === "pass" ? "✓" : t.status === "fail" ? "✗" : "○"}
                           </span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 11, color: C.text }}>{t.name}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs text-zinc-300">{t.name}</div>
                             {t.error && (
-                              <pre style={{ marginTop: 4, fontSize: 10, color: C.red, whiteSpace: "pre-wrap", wordBreak: "break-all", fontFamily: "monospace" }}>
+                              <pre className="mt-1.5 text-[10px] text-red-400 whitespace-pre-wrap break-all font-mono">
                                 {t.error}
                               </pre>
                             )}
                           </div>
-                          <span style={{ fontSize: 10, color: C.dim, flexShrink: 0 }}>{t.duration}ms</span>
+                          <span className="text-[10px] text-zinc-600 flex-shrink-0">{t.duration}ms</span>
                         </div>
                       ))}
                     </div>
@@ -671,70 +582,91 @@ export default function AdminPage() {
 
       </div>
 
-      {/* ── Trades Modal ── */}
+      {/* Trades Modal */}
       {tradesModal && (
         <div
           onClick={() => { setTradesModal(null); setTradesData(null); }}
-          style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, width: "100%", maxWidth: 720, maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
           >
-            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
               <div>
-                <div style={{ fontWeight: 900, color: C.text, fontSize: 15 }}>Trade History</div>
-                <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace", marginTop: 3 }}>{tradesModal.wallet}</div>
+                <h2 className="font-black text-white">Trade History</h2>
+                <p className="font-mono text-xs text-zinc-600 mt-0.5">{tradesModal.wallet}</p>
               </div>
-              <button onClick={() => { setTradesModal(null); setTradesData(null); }} style={{ color: C.muted, fontSize: 18, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+              <button
+                onClick={() => { setTradesModal(null); setTradesData(null); }}
+                className="text-zinc-500 hover:text-white transition-colors text-lg leading-none"
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>
-              {tradesLoading && <div style={{ textAlign: "center", color: C.dim, padding: "32px 0" }}>Loading…</div>}
+            <div className="overflow-y-auto flex-1 p-5 space-y-4">
+              {tradesLoading && (
+                <div className="flex items-center justify-center py-10">
+                  <Spinner size={24} />
+                </div>
+              )}
 
               {!tradesLoading && tradesData && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                <>
+                  <div className="grid grid-cols-4 gap-2">
                     {[
-                      { label: "Successful", value: tradesData.summary.totalSuccess, color: C.green },
-                      { label: "Failed", value: tradesData.summary.totalFailed, color: C.red },
-                      { label: "Total Bought", value: `${tradesData.summary.totalBoughtSol.toFixed(3)} SOL`, color: C.text },
+                      { label: "Successful", value: tradesData.summary.totalSuccess, cls: "text-green-400" },
+                      { label: "Failed", value: tradesData.summary.totalFailed, cls: "text-red-400" },
+                      { label: "Total Bought", value: `${tradesData.summary.totalBoughtSol.toFixed(3)} SOL`, cls: "text-white" },
                       {
                         label: "PnL 24h",
                         value: `${tradesData.summary.pnl24h.pnl24hSol >= 0 ? "+" : ""}${tradesData.summary.pnl24h.pnl24hSol.toFixed(4)} SOL`,
-                        color: tradesData.summary.pnl24h.pnl24hSol >= 0 ? C.green : C.red,
+                        cls: tradesData.summary.pnl24h.pnl24hSol >= 0 ? "text-green-400" : "text-red-400",
                       },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 9, color: C.dim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 5, textTransform: "uppercase" }}>{label}</div>
-                        <div style={{ fontSize: 16, fontWeight: 900, color }}>{value}</div>
+                    ].map(({ label, value, cls }) => (
+                      <div key={label} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+                        <div className="text-[9px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">{label}</div>
+                        <div className={`text-base font-black ${cls}`}>{value}</div>
                       </div>
                     ))}
                   </div>
 
-                  {tradesData.trades.length === 0
-                    ? <div style={{ textAlign: "center", color: C.dim, padding: "24px 0" }}>No trades found</div>
-                    : tradesData.trades.map((t) => (
-                      <div key={t.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, fontSize: 12 }}>
-                        <Pill color={t.action === "buy" ? C.green : C.red}>{t.action.toUpperCase()}</Pill>
-                        <span style={{ fontFamily: "monospace", color: C.muted }}>{t.tokenAddress.slice(0, 8)}…</span>
-                        <span style={{ fontWeight: 700, color: C.text }}>{t.amount} SOL</span>
-                        <Pill color={t.status === "success" ? C.green : t.status === "failed" ? C.red : C.yellow}>
-                          {t.status}
-                        </Pill>
-                        {t.txSig && (
-                          <a href={`https://solscan.io/tx/${t.txSig}`} target="_blank" rel="noreferrer"
-                            style={{ fontSize: 10, color: C.accent, marginLeft: "auto" }}>View tx ↗</a>
-                        )}
-                        {!t.txSig && t.message && <span style={{ fontSize: 10, color: C.dim, marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{t.message}</span>}
-                      </div>
-                    ))
-                  }
-                </div>
+                  {tradesData.trades.length === 0 ? (
+                    <div className="text-center py-8 text-zinc-600 text-sm">No trades found</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {tradesData.trades.map((t) => (
+                        <div key={t.id} className="flex items-center gap-3 px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-xs">
+                          <Pill label={t.action.toUpperCase()} variant={t.action === "buy" ? "green" : "red"} />
+                          <span className="font-mono text-zinc-500">{t.tokenAddress.slice(0, 8)}…</span>
+                          <span className="font-bold text-white">{t.amount} SOL</span>
+                          <Pill
+                            label={t.status}
+                            variant={t.status === "success" ? "green" : t.status === "failed" ? "red" : "yellow"}
+                          />
+                          {t.txSig && (
+                            <a
+                              href={`https://solscan.io/tx/${t.txSig}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[#5100fd] hover:underline ml-auto text-[10px]"
+                            >
+                              View tx ↗
+                            </a>
+                          )}
+                          {!t.txSig && t.message && (
+                            <span className="text-[10px] text-zinc-600 ml-auto truncate max-w-[180px]">{t.message}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
 
               {!tradesLoading && !tradesData && (
-                <div style={{ textAlign: "center", color: C.dim, padding: "32px 0" }}>No trade data available.</div>
+                <div className="text-center py-8 text-zinc-600 text-sm">No trade data available.</div>
               )}
             </div>
           </div>
