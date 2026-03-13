@@ -23,14 +23,6 @@ import { auth } from "@/lib/auth";
     const wallet = session?.user?.walletAddress?.toLowerCase();
     const adminWallets = getAdminWallets();
 
-    // DEBUG: Log the actual wallet being checked
-    console.log("ADMIN_ACCESS_CHECK:", { 
-      wallet, 
-      adminWallets, 
-      match: wallet ? adminWallets.includes(wallet) : false,
-      env: process.env.ADMIN_WALLETS
-    });
-
     if (!wallet || !adminWallets.includes(wallet)) {
       return { ok: false as const, session: null };
     }

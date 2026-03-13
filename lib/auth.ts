@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Connection, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
-import { getEnv, requireEnv } from "@/lib/env";
 import * as nacl from "tweetnacl";
 import { getAdminWallets } from "@/lib/admin/access";
 
 const AUTH_COOKIE = "auth_token";
-const NONCE_TTL_MS = 5 * 60 * 1000;
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 const VIP_MINT = process.env.VIP_TOKEN_MINT;
 const VIP_ACCESS_MODE = (process.env.VIP_ACCESS_MODE || "open").toLowerCase();
@@ -55,15 +53,7 @@ function getJwtSecret() {
   if (secret) {
     return secret;
   }
-  
-  // Fallback to a hardcoded one ONLY if we are in development and really stuck
-  // but better to throw if missing in production
-  if (!process.env.AUTH_SECRET) {
-     console.warn("AUTH_SECRET is missing, using insecure fallback");
-     return "insecure_fallback_secret_change_me_in_replit_secrets";
-  }
-
-  return requireEnv("AUTH_SECRET");
+  throw new Error("AUTH_SECRET environment variable is not set. Please configure it in your secrets.");
 }
 
 async function computeSignature(header: string, body: string, secret: string) {
@@ -331,18 +321,7 @@ export async function auth(req?: NextRequest | Request): Promise<AuthSession | n
   });
 
   if (!dbUser) {
-     // If user is not in DB but token is valid (shouldn't happen normally)
-     // we still allow basic session if they aren't banned
-     const user = {
-        id: payload.user_id,
-        user_id: payload.user_id,
-        walletAddress: payload.wallet_address,
-        wallet_address: payload.wallet_address,
-        vipStatus: payload.vip_status,
-        vip_status: payload.vip_status,
-        isAdmin: getAdminWallets().map(w => w.toLowerCase()).includes(payload.wallet_address.toLowerCase()),
-      };
-      return { user };
+    return null;
   }
 
   if (dbUser.isBanned || dbUser.isFrozen) {
