@@ -319,7 +319,10 @@ const Popup = () => {
   const doSync = React.useCallback(async (url: string, quiet = false) => {
     if (!quiet) setSyncing(true);
     try {
-      const res = await fetch(`${url}/api/extension/sync`, { credentials: "include" });
+      const res = await fetch(`${url}/api/extension/sync`, {
+        credentials: "include",
+        signal: AbortSignal.timeout(10000),
+      });
       if (!res.ok) throw new Error("sync failed");
       const data: SyncData = await res.json();
       setSyncData(data);
