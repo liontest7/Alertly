@@ -9,18 +9,30 @@ export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 let listenerRunning = false;
 let listenerStartedAt: number | null = null;
 
-const BOOST_TOP_POLL_MS = 9_000;
-const BOOST_LATEST_POLL_MS = 7_000;
-const LISTING_POLL_MS = 12_000;
+const BOOST_TOP_POLL_MS = 6_000;
+const BOOST_LATEST_POLL_MS = 5_000;
+const LISTING_POLL_MS = 6_000;
 const BOOST_FINGERPRINT_RESET_MS = 4 * 60 * 60 * 1000;
+const RATE_LIMIT_BACKOFF_MS = 15_000;
 
 const seenBoostFingerprints = new Set<string>();
 const seenListingFingerprints = new Set<string>();
 
 let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
-let boostLatestTimer: ReturnType<typeof setInterval> | null = null;
+let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
 let listingTimer: ReturnType<typeof setTimeout> | null = null;
 let fingerprintResetTimer: ReturnType<typeof setInterval> | null = null;
+
+let globalRateLimitedUntil = 0;
+
+function isRateLimited(): boolean {
+  return Date.now() < globalRateLimitedUntil;
+}
+
+function setRateLimited() {
+  globalRateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
+  console.warn(`[Listener] Rate limited by DexScreener — backing off ${RATE_LIMIT_BACKOFF_MS / 1000}s`);
+}
 
 function isPotentialPublicKey(value: string): boolean {
   if (!value) return false;
@@ -136,11 +148,21 @@ async function processTokenAlert(
 
 async function pollDexBoostsTop() {
   if (!listenerRunning) return;
+  if (isRateLimited()) {
+    const waitMs = globalRateLimitedUntil - Date.now() + 500;
+    boostTopTimer = setTimeout(pollDexBoostsTop, waitMs);
+    return;
+  }
   try {
     const res = await fetch("https://api.dexscreener.com/token-boosts/top/v1", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
     });
+
+    if (res.status === 429 || res.status === 1015) {
+      setRateLimited();
+      return;
+    }
 
     if (!res.ok) {
       console.warn(`[Listener] DexScreener top boosts returned HTTP ${res.status}`);
@@ -186,11 +208,21 @@ async function pollDexBoostsTop() {
 
 async function pollDexBoostsLatest() {
   if (!listenerRunning) return;
+  if (isRateLimited()) {
+    const waitMs = globalRateLimitedUntil - Date.now() + 500;
+    boostLatestTimer = setTimeout(pollDexBoostsLatest, waitMs);
+    return;
+  }
   try {
     const res = await fetch("https://api.dexscreener.com/token-boosts/latest/v1", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
     });
+
+    if (res.status === 429 || res.status === 1015) {
+      setRateLimited();
+      return;
+    }
 
     if (!res.ok) {
       console.warn(`[Listener] DexScreener latest boosts returned HTTP ${res.status}`);
@@ -227,16 +259,30 @@ async function pollDexBoostsLatest() {
     }
   } catch (err) {
     console.error("[Listener] pollDexBoostsLatest error:", err instanceof Error ? err.message : err);
+  } finally {
+    if (listenerRunning) {
+      boostLatestTimer = setTimeout(pollDexBoostsLatest, BOOST_LATEST_POLL_MS);
+    }
   }
 }
 
 async function pollDexTokenProfiles() {
   if (!listenerRunning) return;
+  if (isRateLimited()) {
+    const waitMs = globalRateLimitedUntil - Date.now() + 500;
+    listingTimer = setTimeout(pollDexTokenProfiles, waitMs);
+    return;
+  }
   try {
     const res = await fetch("https://api.dexscreener.com/token-profiles/latest/v1", {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(12000),
     });
+
+    if (res.status === 429 || res.status === 1015) {
+      setRateLimited();
+      return;
+    }
 
     if (!res.ok) {
       console.warn(`[Listener] DexScreener token profiles returned HTTP ${res.status}`);
@@ -286,17 +332,13 @@ export async function startBlockchainListener() {
     listenerRunning = true;
     listenerStartedAt = Date.now();
 
-    console.log("[Listener] Starting DEX monitors (Boosts top every 9s + latest every 7s + Profiles every 12s)");
+    console.log("[Listener] Starting DEX monitors (Top boosts every 6s + Latest boosts every 5s + Listings every 6s, staggered)");
 
-    // Start all pollers immediately
+    // Stagger startup: Top immediately, Latest after 2s, Listings after 4s
+    // This prevents all 3 from firing at the same time and hitting rate limits
     pollDexBoostsTop().catch(() => null);
-    pollDexBoostsLatest().catch(() => null);
-    pollDexTokenProfiles().catch(() => null);
-
-    // Latest boosts on a fixed interval (independent from the chain above)
-    boostLatestTimer = setInterval(() => {
-      pollDexBoostsLatest().catch(() => null);
-    }, BOOST_LATEST_POLL_MS);
+    setTimeout(() => { if (listenerRunning) pollDexBoostsLatest().catch(() => null); }, 2_000);
+    setTimeout(() => { if (listenerRunning) pollDexTokenProfiles().catch(() => null); }, 4_000);
 
     // Reset fingerprints every 4h so repeat boosts re-alert
     fingerprintResetTimer = setInterval(() => {
@@ -320,7 +362,7 @@ export async function stopBlockchainListener() {
   listenerStartedAt = null;
 
   if (boostTopTimer) { clearTimeout(boostTopTimer); boostTopTimer = null; }
-  if (boostLatestTimer) { clearInterval(boostLatestTimer); boostLatestTimer = null; }
+  if (boostLatestTimer) { clearTimeout(boostLatestTimer); boostLatestTimer = null; }
   if (listingTimer) { clearTimeout(listingTimer); listingTimer = null; }
   if (fingerprintResetTimer) { clearInterval(fingerprintResetTimer); fingerprintResetTimer = null; }
 
@@ -334,6 +376,6 @@ export function getListenerStatus() {
     subscriptions: 0,
     uptime: listenerStartedAt ? `${Math.floor((Date.now() - listenerStartedAt) / 1000)}s` : undefined,
     mode: "dexscreener-api-polling",
-    monitors: ["DEX Boosts top (9s)", "DEX Boosts latest (7s)", "DEX Token Profiles (12s)"],
+    monitors: ["DEX Boosts top (6s)", "DEX Boosts latest (5s)", "DEX Token Profiles (6s)"],
   };
 }

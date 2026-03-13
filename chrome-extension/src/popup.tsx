@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 const PRODUCTION_URL = "https://alertly-5zmw.onrender.com";
 const ALERTLY_BASE_URL_STORAGE_KEY = "alertlyBaseUrl";
 const GUEST_SETTINGS_COOKIE = "alertly_guest_settings";
+const LOCAL_TRADING_SETTINGS_KEY = "alertlyTradingSettings";
 
 type AlertItem = {
   address?: string;
@@ -17,9 +18,54 @@ type AlertItem = {
   boostAmount?: number;
 };
 
+type TradingWalletInfo = {
+  walletAddress: string;
+  balanceSol: number;
+  createdAt: string;
+};
+
+type PnlInfo = {
+  pnl24hSol: number;
+  solIn: number;
+  solOut: number;
+  tradeCount24h: number;
+  recentTrades: Array<{
+    id: string;
+    action: string;
+    amount: number;
+    tokenAddress: string;
+    status: string;
+    txSig: string | null;
+    createdAt: string;
+  }>;
+};
+
+type FullUserSettings = {
+  buyAmount: number;
+  maxBuyPerToken: number;
+  slippage: number;
+  stopLoss: number;
+  takeProfit: number;
+  trailingStop: boolean;
+  autoTrade: boolean;
+  autoSellMinutes: number;
+  alertsEnabled: boolean;
+  dexBoostEnabled: boolean;
+  dexListingEnabled: boolean;
+  minMarketCap: number;
+  maxMarketCap: number;
+  minLiquidity: number;
+  minHolders: number;
+  selectedBoostLevel: string | null;
+};
+
 type SyncUser = {
   walletAddress?: string;
   vipLevel?: string | number;
+  telegramLinked?: boolean;
+  settings?: FullUserSettings | null;
+  tradingWallet?: TradingWalletInfo | null;
+  pnl?: PnlInfo | null;
 };
 
 type SyncData = {
@@ -34,6 +80,14 @@ type ExtSettings = {
   popupEnabled: boolean;
 };
 
+type LocalTradingSettings = {
+  buyAmount: number;
+  slippage: number;
+  takeProfit: number;
+  stopLoss: number;
+  autoTrade: boolean;
+};
+
 type FilterSettings = {
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
@@ -42,7 +96,15 @@ type FilterSettings = {
   minLiquidity?: number;
 };
 
-// ─── Cookie encode/decode (same format as website) ───────────────
+const DEFAULT_LOCAL_TRADING: LocalTradingSettings = {
+  buyAmount: 0.5,
+  slippage: 10,
+  takeProfit: 50,
+  stopLoss: 25,
+  autoTrade: false,
+};
+
+// ─── Cookie encode/decode ─────────────────────────────────────────
 
 function encodeFilterCookie(value: FilterSettings): string {
   const json = JSON.stringify(value);
@@ -65,7 +127,7 @@ function decodeFilterCookie(value: string): FilterSettings | null {
   }
 }
 
-// ─── Storage helpers ─────────────────────────────────────────────
+// ─── Storage helpers ──────────────────────────────────────────────
 
 function getStoredBaseUrl(): Promise<string> {
   return new Promise((resolve) => {
@@ -102,6 +164,21 @@ function setExtSettings(settings: ExtSettings): Promise<void> {
   });
 }
 
+function getLocalTradingSettings(): Promise<LocalTradingSettings> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([LOCAL_TRADING_SETTINGS_KEY], (result) => {
+      const stored = result?.[LOCAL_TRADING_SETTINGS_KEY];
+      resolve({ ...DEFAULT_LOCAL_TRADING, ...(stored || {}) });
+    });
+  });
+}
+
+function setLocalTradingSettings(settings: LocalTradingSettings): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [LOCAL_TRADING_SETTINGS_KEY]: settings }, () => resolve());
+  });
+}
+
 function readWebsiteFilterSettings(baseUrl: string): Promise<FilterSettings> {
   return new Promise((resolve) => {
     try {
@@ -131,25 +208,26 @@ function writeWebsiteFilterSettings(baseUrl: string, settings: FilterSettings): 
   });
 }
 
-// ─── Sound ───────────────────────────────────────────────────────
+// ─── Sound ────────────────────────────────────────────────────────
 
 function playAlertSound() {
   try {
     const ctx = new AudioContext();
+    const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.25);
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.start(now);
+    osc.stop(now + 0.25);
   } catch {}
 }
 
-// ─── Alert type helpers ──────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────
 
 const TYPE_LABEL_MAP: Record<string, string> = {
   "DEX_BOOST": "DEX BOOST",
@@ -169,7 +247,22 @@ function normalizeType(raw?: string): string {
   return TYPE_LABEL_MAP[upper] || upper.replace(/_/g, " ");
 }
 
-// ─── Color tokens ─────────────────────────────────────────────────
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function fmtSol(n: number) {
+  if (Math.abs(n) >= 1000) return `${n.toFixed(0)} SOL`;
+  if (Math.abs(n) >= 100) return `${n.toFixed(2)} SOL`;
+  return `${n.toFixed(4)} SOL`;
+}
+
+function fmtPnl(n: number) {
+  const sign = n >= 0 ? "+" : "";
+  return `${sign}${fmtSol(n)}`;
+}
+
+// ─── Colors & Styles ─────────────────────────────────────────────
 
 const C = {
   bg: "#050507",
@@ -243,9 +336,9 @@ const s = {
     letterSpacing: "0.06em", color, backgroundColor: bg, border: `1px solid ${border}`,
   }),
 
-  btn: (variant: "primary" | "ghost" | "danger" | "success"): React.CSSProperties => ({
+  btn: (variant: "primary" | "ghost" | "danger" | "success" | "small"): React.CSSProperties => ({
     display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-    padding: variant === "primary" ? "11px 16px" : "7px 12px",
+    padding: variant === "primary" ? "11px 16px" : variant === "small" ? "5px 10px" : "7px 12px",
     borderRadius: 999, border: "none", cursor: "pointer", fontWeight: 700,
     fontSize: variant === "primary" ? 13 : 11,
     letterSpacing: variant === "primary" ? "0.02em" : "0.04em",
@@ -256,6 +349,7 @@ const s = {
       color: "#fff", boxShadow: `0 4px 16px rgba(81,0,253,0.35)`,
     }),
     ...(variant === "ghost" && { backgroundColor: C.surfaceBorder, color: C.textMuted }),
+    ...(variant === "small" && { backgroundColor: C.surfaceBorder, color: C.textMuted }),
     ...(variant === "danger" && {
       backgroundColor: C.redLight, border: `1px solid ${C.redBorder}`, color: C.red,
     }),
@@ -266,7 +360,7 @@ const s = {
 
   tab: (active: boolean): React.CSSProperties => ({
     flex: 1, padding: "8px 0", border: "none", cursor: "pointer",
-    fontSize: 11, fontWeight: active ? 700 : 500,
+    fontSize: 10, fontWeight: active ? 700 : 500,
     color: active ? C.accent : C.textMuted, backgroundColor: "transparent",
     borderBottom: active ? `2px solid ${C.accent}` : "2px solid transparent",
     transition: "all 0.15s", letterSpacing: "0.05em",
@@ -277,6 +371,12 @@ const s = {
     borderRadius: 8, color: C.text, fontSize: 12, fontFamily: "inherit",
     outline: "none", padding: "7px 10px", boxSizing: "border-box" as const,
     transition: "border-color 0.15s",
+  } as React.CSSProperties,
+
+  numInput: {
+    width: "100%", background: C.surface, border: `1px solid ${C.surfaceBorder}`,
+    borderRadius: 8, color: C.text, fontSize: 12, fontFamily: "inherit",
+    outline: "none", padding: "6px 10px", boxSizing: "border-box" as const,
   } as React.CSSProperties,
 };
 
@@ -304,7 +404,34 @@ function ToggleSwitch({ on, onChange, label, sub }: {
   );
 }
 
-// ─── Number input helper ──────────────────────────────────────────
+// ─── Number field ─────────────────────────────────────────────────
+
+function NumberField({ label, value, onChange, min, max, step, suffix }: {
+  label: string; value: number; onChange: (v: number) => void;
+  min?: number; max?: number; step?: number; suffix?: string;
+}) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ fontSize: 10, color: C.textDim, marginBottom: 3, fontWeight: 600, letterSpacing: "0.05em" }}>
+        {label}{suffix ? ` (${suffix})` : ""}
+      </div>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        step={step ?? 0.1}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          if (!isNaN(v)) onChange(v);
+        }}
+        style={s.numInput}
+      />
+    </div>
+  );
+}
+
+// ─── Money input ──────────────────────────────────────────────────
 
 function MoneyInput({ label, value, onChange, placeholder }: {
   label: string; value: number | undefined; onChange: (v: number | undefined) => void; placeholder?: string;
@@ -370,7 +497,7 @@ function StatusPill({ status }: { status: "live" | "connecting" | "offline" | "p
 // ─── Alert card ───────────────────────────────────────────────────
 
 function AlertCard({ alert }: { alert: AlertItem }) {
-  const name = alert.symbol || alert.name || (alert.address ? `${alert.address.slice(0, 4)}…${alert.address.slice(-4)}` : "?");
+  const name = alert.symbol || alert.name || (alert.address ? shortAddr(alert.address) : "?");
   const typeLabel = normalizeType(alert.type);
   const typeColor = TYPE_COLOR_MAP[typeLabel] || C.accent;
   const isBoost = typeLabel === "DEX BOOST";
@@ -406,11 +533,127 @@ function EmptyState({ message, icon }: { message: string; icon: string }) {
   );
 }
 
-// ─── Main Popup ────────────────────────────────────────────────────
+// ─── Wallet Tab ───────────────────────────────────────────────────
+
+function WalletTab({ syncData, openDashboard }: { syncData: SyncData | null; openDashboard: () => void }) {
+  const [copied, setCopied] = React.useState(false);
+  const tw = syncData?.user?.tradingWallet;
+  const pnl = syncData?.user?.pnl;
+  const isAuth = syncData?.authenticated;
+
+  function copyAddr(addr: string) {
+    navigator.clipboard.writeText(addr).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  }
+
+  if (!isAuth) {
+    return (
+      <div style={{ padding: "20px 16px" }}>
+        <EmptyState icon="🔒" message="Connect your account to view your trading wallet, balance, and PnL." />
+        <button style={{ ...s.btn("primary"), marginTop: 12 }} onClick={openDashboard}>
+          Open Dashboard to Connect ↗
+        </button>
+      </div>
+    );
+  }
+
+  if (!tw) {
+    return (
+      <div style={{ padding: "20px 16px" }}>
+        <EmptyState icon="💼" message="No trading wallet yet. Generate one on the Alertly dashboard." />
+        <button style={{ ...s.btn("primary"), marginTop: 12 }} onClick={openDashboard}>
+          Generate Trading Wallet ↗
+        </button>
+      </div>
+    );
+  }
+
+  const pnl24h = pnl?.pnl24hSol ?? 0;
+  const pnlColor = pnl24h >= 0 ? C.green : C.red;
+  const trades = pnl?.recentTrades ?? [];
+
+  return (
+    <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", maxHeight: 520 }}>
+      <div style={s.card}>
+        <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 8 }}>TRADING WALLET</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontFamily: "monospace", fontSize: 11, color: C.text }}>{shortAddr(tw.walletAddress)}</span>
+          <button onClick={() => copyAddr(tw.walletAddress)} style={{ ...s.btn("small"), fontSize: 10, padding: "3px 8px" }}>
+            {copied ? "✓ Copied" : "Copy"}
+          </button>
+        </div>
+        <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ ...s.card, padding: "10px 12px", backgroundColor: "#0a0a0f" }}>
+            <div style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 4 }}>BALANCE</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{fmtSol(tw.balanceSol)}</div>
+          </div>
+          <div style={{ ...s.card, padding: "10px 12px", backgroundColor: "#0a0a0f" }}>
+            <div style={{ fontSize: 9, color: C.textDim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 4 }}>PNL 24H</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: pnlColor }}>{fmtPnl(pnl24h)}</div>
+          </div>
+        </div>
+      </div>
+
+      {pnl && (
+        <div style={s.card}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 8 }}>24H STATS</div>
+          <div style={{ display: "flex", gap: 10, fontSize: 11 }}>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ color: C.textDim, fontSize: 9, marginBottom: 2 }}>TRADES</div>
+              <div style={{ fontWeight: 700 }}>{pnl.tradeCount24h}</div>
+            </div>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ color: C.textDim, fontSize: 9, marginBottom: 2 }}>SOL IN</div>
+              <div style={{ fontWeight: 700, color: C.red }}>{fmtSol(pnl.solIn)}</div>
+            </div>
+            <div style={{ flex: 1, textAlign: "center" as const }}>
+              <div style={{ color: C.textDim, fontSize: 9, marginBottom: 2 }}>SOL OUT</div>
+              <div style={{ fontWeight: 700, color: C.green }}>{fmtSol(pnl.solOut)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {trades.length > 0 && (
+        <div style={s.card}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, letterSpacing: "0.07em", marginBottom: 8 }}>RECENT TRADES</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {trades.slice(0, 8).map((t) => (
+              <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+                <div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 4, marginRight: 6,
+                    backgroundColor: t.action === "buy" ? C.greenLight : C.redLight,
+                    color: t.action === "buy" ? C.green : C.red,
+                    border: `1px solid ${t.action === "buy" ? C.greenBorder : C.redBorder}`,
+                  }}>{t.action.toUpperCase()}</span>
+                  <span style={{ fontSize: 10, color: C.textDim, fontFamily: "monospace" }}>{shortAddr(t.tokenAddress)}</span>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{fmtSol(t.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {trades.length === 0 && pnl && pnl.tradeCount24h === 0 && (
+        <EmptyState icon="📊" message="No trades in the last 24 hours." />
+      )}
+
+      <button style={{ ...s.btn("ghost"), width: "100%", fontSize: 11 }} onClick={openDashboard}>
+        View Full Dashboard ↗
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Popup ───────────────────────────────────────────────────
 
 const Popup = () => {
   const [phase, setPhase] = React.useState<"loading" | "unauthenticated" | "main">("loading");
-  const [tab, setTab] = React.useState<"alerts" | "settings">("alerts");
+  const [tab, setTab] = React.useState<"alerts" | "wallet" | "settings">("alerts");
   const [syncData, setSyncData] = React.useState<SyncData | null>(null);
   const [alerts, setAlerts] = React.useState<AlertItem[]>([]);
   const [streamStatus, setStreamStatus] = React.useState<"connecting" | "live" | "offline">("connecting");
@@ -421,11 +664,14 @@ const Popup = () => {
   const [extSettings, setExtSettingsState] = React.useState<ExtSettings>({ paused: false, popupEnabled: true });
   const [soundEnabled, setSoundEnabled] = React.useState(true);
 
-  // Filter settings - shared between extension and website via cookie
   const [filters, setFilters] = React.useState<FilterSettings>({});
   const [filtersDirty, setFiltersDirty] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
   const [cookieSyncAvailable, setCookieSyncAvailable] = React.useState(false);
+
+  const [localTrading, setLocalTradingState] = React.useState<LocalTradingSettings>(DEFAULT_LOCAL_TRADING);
+  const [tradingDirty, setTradingDirty] = React.useState(false);
+  const [tradingSaveStatus, setTradingSaveStatus] = React.useState<"idle" | "saving" | "saved">("idle");
 
   const prevAlertCountRef = React.useRef(0);
   const baseUrlRef = React.useRef(PRODUCTION_URL);
@@ -449,6 +695,20 @@ const Popup = () => {
     setFilters((prev) => ({ ...prev, ...patch }));
     setFiltersDirty(true);
     setSaveStatus("idle");
+  }
+
+  function updateLocalTrading(patch: Partial<LocalTradingSettings>) {
+    setLocalTradingState((prev) => ({ ...prev, ...patch }));
+    setTradingDirty(true);
+    setTradingSaveStatus("idle");
+  }
+
+  async function saveLocalTrading() {
+    setTradingSaveStatus("saving");
+    await setLocalTradingSettings(localTrading);
+    setTradingDirty(false);
+    setTradingSaveStatus("saved");
+    setTimeout(() => setTradingSaveStatus("idle"), 2000);
   }
 
   async function saveFilters() {
@@ -477,6 +737,18 @@ const Popup = () => {
       const data: SyncData = await res.json();
       setSyncData(data);
       setLastSynced(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+
+      if (data.authenticated && data.user?.settings) {
+        const ws = data.user.settings;
+        setFilters({
+          dexBoostEnabled: ws.dexBoostEnabled,
+          dexListingEnabled: ws.dexListingEnabled,
+          minMarketCap: ws.minMarketCap || undefined,
+          maxMarketCap: ws.maxMarketCap || undefined,
+          minLiquidity: ws.minLiquidity || undefined,
+        });
+        setCookieSyncAvailable(true);
+      }
 
       if (data.authenticated || data.guestEnabled) {
         setPhase("main");
@@ -518,10 +790,15 @@ const Popup = () => {
 
   React.useEffect(() => {
     (async () => {
-      const [stored, ext] = await Promise.all([getStoredBaseUrl(), getExtSettings()]);
+      const [stored, ext, localT] = await Promise.all([
+        getStoredBaseUrl(),
+        getExtSettings(),
+        getLocalTradingSettings(),
+      ]);
       setBaseUrl(stored);
       baseUrlRef.current = stored;
       setExtSettingsState(ext);
+      setLocalTradingState(localT);
 
       const websiteFilters = await readWebsiteFilterSettings(stored);
       if (Object.keys(websiteFilters).length > 0) {
@@ -542,7 +819,6 @@ const Popup = () => {
     prevAlertCountRef.current = alerts.length;
   }, [alerts.length, soundEnabled]);
 
-  // ── Loading ──────────────────────────────────────────────────────
   if (phase === "loading") {
     return (
       <div style={{ ...s.root, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 160, gap: 10 }}>
@@ -553,7 +829,6 @@ const Popup = () => {
     );
   }
 
-  // ── Unauthenticated ──────────────────────────────────────────────
   if (phase === "unauthenticated") {
     return (
       <div style={s.root}>
@@ -570,6 +845,7 @@ const Popup = () => {
             <p style={{ margin: 0, fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Connect your account</p>
             <p style={{ margin: 0, fontSize: 11, color: C.textMuted, lineHeight: 1.6 }}>
               Visit the Alertly dashboard to start receiving alerts. Your filter settings will sync here automatically.
+              You can also use the extension independently without an account.
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -601,13 +877,12 @@ const Popup = () => {
     );
   }
 
-  // ── Main ─────────────────────────────────────────────────────────
   const isGuest = !syncData?.authenticated && syncData?.guestEnabled;
+  const isAuth = syncData?.authenticated;
   const displayedAlerts = extSettings.paused ? [] : alerts;
 
   return (
     <div style={s.root}>
-      {/* Header */}
       <div style={s.header}>
         <img src="icon128.png" style={s.logo} />
         <div style={s.headerText}>
@@ -616,7 +891,7 @@ const Popup = () => {
             {isGuest
               ? "GUEST MODE"
               : (syncData?.user?.walletAddress
-                  ? `${syncData.user.walletAddress.slice(0, 4)}…${syncData.user.walletAddress.slice(-4)}${syncData.user.vipLevel ? ` · ${syncData.user.vipLevel}` : ""}`
+                  ? `${syncData.user.walletAddress.slice(0, 4)}…${syncData.user.walletAddress.slice(-4)}${syncData.user.vipLevel ? ` · VIP${syncData.user.vipLevel}` : ""}`
                   : "CONNECTED"
                 )
             }
@@ -630,13 +905,12 @@ const Popup = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 16px" }}>
         <button style={s.tab(tab === "alerts")} onClick={() => setTab("alerts")}>ALERTS</button>
+        <button style={s.tab(tab === "wallet")} onClick={() => setTab("wallet")}>WALLET</button>
         <button style={s.tab(tab === "settings")} onClick={() => setTab("settings")}>SETTINGS</button>
       </div>
 
-      {/* Tab: Alerts */}
       {tab === "alerts" && (
         <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -665,11 +939,13 @@ const Popup = () => {
         </div>
       )}
 
-      {/* Tab: Settings */}
-      {tab === "settings" && (
-        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 2 }}>
+      {tab === "wallet" && (
+        <WalletTab syncData={syncData} openDashboard={openDashboard} />
+      )}
 
-          {/* Extension controls */}
+      {tab === "settings" && (
+        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", maxHeight: 520 }}>
+
           <p style={{ margin: "4px 0 4px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>EXTENSION CONTROLS</p>
 
           <ToggleSwitch
@@ -687,61 +963,109 @@ const Popup = () => {
           <ToggleSwitch
             on={soundEnabled}
             onChange={(v) => setSoundEnabled(v)}
-            label="Sound (in popup)"
-            sub="Play a beep when new alerts arrive here"
+            label="Alert Sound"
+            sub="Play a sound when new alerts arrive"
           />
 
-          {/* Filter settings - bidirectional sync */}
-          <p style={{ margin: "14px 0 6px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>
-            FILTER SETTINGS
-            {cookieSyncAvailable && (
-              <span style={{ marginLeft: 6, color: C.green, fontWeight: 600 }}>↔ SYNCED WITH WEBSITE</span>
-            )}
+          <p style={{ margin: "14px 0 4px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>
+            TRADING SETTINGS
+            {isGuest && <span style={{ color: C.yellow, marginLeft: 6 }}>• Local only</span>}
+            {isAuth && <span style={{ color: C.green, marginLeft: 6 }}>• Synced from account</span>}
           </p>
+          <div style={{ ...s.card, padding: "12px 14px", marginTop: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 12px" }}>
+              <NumberField
+                label="Buy Amount"
+                value={localTrading.buyAmount}
+                onChange={(v) => updateLocalTrading({ buyAmount: v })}
+                min={0.001} max={100} step={0.1}
+                suffix="SOL"
+              />
+              <NumberField
+                label="Slippage"
+                value={localTrading.slippage}
+                onChange={(v) => updateLocalTrading({ slippage: v })}
+                min={0.1} max={100} step={0.5}
+                suffix="%"
+              />
+              <NumberField
+                label="Take Profit"
+                value={localTrading.takeProfit}
+                onChange={(v) => updateLocalTrading({ takeProfit: v })}
+                min={1} max={1000} step={5}
+                suffix="%"
+              />
+              <NumberField
+                label="Stop Loss"
+                value={localTrading.stopLoss}
+                onChange={(v) => updateLocalTrading({ stopLoss: v })}
+                min={1} max={100} step={5}
+                suffix="%"
+              />
+            </div>
+            <ToggleSwitch
+              on={localTrading.autoTrade}
+              onChange={(v) => updateLocalTrading({ autoTrade: v })}
+              label="Auto-Trade"
+              sub="Automatically execute trades on new alerts"
+            />
+            <button
+              onClick={saveLocalTrading}
+              disabled={!tradingDirty && tradingSaveStatus === "idle"}
+              style={{
+                ...s.btn("primary"), marginTop: 10,
+                opacity: tradingDirty || tradingSaveStatus !== "idle" ? 1 : 0.5,
+              }}
+            >
+              {tradingSaveStatus === "saving" && "Saving…"}
+              {tradingSaveStatus === "saved" && "✓ Saved"}
+              {tradingSaveStatus === "idle" && (tradingDirty ? "💾 Save Trading Settings" : "Saved Locally")}
+            </button>
+            {isGuest && (
+              <p style={{ margin: "6px 0 0", fontSize: 10, color: C.textDim, textAlign: "center" as const }}>
+                These settings are stored locally in this browser. Connect an account to sync across devices.
+              </p>
+            )}
+          </div>
 
-          <div style={{ ...s.card, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}>
+          <p style={{ margin: "14px 0 4px", fontSize: 10, fontWeight: 700, color: C.textDim, letterSpacing: "0.07em" }}>ALERT FILTERS</p>
+          <div style={{ ...s.card, padding: "12px 14px", marginTop: 4 }}>
             <ToggleSwitch
               on={filters.dexBoostEnabled !== false}
               onChange={(v) => updateFilter({ dexBoostEnabled: v })}
-              label="⚡ DEX Boost Alerts"
-              sub="Receive DEX boost token signals"
+              label="DEX Boost Alerts"
+              sub="Show boosted token alerts"
             />
             <ToggleSwitch
               on={filters.dexListingEnabled !== false}
               onChange={(v) => updateFilter({ dexListingEnabled: v })}
-              label="📋 DEX Listing Alerts"
-              sub="Receive new token listing signals"
+              label="DEX Listing Alerts"
+              sub="Show new token listing alerts"
             />
-
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 8 }}>
               <MoneyInput
-                label="MIN MARKET CAP ($)"
+                label="MIN MARKET CAP"
                 value={filters.minMarketCap}
                 onChange={(v) => updateFilter({ minMarketCap: v })}
-                placeholder="e.g. 50000 or 50K (any)"
+                placeholder="e.g. 50K or 1M"
               />
               <MoneyInput
-                label="MAX MARKET CAP ($)"
+                label="MAX MARKET CAP"
                 value={filters.maxMarketCap}
                 onChange={(v) => updateFilter({ maxMarketCap: v })}
-                placeholder="e.g. 5000000 or 5M (any)"
+                placeholder="e.g. 10M"
               />
               <MoneyInput
-                label="MIN LIQUIDITY ($)"
+                label="MIN LIQUIDITY"
                 value={filters.minLiquidity}
                 onChange={(v) => updateFilter({ minLiquidity: v })}
-                placeholder="e.g. 10000 or 10K (any)"
+                placeholder="e.g. 5K"
               />
             </div>
-
-            {/* Save button */}
             <button
               onClick={saveFilters}
-              disabled={saveStatus === "saving"}
               style={{
-                ...s.btn(saveStatus === "saved" ? "success" : saveStatus === "error" ? "danger" : "primary"),
-                width: "100%",
-                marginTop: 4,
+                ...s.btn("primary"), marginTop: 8,
                 opacity: saveStatus === "saving" ? 0.7 : 1,
               }}
             >
@@ -750,10 +1074,9 @@ const Popup = () => {
               {saveStatus === "error" && "✗ Could not write cookie"}
               {saveStatus === "idle" && (filtersDirty ? "💾 Save & Sync to Website" : "Sync with Website Now")}
             </button>
-
             {saveStatus === "idle" && !filtersDirty && cookieSyncAvailable && (
               <p style={{ margin: "4px 0 0", fontSize: 10, color: C.textDim, textAlign: "center" as const }}>
-                Settings are in sync with the Alertly website
+                Filters are in sync with the Alertly website
               </p>
             )}
             {saveStatus === "error" && (
@@ -763,7 +1086,6 @@ const Popup = () => {
             )}
           </div>
 
-          {/* Dashboard URL */}
           <div style={{ ...s.card, padding: "10px 12px", marginTop: 10 }}>
             <p style={{ margin: 0, fontSize: 10, color: C.textDim, marginBottom: 6, fontWeight: 600, letterSpacing: "0.05em" }}>DASHBOARD URL</p>
             <input
@@ -781,6 +1103,12 @@ const Popup = () => {
               }}
               style={{ ...s.input, borderRadius: 0, border: "none", borderBottom: `1px solid ${C.border}`, background: "transparent", padding: "4px 0" }}
             />
+          </div>
+
+          <div style={{ padding: "10px 0 4px", display: "flex", justifyContent: "center" }}>
+            <button style={{ ...s.btn("ghost"), fontSize: 10 }} onClick={openDashboard}>
+              Full Settings on Dashboard ↗
+            </button>
           </div>
         </div>
       )}
