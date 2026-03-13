@@ -5,11 +5,11 @@ import { broadcastAlertToTelegram } from "@/lib/notifications/telegram";
 import { pushAlert } from "@/lib/alert-store";
 import { getTokenMeta, prefetchTokenMeta } from "@/lib/token-metadata";
 
-const MAX_ENRICH_PER_SECOND = 3;
+const MAX_ENRICH_PER_SECOND = 12;
 let enrichTokens = MAX_ENRICH_PER_SECOND;
 let lastEnrichRefill = Date.now();
 let enrichConcurrent = 0;
-const MAX_ENRICH_CONCURRENT = 2;
+const MAX_ENRICH_CONCURRENT = 8;
 
 function canEnrich(): boolean {
   const now = Date.now();
@@ -197,7 +197,7 @@ function parseLogsForEvents(logs: string[], signature: string, programId: string
     }
   }
 
-  if (isNewListing && !hasSwap) {
+  if (isNewListing) {
     events.push({
       type: "DEX_LISTING",
       tokenAddress,
@@ -430,19 +430,56 @@ async function handleProgramLogs(logs: Logs, programId: string) {
   const parsed = parseLogsForEvents(logs.logs, logs.signature, programId);
   if (parsed.length === 0) return;
 
-  if (!canEnrich()) return;
+  const listings = parsed.filter((e) => e.type === "DEX_LISTING");
+  const swaps = parsed.filter((e) => e.type === "_SWAP_INTERNAL");
 
-  const enriched = await enrichEventFromTransaction(parsed[0]);
-  if (!enriched) return;
+  for (const listing of listings) {
+    if (canEnrich()) {
+      const enriched = await enrichEventFromTransaction(listing);
+      if (enriched) {
+        processBlockchainEvent({ ...listing, tokenAddress: enriched.tokenAddress, wallet: enriched.wallet }).catch(() => null);
+      } else {
+        processBlockchainEvent(listing).catch(() => null);
+      }
+    } else {
+      processBlockchainEvent(listing).catch(() => null);
+    }
+  }
 
-  const enrichedTokenAddress = enriched.tokenAddress;
-  const enrichedWallet = enriched.wallet;
+  if (swaps.length === 0) return;
 
-  for (const baseEvent of parsed) {
-    const enrichedBase = { ...baseEvent, tokenAddress: enrichedTokenAddress, wallet: enrichedWallet };
-    const eventVariants = await inferEventVariants(enrichedBase);
-    for (const event of eventVariants) {
-      processBlockchainEvent(event).catch(() => null);
+  const swap = swaps[0];
+
+  const spike = updateAndDetectVolumeSpike(swap, DEFAULT_VOLUME_SPIKE_PCT);
+  if (spike) {
+    if (canEnrich()) {
+      const enriched = await enrichEventFromTransaction(swap);
+      if (enriched) {
+        processBlockchainEvent({ ...spike, tokenAddress: enriched.tokenAddress, wallet: enriched.wallet }).catch(() => null);
+      } else {
+        processBlockchainEvent(spike).catch(() => null);
+      }
+    } else {
+      processBlockchainEvent(spike).catch(() => null);
+    }
+  }
+
+  if (canEnrich()) {
+    const enriched = await enrichEventFromTransaction(swap);
+    if (!enriched) return;
+
+    const enrichedBase = { ...swap, tokenAddress: enriched.tokenAddress, wallet: enriched.wallet };
+
+    if (enriched.wallet) {
+      const balance = await getWalletSolBalance(enriched.wallet);
+      if (balance >= DEFAULT_WHALE_MIN_SOL) {
+        processBlockchainEvent({
+          ...enrichedBase,
+          type: "WHALE_BUY",
+          walletBalance: balance,
+          reason: `Whale wallet: ${balance.toFixed(0)} SOL`,
+        }).catch(() => null);
+      }
     }
   }
 }
