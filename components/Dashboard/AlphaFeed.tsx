@@ -438,13 +438,15 @@ export function AlphaFeed({
 
                 {/* Change % + external link */}
                 <div className="text-right hidden md:flex flex-col items-end flex-shrink-0 gap-1">
-                  <span className={`text-lg font-black block leading-none ${
-                    token.change?.startsWith("+") ? 'text-green-500' :
-                    token.change?.startsWith("-") ? 'text-red-500' : 'text-zinc-500'
-                  }`}>
-                    {token.change || "—"}
-                  </span>
-                  <span className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">24H</span>
+                  <div className="flex items-baseline gap-1.5 leading-none">
+                    <span className={`text-lg font-black leading-none ${
+                      token.change?.startsWith("+") ? 'text-green-500' :
+                      token.change?.startsWith("-") ? 'text-red-500' : 'text-zinc-500'
+                    }`}>
+                      {token.change || "—"}
+                    </span>
+                    <span className="text-[10px] text-zinc-500 uppercase font-black tracking-tighter">24H</span>
+                  </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     {token.dexUrl && (
                       <a
@@ -452,24 +454,24 @@ export function AlphaFeed({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="text-zinc-600 hover:text-[#5100fd] transition-colors"
+                        className="text-white hover:text-[#5100fd] transition-colors"
                         title="DexScreener"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     )}
                     {token.website && (
-                      <a href={token.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-blue-400 transition-colors" title="Website">
+                      <a href={token.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-white hover:text-blue-400 transition-colors" title="Website">
                         <Globe className="w-3.5 h-3.5" />
                       </a>
                     )}
                     {token.twitter && (
-                      <a href={token.twitter} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-sky-400 transition-colors" title="Twitter/X">
+                      <a href={token.twitter} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-white hover:text-sky-400 transition-colors" title="Twitter/X">
                         <Twitter className="w-3.5 h-3.5" />
                       </a>
                     )}
                     {token.telegram && (
-                      <a href={token.telegram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-blue-300 transition-colors" title="Telegram">
+                      <a href={token.telegram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-white hover:text-blue-300 transition-colors" title="Telegram">
                         <Send className="w-3.5 h-3.5" />
                       </a>
                     )}
