@@ -62,9 +62,9 @@ function Pill({ label, variant }: { label: string; variant: "green" | "red" | "y
 function StatCard({ label, value, sub, accent, warn }: { label: string; value: string | number; sub?: string; accent?: boolean; warn?: boolean }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-      <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-2">{label}</div>
+      <div className="text-[11px] font-bold text-white uppercase tracking-widest mb-2">{label}</div>
       <div className={`text-3xl font-black leading-none ${warn ? "text-yellow-400" : accent ? "text-[#5100fd]" : "text-white"}`}>{value}</div>
-      {sub && <div className="text-xs text-zinc-500 mt-1.5">{sub}</div>}
+      {sub && <div className="text-xs text-zinc-300 mt-1.5">{sub}</div>}
     </div>
   );
 }
@@ -209,7 +209,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-3">
             {lastRefresh && (
-              <span className="text-xs text-zinc-500">Updated {lastRefresh.toLocaleTimeString()}</span>
+              <span className="text-xs text-zinc-300">Updated {lastRefresh.toLocaleTimeString()}</span>
             )}
             <button
               onClick={() => fetchOverview().catch(() => null)}
@@ -217,7 +217,7 @@ export default function AdminPage() {
             >
               Refresh
             </button>
-            <a href="/" className="text-xs font-bold text-zinc-500 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 border border-zinc-700/50">
+            <a href="/" className="text-xs font-bold text-zinc-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 border border-zinc-700/50">
               ← App
             </a>
           </div>
@@ -276,13 +276,13 @@ export default function AdminPage() {
                 {overview.listener.running ? "Running" : "Stopped"}
               </span>
               {overview.listener.uptime && (
-                <span className="text-xs text-zinc-500">· {overview.listener.uptime}</span>
+                <span className="text-xs text-zinc-300">· {overview.listener.uptime}</span>
               )}
             </div>
 
             {overview.listener.monitors && overview.listener.monitors.length > 0 && (
               <div className="mb-6 space-y-2">
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Active Monitors</div>
+                <div className="text-xs font-bold text-white uppercase tracking-wider mb-3">Active Monitors</div>
                 {overview.listener.monitors.map((m) => (
                   <div key={m} className="flex items-center gap-2 text-sm text-white">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#5100fd] flex-shrink-0" />
@@ -323,20 +323,20 @@ export default function AdminPage() {
               <SectionTitle>Infrastructure</SectionTitle>
               <InfraRow label="Solana RPC" value={overview.infra.solanaRpc} />
               <InfraRow label="Jupiter API" value={overview.infra.jupiter} />
-              <div className="text-xs text-zinc-500 mt-3">
+              <div className="text-xs text-zinc-300 mt-3">
                 Checked: {new Date(overview.checkedAt).toLocaleTimeString()}
               </div>
             </div>
 
             <div className="border-t border-zinc-800 pt-5">
-              <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-4">Server Resources</div>
+              <div className="text-xs font-bold text-white uppercase tracking-widest mb-4">Server Resources</div>
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-1">
                     <span className="text-sm text-white">RAM</span>
                     <span className={`text-sm font-bold ${memWarn ? "text-yellow-400" : "text-white"}`}>
                       {srv.memUsedMb} MB / {srv.memTotalMb} MB
-                      <span className="text-xs text-zinc-500 ml-1">({srv.memUsedPct}%)</span>
+                      <span className="text-xs text-zinc-300 ml-1">({srv.memUsedPct}%)</span>
                     </span>
                   </div>
                   <BarMeter pct={srv.memUsedPct} />
@@ -345,13 +345,13 @@ export default function AdminPage() {
                   <div className="flex justify-between mb-1">
                     <span className="text-sm text-white">CPU Load</span>
                     <span className={`text-sm font-bold ${cpuWarn ? "text-yellow-400" : "text-white"}`}>
-                      {srv.loadAvg1m} <span className="text-xs text-zinc-500">/ {srv.cpuCount} cores</span>
+                      {srv.loadAvg1m} <span className="text-xs text-zinc-300">/ {srv.cpuCount} cores</span>
                     </span>
                   </div>
                   <BarMeter pct={srv.loadPct} />
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">Server Uptime</span>
+                  <span className="text-white">Server Uptime</span>
                   <span className="text-white font-bold">{formatUptime(srv.serverUptimeSeconds)}</span>
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function AdminPage() {
             <div>
               <SectionTitle>Telegram Subscribers</SectionTitle>
             </div>
-            <span className="text-xs text-zinc-500 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
+            <span className="text-xs text-zinc-300 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
               {overview.users.total} subscriber{overview.users.total !== 1 ? "s" : ""}
             </span>
           </div>
@@ -376,7 +376,7 @@ export default function AdminPage() {
               <code className="text-[#5100fd] bg-[#5100fd]/10 px-1.5 py-0.5 rounded text-xs">telegram-bot/data/subscribers.json</code>.
               Since there is no central database, ban and freeze actions are not available in this version.
             </p>
-            <p className="mt-3 text-zinc-400">
+            <p className="mt-3 text-zinc-300">
               To restrict a subscriber, remove their entry from the JSON file or stop the Telegram bot. Full user management
               (ban, freeze, notes, trade history) becomes available when a database is connected.
             </p>
@@ -412,14 +412,14 @@ export default function AdminPage() {
             </button>
 
             {testResult && (
-              <span className="text-xs text-zinc-500 ml-auto">
+              <span className="text-xs text-zinc-300 ml-auto">
                 {new Date(testResult.ranAt).toLocaleTimeString()} · {(testResult.duration / 1000).toFixed(1)}s
               </span>
             )}
           </div>
 
           {testRunning && (
-            <div className="flex items-center gap-3 py-4 text-zinc-400 text-sm">
+            <div className="flex items-center gap-3 py-4 text-zinc-200 text-sm">
               <Spinner size={16} />
               Running {testSuite} tests — this may take up to 30 seconds…
             </div>
@@ -435,7 +435,7 @@ export default function AdminPage() {
                   { label: "Skipped", value: testResult.summary.skipped, cls: "text-yellow-400" },
                 ].map(({ label, value, cls }) => (
                   <div key={label} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center">
-                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">{label}</div>
+                    <div className="text-[10px] font-bold text-white uppercase tracking-widest mb-2">{label}</div>
                     <div className={`text-2xl font-black ${cls}`}>{value}</div>
                   </div>
                 ))}
@@ -464,13 +464,13 @@ export default function AdminPage() {
                   >
                     <div className="flex items-center gap-2.5">
                       <span className={`w-2 h-2 rounded-full ${suite.failed === 0 ? "bg-green-400" : "bg-red-400"}`} />
-                      <span className="font-mono text-xs text-zinc-300">{suite.file}</span>
+                      <span className="font-mono text-xs text-white">{suite.file}</span>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
                       <span className="text-green-400">{suite.passed} passed</span>
                       {suite.failed > 0 && <span className="text-red-400">{suite.failed} failed</span>}
-                      <span className="text-zinc-500">{suite.duration}ms</span>
-                      <span className="text-zinc-500">{expandedSuite === suite.file ? "▲" : "▼"}</span>
+                      <span className="text-zinc-300">{suite.duration}ms</span>
+                      <span className="text-zinc-300">{expandedSuite === suite.file ? "▲" : "▼"}</span>
                     </div>
                   </button>
 
@@ -489,7 +489,7 @@ export default function AdminPage() {
                               </pre>
                             )}
                           </div>
-                          <span className="text-[10px] text-zinc-500 flex-shrink-0">{t.duration}ms</span>
+                          <span className="text-[10px] text-zinc-300 flex-shrink-0">{t.duration}ms</span>
                         </div>
                       ))}
                     </div>

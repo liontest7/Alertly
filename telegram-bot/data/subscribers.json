@@ -1,1 +1,21 @@
-{}
+{
+  "7240127010": {
+    "chatId": "7240127010",
+    "firstName": "GLON",
+    "subscribedAt": "2026-03-14T10:20:25.988Z",
+    "settings": {
+      "alertsEnabled": true,
+      "dexBoostEnabled": true,
+      "dexListingEnabled": true,
+      "selectedBoostLevel": "all",
+      "buyAmount": 0.5,
+      "slippage": 10,
+      "takeProfit": 50,
+      "stopLoss": 25,
+      "minMarketCap": 0,
+      "maxMarketCap": 0,
+      "minLiquidity": 0,
+      "minHolders": 0
+    }
+  }
+}
