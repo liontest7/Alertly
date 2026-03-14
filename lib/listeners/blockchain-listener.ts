@@ -25,6 +25,11 @@ let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
 let listingTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Grace period: first poll of each type seeds the baseline state without broadcasting
+let boostTopBaselineReady = false;
+let boostLatestBaselineReady = false;
+let listingBaselineReady = false;
+
 let globalRateLimitedUntil = 0;
 
 function isRateLimited(): boolean {
@@ -147,6 +152,11 @@ async function processTokenAlert(
         imageUrl: meta.imageUrl || undefined,
         boostAmount,
         totalBoostAmount,
+        priceUsd: meta.priceUsd || undefined,
+        website: meta.website || undefined,
+        twitter: meta.twitter || undefined,
+        telegram: meta.telegram || undefined,
+        dex,
       }).catch(() => null);
     })
     .catch((err) => {
@@ -192,7 +202,10 @@ async function pollDexBoostsTop() {
       newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
 
-    if (newBoosts.length > 0) {
+    if (!boostTopBaselineReady) {
+      boostTopBaselineReady = true;
+      if (newBoosts.length > 0) console.log(`[Listener] Top boosts baseline: ${newBoosts.length} tokens seeded (no broadcast)`);
+    } else if (newBoosts.length > 0) {
       console.log(`[Listener] Top boosts: ${newBoosts.length} new/increased`);
       const now = Date.now();
       newBoosts.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
@@ -245,7 +258,10 @@ async function pollDexBoostsLatest() {
       newBoosts.push({ addr, boostAmount: delta, totalBoostAmount: totalAmount });
     }
 
-    if (newBoosts.length > 0) {
+    if (!boostLatestBaselineReady) {
+      boostLatestBaselineReady = true;
+      if (newBoosts.length > 0) console.log(`[Listener] Latest boosts baseline: ${newBoosts.length} tokens seeded (no broadcast)`);
+    } else if (newBoosts.length > 0) {
       console.log(`[Listener] Latest boosts: ${newBoosts.length} new/increased`);
       const now = Date.now();
       newBoosts.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
@@ -295,7 +311,10 @@ async function pollDexTokenProfiles() {
       newProfiles.push({ addr });
     }
 
-    if (newProfiles.length > 0) {
+    if (!listingBaselineReady) {
+      listingBaselineReady = true;
+      if (newProfiles.length > 0) console.log(`[Listener] Listings baseline: ${newProfiles.length} tokens seeded (no broadcast)`);
+    } else if (newProfiles.length > 0) {
       console.log(`[Listener] Token profiles: ${newProfiles.length} new listings`);
       const now = Date.now();
       newProfiles.forEach(({ addr }, j) => {
@@ -335,6 +354,10 @@ export async function startBlockchainListener() {
 export async function stopBlockchainListener() {
   listenerRunning = false;
   listenerStartedAt = null;
+
+  boostTopBaselineReady = false;
+  boostLatestBaselineReady = false;
+  listingBaselineReady = false;
 
   if (boostTopTimer) { clearTimeout(boostTopTimer); boostTopTimer = null; }
   if (boostLatestTimer) { clearTimeout(boostLatestTimer); boostLatestTimer = null; }
