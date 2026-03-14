@@ -1,7 +1,7 @@
 import { getEnv } from "@/lib/env";
 import { calculateRiskScore } from "@/lib/risk/scorer";
 import { broadcastAlertToTelegram } from "@/lib/notifications/telegram";
-import { pushAlert } from "@/lib/alert-store";
+import { pushAlert, getAlerts } from "@/lib/alert-store";
 import { getTokenMeta } from "@/lib/token-metadata";
 
 export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
@@ -9,11 +9,12 @@ export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 const holdersCache = new Map<string, { count: number; fetchedAt: number }>();
 const HOLDERS_CACHE_TTL = 300_000;
 
-async function fetchTokenHolders(address: string): Promise<number | null> {
-  const cached = holdersCache.get(address);
-  if (cached && Date.now() - cached.fetchedAt < HOLDERS_CACHE_TTL) {
-    return cached.count;
-  }
+function getHelixRpcUrl(): string | null {
+  const url = getEnv("SOLANA_RPC_URL") || getEnv("NEXT_PUBLIC_SOLANA_RPC_URL") || "";
+  return url.includes("helius") ? url : null;
+}
+
+async function fetchHoldersFromPumpFun(address: string): Promise<number | null> {
   if (!address.toLowerCase().endsWith("pump")) return null;
   try {
     const res = await fetch(`https://frontend-api.pump.fun/coins/${address}`, {
@@ -23,11 +24,49 @@ async function fetchTokenHolders(address: string): Promise<number | null> {
     if (!res.ok) return null;
     const data = await res.json();
     const count: number = data?.holder_count;
-    if (typeof count === "number" && count > 0) {
-      holdersCache.set(address, { count, fetchedAt: Date.now() });
-      return count;
-    }
-  } catch {
+    if (typeof count === "number" && count > 0) return count;
+  } catch {}
+  return null;
+}
+
+async function fetchHoldersFromHelius(address: string): Promise<number | null> {
+  const rpcUrl = getHelixRpcUrl();
+  if (!rpcUrl) return null;
+  try {
+    const res = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTokenAccounts",
+        params: {
+          mint: address,
+          limit: 1000,
+          displayOptions: { showZeroBalance: false },
+        },
+      }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const accounts = data?.result?.token_accounts;
+    if (!Array.isArray(accounts) || accounts.length === 0) return null;
+    return accounts.length;
+  } catch {}
+  return null;
+}
+
+async function fetchTokenHolders(address: string): Promise<number | null> {
+  const cached = holdersCache.get(address);
+  if (cached && Date.now() - cached.fetchedAt < HOLDERS_CACHE_TTL) {
+    return cached.count;
+  }
+
+  const count = await fetchHoldersFromPumpFun(address) ?? await fetchHoldersFromHelius(address);
+  if (typeof count === "number" && count > 0) {
+    holdersCache.set(address, { count, fetchedAt: Date.now() });
+    return count;
   }
   return null;
 }
@@ -40,10 +79,9 @@ const BOOST_LATEST_POLL_MS = 4_000;
 const LISTING_POLL_MS = 5_000;
 const RATE_LIMIT_BACKOFF_MS = 15_000;
 
-// For boosts: track last known totalAmount per token — alert only on real increase
 const lastBoostTotalAmounts = new Map<string, number>();
 const MAX_BOOST_TRACKING = 500;
-// For listings: still deduplicate (each token listed only once per session)
+
 const seenListingFingerprints = new Set<string>();
 const MAX_LISTING_FINGERPRINTS = 1_000;
 
@@ -51,7 +89,6 @@ let boostTopTimer: ReturnType<typeof setTimeout> | null = null;
 let boostLatestTimer: ReturnType<typeof setTimeout> | null = null;
 let listingTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Grace period: first poll of each type seeds the baseline state without broadcasting
 let boostTopBaselineReady = false;
 let boostLatestBaselineReady = false;
 let listingBaselineReady = false;
@@ -74,6 +111,25 @@ function isPotentialPublicKey(value: string): boolean {
   return true;
 }
 
+function seedHistoricalState(): void {
+  const stored = getAlerts();
+  for (const alert of stored) {
+    if (alert.type === "DEX_LISTING") {
+      const fp = `${alert.address}|DEX_LISTING`;
+      seenListingFingerprints.add(fp);
+    }
+    if (alert.type === "DEX_BOOST" && alert.totalBoostAmount != null) {
+      const existing = lastBoostTotalAmounts.get(alert.address) ?? 0;
+      if (alert.totalBoostAmount > existing) {
+        lastBoostTotalAmounts.set(alert.address, alert.totalBoostAmount);
+      }
+    }
+  }
+  if (stored.length > 0) {
+    console.log(`[Listener] Seeded dedup state from ${stored.length} historical alerts`);
+  }
+}
+
 async function processTokenAlert(
   addr: string,
   type: AlertKind,
@@ -93,8 +149,6 @@ async function processTokenAlert(
     lpLockedPct: 80,
   });
 
-  // Boosts: unique fingerprint per boost event so each appears separately in feed
-  // Listings: classic fingerprint to avoid duplicates
   const fingerprint = type === "DEX_BOOST"
     ? `${addr}|DEX_BOOST|${totalBoostAmount ?? boostAmount ?? Math.floor(alertedAt.getTime() / 1000)}`
     : `${addr}|${type}`;
@@ -146,6 +200,7 @@ async function processTokenAlert(
             alertedAt,
             boostAmount,
             totalBoostAmount,
+            holders: holders ?? undefined,
           }).catch(() => null);
         }
         return;
@@ -373,6 +428,8 @@ export async function startBlockchainListener() {
   try {
     listenerRunning = true;
     listenerStartedAt = Date.now();
+
+    seedHistoricalState();
 
     console.log("[Listener] Starting DEX monitors (Top boosts 2s + Latest boosts 4s + Listings 5s, staggered)");
 

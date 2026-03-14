@@ -18,6 +18,10 @@ type AlertItem = {
   boostAmount?: number;
   fingerprint?: string;
   alertedAt?: string;
+  holders?: number;
+  priceUsd?: string;
+  riskScore?: number;
+  riskLevel?: string;
 };
 
 type TradingWalletInfo = {
@@ -515,9 +519,12 @@ function AlertCard({ alert }: { alert: AlertItem }) {
       </div>
       <div style={{ display: "flex", gap: 10, fontSize: 10, color: C.textMuted, flexWrap: "wrap" as const }}>
         {alert.mc && alert.mc !== "N/A" && <span>MC <span style={{ color: C.text }}>{alert.mc}</span></span>}
-        {alert.vol && alert.vol !== "N/A" && <span>VOL <span style={{ color: C.text }}>{alert.vol}</span></span>}
         {alert.liquidity && alert.liquidity !== "N/A" && <span>LIQ <span style={{ color: C.text }}>{alert.liquidity}</span></span>}
-        {alert.boostAmount != null && <span>BOOST <span style={{ color: C.accent }}>×{alert.boostAmount}</span></span>}
+        {alert.vol && alert.vol !== "N/A" && <span>VOL <span style={{ color: C.text }}>{alert.vol}</span></span>}
+        {alert.holders != null && alert.holders > 0 && (
+          <span>HOLD <span style={{ color: "#a78bfa" }}>{alert.holders.toLocaleString()}</span></span>
+        )}
+        {alert.boostAmount != null && <span>BOOST <span style={{ color: C.accent }}>+{alert.boostAmount.toLocaleString()}</span></span>}
         {alert.change && alert.change !== "N/A" && (
           <span style={{ color: alert.change.startsWith("-") ? C.red : C.green }}>{alert.change}</span>
         )}
