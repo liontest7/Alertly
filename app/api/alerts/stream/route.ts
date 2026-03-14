@@ -53,7 +53,7 @@ function alertMatchesFilters(alert: StoredAlert, filters: AlertFilters): boolean
   }
 
   if (filters.minHolders && filters.minHolders > 0) {
-    if (alert.holders < filters.minHolders) return false;
+    if (alert.holders > 0 && alert.holders < filters.minHolders) return false;
   }
 
   return true;

@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff, Trash2, Bot } from "lucide-react"
+import { Loader2, Volume2, VolumeX, Zap, ExternalLink, Bell, BellOff, Trash2, Bot, Globe, Twitter, Send } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 
@@ -379,6 +379,17 @@ export function AlphaFeed({
                       {normalizedType}
                     </span>
 
+                    {/* Risk score badge */}
+                    {token.riskLevel && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-black uppercase tracking-tight whitespace-nowrap ${
+                        token.riskLevel === "SAFE" ? "bg-green-500/15 border border-green-500/40 text-green-400" :
+                        token.riskLevel === "MEDIUM" ? "bg-yellow-500/15 border border-yellow-500/40 text-yellow-400" :
+                        "bg-red-500/15 border border-red-500/40 text-red-400"
+                      }`}>
+                        {token.riskLevel === "SAFE" ? "✓" : token.riskLevel === "MEDIUM" ? "⚠" : "✗"} {token.riskScore?.toFixed(1)}
+                      </span>
+                    )}
+
                     {/* Boost amount badge */}
                     {isBoost && (token.boostAmount != null || token.totalBoostAmount != null) && (
                       <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-black whitespace-nowrap" style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.55)', color: '#fbbf24' }}>
@@ -434,17 +445,35 @@ export function AlphaFeed({
                     {token.change || "—"}
                   </span>
                   <span className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">24H</span>
-                  {token.dexUrl && (
-                    <a
-                      href={token.dexUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="text-[10px] text-zinc-600 hover:text-[#5100fd] transition-colors mt-0.5"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {token.dexUrl && (
+                      <a
+                        href={token.dexUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="text-zinc-600 hover:text-[#5100fd] transition-colors"
+                        title="DexScreener"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {token.website && (
+                      <a href={token.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-blue-400 transition-colors" title="Website">
+                        <Globe className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {token.twitter && (
+                      <a href={token.twitter} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-sky-400 transition-colors" title="Twitter/X">
+                        <Twitter className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {token.telegram && (
+                      <a href={token.telegram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-zinc-600 hover:text-blue-300 transition-colors" title="Telegram">
+                        <Send className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
 
                 {/* Actions */}
