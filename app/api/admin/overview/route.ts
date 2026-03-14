@@ -4,6 +4,7 @@ import { getListenerStatus } from "@/lib/listeners/blockchain-listener";
 import { getAlerts } from "@/lib/alert-store";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import os from "os";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,29 @@ function getAlerts24h(): number {
   }
 }
 
+function getServerStats() {
+  const totalMem = os.totalmem();
+  const freeMem = os.freemem();
+  const usedMem = totalMem - freeMem;
+  const memUsedPct = Math.round((usedMem / totalMem) * 100);
+  const loadAvg = os.loadavg();
+  const cpuCount = os.cpus().length;
+  const load1m = loadAvg[0];
+  const loadPct = Math.round((load1m / cpuCount) * 100);
+  const serverUptime = os.uptime();
+
+  return {
+    memUsedMb: Math.round(usedMem / 1024 / 1024),
+    memTotalMb: Math.round(totalMem / 1024 / 1024),
+    memUsedPct,
+    loadAvg1m: parseFloat(load1m.toFixed(2)),
+    loadAvg5m: parseFloat(loadAvg[1].toFixed(2)),
+    loadPct: Math.min(loadPct, 100),
+    cpuCount,
+    serverUptimeSeconds: Math.round(serverUptime),
+  };
+}
+
 export async function GET(req: Request) {
   const access = await requireAdmin(req);
   if (!access.ok) {
@@ -79,6 +103,7 @@ export async function GET(req: Request) {
   const listenerStatus = getListenerStatus();
   const telegramLinked = getTelegramSubscriberCount();
   const alerts24h = getAlerts24h();
+  const server = getServerStats();
 
   const [solanaRpc, jupiter] = await Promise.all([
     checkSolanaRpc(process.env.SOLANA_RPC_URL),
@@ -104,10 +129,10 @@ export async function GET(req: Request) {
       monitors: listenerStatus.monitors,
     },
     infra: {
-      database: "disabled",
       solanaRpc,
       jupiter,
     },
+    server,
     checkedAt: new Date().toISOString(),
   });
 }

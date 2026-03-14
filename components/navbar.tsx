@@ -21,7 +21,7 @@ export function Navbar() {
   const { setVisible } = useWalletModal();
   const { connected, publicKey, wallet, select, wallets, disconnect } = useWallet();
   const [isClient, setIsClient] = useState(false);
-  
+
   const isOnDashboard = pathname === '/dashboard';
 
   useEffect(() => {
@@ -30,22 +30,15 @@ export function Navbar() {
 
   const lastWalletName = useRef<string | null>(null);
 
-  // Trigger wallet interaction immediately when a wallet is selected
   useEffect(() => {
     if (isClient && wallet && !connected && !loading && !user) {
-      // Avoid auto-connecting if it's already connecting
       if (wallet.adapter.connecting) return;
       
       const connectWallet = async () => {
         try {
-          console.log("Attempting to connect wallet:", wallet.adapter.name);
           await wallet.adapter.connect();
         } catch (err: any) {
-          console.error("Wallet connection failed:", err);
-          // If connection fails or is cancelled, disconnect to reset the button state
           wallet.adapter.disconnect();
-          
-          // Show informative toast for connection failure
           const isUserRejected = err.message?.includes("User rejected") || err.name === "WalletConnectionError";
           toast({
             title: isUserRejected ? "Connection Cancelled" : "Connection Failed",
@@ -61,6 +54,7 @@ export function Navbar() {
     }
   }, [wallet, connected, loading, user, isClient, toast]);
 
+  if (pathname === '/admin') return null;
 
   const handleLaunchTerminal = async () => {
     if (loading) {

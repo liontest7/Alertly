@@ -4,10 +4,14 @@ import { siteConfig } from "@/lib/config";
 import Image from "next/image";
 import { useAuthSession } from "@/components/providers";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
   const { user } = useAuthSession();
   const isAdmin = user?.isAdmin === true;
+  const pathname = usePathname();
+
+  if (pathname === "/admin") return null;
 
   return (
     <footer className="relative z-20 py-12 border-t border-zinc-900 bg-black w-full">
