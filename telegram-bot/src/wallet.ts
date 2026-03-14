@@ -89,3 +89,8 @@ export function shortAddr(address: string): string {
   if (!address || address.length < 10) return address;
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
+
+export function pkBase58ToBase64(b58: string): string {
+  const bytes = bs58.decode(b58);
+  return Buffer.from(bytes).toString("base64");
+}

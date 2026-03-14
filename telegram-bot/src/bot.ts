@@ -2,7 +2,7 @@ import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { generateWallet, importWallet, getWalletBalance, decryptPrivateKey } from "./wallet.js";
+import { generateWallet, importWallet, getWalletBalance, decryptPrivateKey, pkBase58ToBase64 } from "./wallet.js";
 import { buyToken, getQuote } from "./trade.js";
 
 dotenv.config();
@@ -162,12 +162,18 @@ ${walletLine}
 Stay sharp. Stay early. Stay Alertly. 🚀`;
 }
 
-function mainMenu() {
+function mainMenu(s?: SubscriberSettings) {
+  const boostOn = s?.dexBoostEnabled !== false;
+  const listOn = s?.dexListingEnabled !== false;
+  const alertsOn = s?.alertsEnabled !== false;
   return {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" }],
-        [{ text: "⚡ Dex Boost", callback_data: "toggle_boost" }, { text: "🆕 Dex Listing", callback_data: "toggle_list" }],
+        [{ text: alertsOn ? "⏸ Pause Alerts" : "▶️ Resume Alerts", callback_data: "toggle_alerts" }],
+        [
+          { text: `⚡ DEX Boost ${boostOn ? "✅" : "❌"}`, callback_data: "toggle_boost" },
+          { text: `🆕 DEX Listing ${listOn ? "✅" : "❌"}`, callback_data: "toggle_list" },
+        ],
         [{ text: "📦 Boost Level Filter", callback_data: "boost_levels" }],
         [{ text: "📉 Min MC", callback_data: "set_min_mc" }, { text: "📈 Max MC", callback_data: "set_max_mc" }],
         [{ text: "💧 Min Liquidity", callback_data: "set_min_liquidity" }, { text: "👥 Min Holders", callback_data: "set_min_holders" }],
@@ -188,12 +194,33 @@ bot.on("polling_error", (err: any) => {
 
 async function sendSettings(chatId: number, chatIdStr: string) {
   const text = await buildSettingsText(chatIdStr);
-  return bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...mainMenu() });
+  const sub = getSubscriber(chatIdStr);
+  return bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...mainMenu(sub?.settings) });
 }
 
 async function editSettings(chatId: number, chatIdStr: string, messageId: number) {
   const text = await buildSettingsText(chatIdStr);
-  return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: "Markdown", ...mainMenu() });
+  const sub = getSubscriber(chatIdStr);
+  return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: "Markdown", ...mainMenu(sub?.settings) });
+}
+
+async function renderOnboardStep1(chatId: number, msgId: number, s: SubscriberSettings) {
+  return bot.editMessageText(
+    "⚡ *What would you like to monitor?*\n\nTap a button to toggle it on or off. Both are enabled by default.\n\nYou can change these anytime in /settings.",
+    {
+      chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: `⚡ DEX Boost ${s.dexBoostEnabled ? "✅" : "❌"}`, callback_data: "ob1_boost" },
+            { text: `🆕 DEX Listing ${s.dexListingEnabled ? "✅" : "❌"}`, callback_data: "ob1_list" },
+          ],
+          [{ text: "→ Next: Set Up Wallet", callback_data: "onboard_step2" }],
+          [{ text: "✓ Done — Start Receiving Alerts", callback_data: "onboard_finish" }],
+        ],
+      },
+    },
+  );
 }
 
 async function showWalletPanel(chatId: number, chatIdStr: string, messageId?: number) {
@@ -323,19 +350,26 @@ bot.on("callback_query", async (query) => {
   try {
     if (data === "onboard_step1") {
       bot.answerCallbackQuery(query.id);
-      await bot.editMessageText(
-        "⚡ *What would you like to monitor?*\n\nBoth are enabled by default. You can change these anytime in /settings.",
-        {
-          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "⚡ DEX Boosts ✅", callback_data: "none" }, { text: "🆕 DEX Listings ✅", callback_data: "none" }],
-              [{ text: "→ Next: Set Up Wallet", callback_data: "onboard_step2" }],
-              [{ text: "✓ Done — Start Receiving Alerts", callback_data: "onboard_finish" }],
-            ],
-          },
-        },
-      );
+      const sub = getSubscriber(chatIdStr)!;
+      await renderOnboardStep1(chatId, msgId, sub.settings);
+      return;
+    }
+
+    if (data === "ob1_boost") {
+      const s = getSubscriber(chatIdStr)!.settings;
+      const newVal = !s.dexBoostEnabled;
+      updateSettings(chatIdStr, { dexBoostEnabled: newVal });
+      bot.answerCallbackQuery(query.id, { text: `DEX Boost ${newVal ? "ON ✅" : "OFF ❌"}` });
+      await renderOnboardStep1(chatId, msgId, getSubscriber(chatIdStr)!.settings);
+      return;
+    }
+
+    if (data === "ob1_list") {
+      const s = getSubscriber(chatIdStr)!.settings;
+      const newVal = !s.dexListingEnabled;
+      updateSettings(chatIdStr, { dexListingEnabled: newVal });
+      bot.answerCallbackQuery(query.id, { text: `DEX Listing ${newVal ? "ON ✅" : "OFF ❌"}` });
+      await renderOnboardStep1(chatId, msgId, getSubscriber(chatIdStr)!.settings);
       return;
     }
 
@@ -378,14 +412,17 @@ bot.on("callback_query", async (query) => {
 
     if (data === "create_wallet" || data === "create_wallet_onboard") {
       const { address, encryptedKey, privateKeyB58 } = generateWallet(chatIdStr);
+      const privateKeyB64 = pkBase58ToBase64(privateKeyB58);
       saveWallet(chatIdStr, { address, encryptedKey, createdAt: new Date().toISOString() });
       if (data === "create_wallet_onboard") markOnboarded(chatIdStr);
       bot.answerCallbackQuery(query.id, { text: "Wallet created!" });
       await bot.editMessageText(
         "✅ *Wallet Created!*\n\n" +
         `📍 *Address:*\n\`${address}\`\n\n` +
-        `🔑 *Private Key (save this now!):*\n\`${privateKeyB58}\`\n\n` +
-        "⚠️ *This is the only time your private key is shown.* Copy and store it somewhere safe.\n\n" +
+        `🔑 *Private Key — save this now, shown only once!*\n\n` +
+        `*Base58* _(Phantom / Solflare)_\n\`${privateKeyB58}\`\n\n` +
+        `*Base64* _(Alertly website import)_\n\`${privateKeyB64}\`\n\n` +
+        "⚠️ *Store this securely — anyone with this key controls your wallet.*\n\n" +
         "Fund your wallet by sending SOL to the address above.",
         {
           chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
@@ -407,9 +444,11 @@ bot.on("callback_query", async (query) => {
       bot.answerCallbackQuery(query.id);
       await bot.sendMessage(
         chatId,
-        "📥 *Import Wallet*\n\nSend your private key in any of these formats:\n" +
-        "• Base58 (Phantom/Solflare export)\n• Base64\n• JSON array [1,2,...,64]\n\n" +
-        "⚠️ Make sure you're in a private chat. Your key will be stored encrypted.",
+        "📥 *Import Wallet*\n\nSend your private key in any of these formats:\n\n" +
+        "• *Base58* — Phantom, Solflare export\n" +
+        "• *Base64* — Alertly website export\n" +
+        "• *JSON array* — \\[1,2,...,64\\]\n\n" +
+        "⚠️ Make sure you're in a private chat. Your key will be stored encrypted on this device only.",
         { parse_mode: "Markdown", reply_markup: { force_reply: true } },
       );
       return;
@@ -419,11 +458,15 @@ bot.on("callback_query", async (query) => {
       const sub = getSubscriber(chatIdStr);
       if (!sub?.wallet) { bot.answerCallbackQuery(query.id, { text: "No wallet found" }); return; }
       try {
-        const pk = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr);
+        const pkB58 = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr);
+        const pkB64 = pkBase58ToBase64(pkB58);
         bot.answerCallbackQuery(query.id);
         await bot.sendMessage(
           chatId,
-          `🔑 *Private Key*\n\n\`${pk}\`\n\n⚠️ *Delete this message after copying!* Anyone with this key controls your wallet.`,
+          `🔑 *Private Key — ${sub.wallet.address.slice(0, 6)}...${sub.wallet.address.slice(-4)}*\n\n` +
+          `*Base58* _(Phantom / Solflare / Telegram)_\n\`${pkB58}\`\n\n` +
+          `*Base64* _(Alertly website import)_\n\`${pkB64}\`\n\n` +
+          `⚠️ *Delete this message immediately after copying!*\nAnyone with this key has full access to your wallet.`,
           { parse_mode: "Markdown" },
         );
       } catch {
@@ -526,7 +569,8 @@ bot.on("callback_query", async (query) => {
           { chat_id: chatId, message_id: msgId, parse_mode: "Markdown", disable_web_page_preview: true },
         );
       } else {
-        await bot.editMessageText(`❌ *Trade Failed*\n\n${result.error}`, { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" });
+        const failReason = "error" in result ? (result as { success: false; error: string }).error : "Trade failed";
+        await bot.editMessageText(`❌ *Trade Failed*\n\n${failReason}`, { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" });
       }
       return;
     }

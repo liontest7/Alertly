@@ -32,7 +32,7 @@ export interface StoredAlert {
   buyAmountSol?: number;
 }
 
-const MAX_ALERTS = 200;
+const MAX_ALERTS = 500;
 const alertBuffer: StoredAlert[] = [];
 const seenFingerprints = new Set<string>();
 

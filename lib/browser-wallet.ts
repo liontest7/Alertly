@@ -6,7 +6,6 @@ export type BrowserWallet = {
   createdAt: string
 }
 
-// Solana addresses are plain base58 (no checksum)
 const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 function encodeBase58(input: Uint8Array): string {
@@ -27,6 +26,31 @@ function encodeBase58(input: Uint8Array): string {
   for (let i = 0; i < input.length && input[i] === 0; i++) result += "1"
   for (let i = digits.length - 1; i >= 0; i--) result += BASE58_ALPHABET[digits[i]]
   return result
+}
+
+function decodeBase58(input: string): Uint8Array {
+  const digits: number[] = [0]
+  for (let i = 0; i < input.length; i++) {
+    const value = BASE58_ALPHABET.indexOf(input[i])
+    if (value < 0) throw new Error("Invalid base58 character: " + input[i])
+    let carry = value
+    for (let j = 0; j < digits.length; j++) {
+      carry += digits[j] * 58
+      digits[j] = carry & 0xff
+      carry >>= 8
+    }
+    while (carry > 0) {
+      digits.push(carry & 0xff)
+      carry >>= 8
+    }
+  }
+  let leadingZeros = 0
+  for (let i = 0; i < input.length && input[i] === "1"; i++) leadingZeros++
+  const bytes = new Uint8Array(leadingZeros + digits.length)
+  for (let i = 0; i < digits.length; i++) {
+    bytes[leadingZeros + i] = digits[digits.length - 1 - i]
+  }
+  return bytes
 }
 
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -64,7 +88,6 @@ export function removeBrowserWallet(): void {
 }
 
 export async function generateBrowserWallet(): Promise<BrowserWallet> {
-  // tweetnacl is pure JS — no Node.js or Buffer dependencies, safe in all browsers
   const nacl = (await import("tweetnacl")).default
   const keypair = nacl.sign.keyPair()
   const wallet: BrowserWallet = {
@@ -84,16 +107,18 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
 
   try {
     if (trimmed.startsWith("[")) {
-      // JSON byte array format: [1,2,3,...]
       const arr = JSON.parse(trimmed)
       secretKey = new Uint8Array(arr)
+    } else if (/^[1-9A-HJ-NP-Za-km-z]{87,88}$/.test(trimmed)) {
+      secretKey = decodeBase58(trimmed)
     } else {
-      // base64 format
       secretKey = base64ToUint8(trimmed)
     }
     if (secretKey.length !== 64) throw new Error("bad length")
   } catch {
-    throw new Error("Invalid private key. Expected base64 (64 bytes) or JSON byte array.")
+    throw new Error(
+      "Invalid private key. Supported formats:\n• Base58 (Phantom / Solflare / Telegram export)\n• Base64 (Alertly website export)\n• JSON byte array [1,2,...,64]"
+    )
   }
 
   const keypair = nacl.sign.keyPair.fromSecretKey(secretKey)
@@ -104,6 +129,14 @@ export async function importBrowserWallet(privateKeyInput: string): Promise<Brow
   }
   saveBrowserWallet(wallet)
   return wallet
+}
+
+export function exportBrowserWalletKeys(wallet: BrowserWallet): { base64: string; base58: string } {
+  const secretKey = base64ToUint8(wallet.privateKey)
+  return {
+    base64: wallet.privateKey,
+    base58: encodeBase58(secretKey),
+  }
 }
 
 export async function sendSol(wallet: BrowserWallet, toAddress: string, amountSol: number): Promise<string> {

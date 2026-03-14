@@ -1,8 +1,9 @@
 const DEFAULT_ALERTLY_BASE_URL = "https://alertly-5zmw.onrender.com";
 const ALERTLY_BASE_URL_STORAGE_KEY = "alertlyBaseUrl";
 const LAST_ALERT_STORAGE_KEY = "lastAlertFingerprint";
-const SESSION_ALERTS_KEY = "sessionAlerts";
+const LOCAL_ALERTS_KEY = "alertlyAlerts";
 const EXT_SETTINGS_KEY = "extSettings";
+const MAX_LOCAL_ALERTS = 500;
 
 type AlertItem = {
   address?: string;
@@ -16,6 +17,7 @@ type AlertItem = {
   wallet?: string;
   walletBalance?: number;
   boostAmount?: number;
+  alertedAt?: string;
 };
 
 type FilterSettings = {
@@ -60,7 +62,7 @@ function getBaseUrl(): Promise<string> {
 
 function getLastFingerprint(): Promise<string | null> {
   return new Promise((resolve) => {
-    chrome.storage.session.get([LAST_ALERT_STORAGE_KEY], (result: Record<string, unknown>) => {
+    chrome.storage.local.get([LAST_ALERT_STORAGE_KEY], (result: Record<string, unknown>) => {
       const value = result?.[LAST_ALERT_STORAGE_KEY];
       resolve(typeof value === "string" ? value : null);
     });
@@ -69,14 +71,35 @@ function getLastFingerprint(): Promise<string | null> {
 
 function setLastFingerprint(fingerprint: string): Promise<void> {
   return new Promise((resolve) => {
-    chrome.storage.session.set({ [LAST_ALERT_STORAGE_KEY]: fingerprint }, () => resolve());
+    chrome.storage.local.set({ [LAST_ALERT_STORAGE_KEY]: fingerprint }, () => resolve());
   });
 }
 
-function saveSessionAlerts(alerts: AlertItem[]): Promise<void> {
+function getLocalAlerts(): Promise<AlertItem[]> {
   return new Promise((resolve) => {
-    chrome.storage.session.set({ [SESSION_ALERTS_KEY]: alerts }, () => resolve());
+    chrome.storage.local.get([LOCAL_ALERTS_KEY], (result: Record<string, unknown>) => {
+      const val = result?.[LOCAL_ALERTS_KEY];
+      resolve(Array.isArray(val) ? val : []);
+    });
   });
+}
+
+function saveLocalAlerts(alerts: AlertItem[]): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ [LOCAL_ALERTS_KEY]: alerts.slice(0, MAX_LOCAL_ALERTS) }, () => resolve());
+  });
+}
+
+async function mergeAndSaveAlerts(incoming: AlertItem[]): Promise<void> {
+  const existing = await getLocalAlerts();
+  const merged: AlertItem[] = [...incoming];
+  for (const old of existing) {
+    const duplicate = merged.some(
+      (a) => a.address === old.address && a.type === old.type && a.alertedAt === old.alertedAt,
+    );
+    if (!duplicate) merged.push(old);
+  }
+  await saveLocalAlerts(merged.slice(0, MAX_LOCAL_ALERTS));
 }
 
 function getExtSettings(): Promise<ExtSettings> {
@@ -161,7 +184,7 @@ function alertMatchesFilter(alert: AlertItem, filter: FilterSettings): boolean {
 }
 
 function createFingerprint(alert: AlertItem) {
-  return [alert?.address || "unknown", alert?.type || "signal", alert?.change || "0"].join("|");
+  return [alert?.address || "unknown", alert?.type || "signal", alert?.alertedAt || alert?.change || "0"].join("|");
 }
 
 function getTokenDisplayName(alert: AlertItem): string {
@@ -205,16 +228,12 @@ async function checkAlerts() {
 
     if (!alertsRes.ok) return;
     const allAlerts = await alertsRes.json();
-    if (!Array.isArray(allAlerts) || allAlerts.length === 0) {
-      await saveSessionAlerts([]);
-      return;
-    }
+    if (!Array.isArray(allAlerts) || allAlerts.length === 0) return;
 
     const filterSettings = await getWebsiteFilterSettings(baseUrl);
-
     const filteredAlerts = allAlerts.filter((a) => alertMatchesFilter(a as AlertItem, filterSettings));
 
-    await saveSessionAlerts(filteredAlerts);
+    await mergeAndSaveAlerts(filteredAlerts);
 
     if (filteredAlerts.length === 0) return;
 
@@ -222,9 +241,7 @@ async function checkAlerts() {
     const fingerprint = createFingerprint(latest);
     const previousFingerprint = await getLastFingerprint();
 
-    if (previousFingerprint === fingerprint) {
-      return;
-    }
+    if (previousFingerprint === fingerprint) return;
 
     await setLastFingerprint(fingerprint);
 
@@ -273,6 +290,10 @@ chrome.runtime.onMessage.addListener((
   }
   if (message.type === "GET_FILTER_SETTINGS") {
     getBaseUrl().then((url) => getWebsiteFilterSettings(url).then(sendResponse));
+    return true;
+  }
+  if (message.type === "GET_CACHED_ALERTS") {
+    getLocalAlerts().then(sendResponse);
     return true;
   }
 });

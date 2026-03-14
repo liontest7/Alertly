@@ -799,30 +799,64 @@ const Popup = () => {
     }
   }
 
+  function getCachedAlerts(): Promise<AlertItem[]> {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type: "GET_CACHED_ALERTS" }, (res: unknown) => {
+          resolve(Array.isArray(res) ? res : []);
+        });
+      } catch {
+        resolve([]);
+      }
+    });
+  }
+
   function connectStream(base: string) {
     if (esRef.current) esRef.current.close();
     setStreamStatus("connecting");
     const es = new EventSource(`${base}/api/alerts/stream`, { withCredentials: true });
     esRef.current = es;
+
     es.onopen = () => setStreamStatus("live");
-    es.onmessage = (e) => {
+    es.onerror = () => setStreamStatus("offline");
+
+    es.addEventListener("connected", () => setStreamStatus("live"));
+
+    es.addEventListener("init", (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data);
-        if (data.type === "ping") return;
-        if (data.type === "alert" && data.alert) {
+        const serverAlerts: AlertItem[] = JSON.parse(e.data);
+        if (Array.isArray(serverAlerts) && serverAlerts.length > 0) {
           setAlerts((prev) => {
-            const exists = prev.some((a) => a.address === data.alert.address && a.type === data.alert.type);
-            if (exists) return prev;
-            return [data.alert, ...prev].slice(0, 50);
+            const merged = [...serverAlerts];
+            for (const old of prev) {
+              const dup = merged.some(
+                (a) => a.address === old.address && a.type === old.type,
+              );
+              if (!dup) merged.push(old);
+            }
+            return merged.slice(0, 500);
           });
-        }
-        if (data.type === "history" && Array.isArray(data.alerts)) {
-          setAlerts(data.alerts.slice(0, 50));
           setStreamStatus("live");
         }
       } catch {}
-    };
-    es.onerror = () => setStreamStatus("offline");
+    });
+
+    es.addEventListener("alert", (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data);
+        const alert: AlertItem = payload.alert || payload;
+        if (!alert.address) return;
+        setAlerts((prev) => {
+          const exists = prev.some((a) => a.address === alert.address && a.type === alert.type);
+          if (exists) return prev;
+          return [alert, ...prev].slice(0, 500);
+        });
+      } catch {}
+    });
+
+    es.addEventListener("heartbeat", () => {
+      setStreamStatus("live");
+    });
   }
 
   React.useEffect(() => {
@@ -841,6 +875,11 @@ const Popup = () => {
       if (Object.keys(websiteFilters).length > 0) {
         setFilters(websiteFilters);
         setCookieSyncAvailable(true);
+      }
+
+      const cached = await getCachedAlerts();
+      if (cached.length > 0) {
+        setAlerts(cached.slice(0, 500));
       }
 
       await doSync(stored);
