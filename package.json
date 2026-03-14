@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "dev": "next dev -p 5000 -H 0.0.0.0 --turbo",
     "lint": "eslint .",
     "start": "next start -p ${PORT:-10000} -H 0.0.0.0",
