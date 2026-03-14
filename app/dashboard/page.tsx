@@ -115,6 +115,8 @@ export default function DashboardPage() {
       OLD_LS_KEYS.forEach(key => localStorage.removeItem(key));
     } catch {}
     setAlerts([]);
+    setLoading(true);
+    setReconnectTick(t => t + 1);
   };
 
   const handleToggleAlerts = async () => {

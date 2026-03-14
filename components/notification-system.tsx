@@ -47,12 +47,6 @@ export function NotificationSystem() {
   const [notification, setNotification] = useState<AlertNotification | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      initializedRef.current = false;
-      lastFingerprintRef.current = null;
-      notifiedFingerprintsRef.current = new Set();
-      return;
-    }
     sessionStartRef.current = Date.now();
     initializedRef.current = false;
     notifiedFingerprintsRef.current = new Set();
@@ -60,8 +54,6 @@ export function NotificationSystem() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-
     const checkAlerts = async () => {
       try {
         const res = await fetch("/api/alerts");
