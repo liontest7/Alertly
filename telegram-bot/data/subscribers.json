@@ -18,9 +18,10 @@
       "minHolders": 0
     },
     "wallet": {
-      "address": "E9wRYYyW482D9NXemFTeBjQEbThz1e5NsrFUSt34VHHp",
-      "encryptedKey": "c345e862d75cb04d56910fa6def59fcb:b293bc3d05eb6104917914d5be7950666cc08fb8e36e6891a6887ab8885ea7e80aabe1a27d677390ff505d82efdfd60f21fbfc33bdcef5c0b0717a95ae6c4cf4871bc9762240b966dd5c0502ca0020baaf165fcfbff165abd5dfd6e7e20af774",
-      "createdAt": "2026-03-14T11:16:00.563Z"
-    }
+      "address": "CBRBsRZ4vTNCg7jMJGrrbzyepk8JmHA5T7Tqep7gTi9d",
+      "encryptedKey": "922f4d3479303a766d941de2515e9d1b:b81f803e2466c42281c52c9c1f65e2933ba47ed46af0e6172075889399853e3ec5a7e2a385665458b6c8fa75116faf324f51198d73f2b158c57ce73c47f33c0086beae4353109ebd31d6facabb54c658993ab509dd2ed9a60590a6cd721e386e",
+      "createdAt": "2026-03-14T11:28:02.552Z"
+    },
+    "onboarded": true
   }
 }
