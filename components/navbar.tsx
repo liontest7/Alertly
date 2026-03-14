@@ -54,8 +54,6 @@ export function Navbar() {
     }
   }, [wallet, connected, loading, user, isClient, toast]);
 
-  if (pathname === '/admin') return null;
-
   const handleLaunchTerminal = async () => {
     if (loading) {
       console.log("Terminal clicked: Session is loading...");

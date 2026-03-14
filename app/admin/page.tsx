@@ -194,17 +194,12 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
 
-      {/* Admin Header */}
-      <div className="border-b border-zinc-800 bg-zinc-900/90 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-6 pt-28 md:pt-32 pb-8 flex flex-col gap-8">
+
+        {/* Page title row */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#5100fd]/20 border border-[#5100fd]/30 flex items-center justify-center">
-              <span className="text-[#5100fd] text-sm font-black">A</span>
-            </div>
-            <div>
-              <span className="text-lg font-black text-white tracking-tight">Alertly Admin</span>
-              <span className="text-[10px] text-zinc-500 ml-2">v2</span>
-            </div>
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase">Admin Panel</h1>
             <StatusDot on={overview.listener.running} />
           </div>
           <div className="flex items-center gap-3">
@@ -217,14 +212,8 @@ export default function AdminPage() {
             >
               Refresh
             </button>
-            <a href="/" className="text-xs font-bold text-zinc-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700 border border-zinc-700/50">
-              ← App
-            </a>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col gap-8">
 
         {/* System Errors Banner — only shown when something is broken */}
         {infraErrors.length > 0 && (
