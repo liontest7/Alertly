@@ -41,7 +41,7 @@ function parsePair(pair: any): TokenMeta {
   const base = pair?.baseToken || {};
   const info = pair?.info || {};
   const socials: any[] = info?.socials || [];
-  const links: any[] = info?.links || [];
+  const links: any[] = [...(info?.links || []), ...(info?.websites || [])];
   const allLinks = [...socials, ...links];
 
   const website = allLinks.find((s: any) => s.type === "website" || s.label?.toLowerCase() === "website")?.url || null;

@@ -37,7 +37,9 @@ type Subscriber = {
 
 type SubscriberStore = Record<string, Subscriber>;
 
-type InlineButton = { text: string; url: string };
+type InlineButton =
+  | { text: string; url: string; callback_data?: never }
+  | { text: string; callback_data: string; url?: never };
 
 type QueueItem =
   | { kind: "text"; text: string; buttons?: InlineButton[][] }
@@ -86,6 +88,15 @@ function shortAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function boostEmojis(amount?: number): string {
+  if (!amount || amount <= 0) return "⚡";
+  if (amount <= 10) return "⚡";
+  if (amount <= 50) return "⚡⚡";
+  if (amount <= 200) return "⚡⚡⚡";
+  if (amount <= 500) return "⚡⚡⚡⚡";
+  return "⚡⚡⚡⚡⚡";
+}
+
 function buildButtons(alert: AlertBroadcastPayload): InlineButton[][] {
   const dexLink = alert.pairAddress || alert.address;
   const dexUrl = `https://dexscreener.com/solana/${dexLink}`;
@@ -106,6 +117,8 @@ function buildButtons(alert: AlertBroadcastPayload): InlineButton[][] {
   if (alert.website) socialRow.push({ text: "🌍 Website", url: alert.website });
   if (socialRow.length > 0) rows.push(socialRow);
 
+  rows.push([{ text: "💰 Quick Buy", callback_data: `buy_${alert.address}` }]);
+
   return rows;
 }
 
@@ -119,7 +132,8 @@ function buildMessageText(alert: AlertBroadcastPayload): string {
   const lines: string[] = [];
 
   if (isBoost) {
-    lines.push("⚡⚡⚡ *Token Boosted!*");
+    const bolts = boostEmojis(alert.boostAmount);
+    lines.push(`${bolts} *Token Boosted!*`);
   } else if (isListing) {
     lines.push("🆕 *New Token has Paid DEX!*");
   } else {
@@ -143,16 +157,9 @@ function buildMessageText(alert: AlertBroadcastPayload): string {
       lines.push(`⚡ *New Boost:* +${alert.boostAmount.toLocaleString()} units`);
     }
     if (alert.totalBoostAmount != null && alert.totalBoostAmount > 0) {
-      lines.push(`📈 *Total Boosts:* ${alert.totalBoostAmount.toLocaleString()} units`);
+      lines.push(`🔥 *Total Boosts:* ${alert.totalBoostAmount.toLocaleString()} units`);
     }
   }
-
-  if (alert.dex) {
-    lines.push(`🏦 *DEX:* ${safe(alert.dex)}`);
-  }
-
-  const timeStr = alert.alertedAt.toUTCString().replace(" GMT", " UTC");
-  lines.push(`⏰ *Time:* ${timeStr}`);
 
   const dexLink = alert.pairAddress || alert.address;
   const dexUrl = `https://dexscreener.com/solana/${dexLink}`;
@@ -161,6 +168,9 @@ function buildMessageText(alert: AlertBroadcastPayload): string {
   if (APP_URL) {
     lines.push(`[🌐 View on Alertly](${APP_URL}/token/${alert.address})`);
   }
+  if (alert.website) lines.push(`[🌍 Website](${alert.website})`);
+  if (alert.twitter) lines.push(`[🐦 Twitter](${alert.twitter})`);
+  if (alert.telegram) lines.push(`[📱 Telegram Group](${alert.telegram})`);
 
   return lines.join("\n");
 }
@@ -178,7 +188,11 @@ async function sendTelegramItem(chatId: string, item: QueueItem, attempt = 1): P
     item.buttons && item.buttons.length > 0
       ? {
           inline_keyboard: item.buttons.map((row) =>
-            row.map((btn) => ({ text: btn.text, url: btn.url })),
+            row.map((btn) =>
+              "url" in btn && btn.url
+                ? { text: btn.text, url: btn.url }
+                : { text: btn.text, callback_data: (btn as any).callback_data },
+            ),
           ),
         }
       : undefined;
