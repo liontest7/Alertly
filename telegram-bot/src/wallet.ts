@@ -38,16 +38,40 @@ export function generateWallet(chatId: string): { address: string; encryptedKey:
   return { address, encryptedKey, privateKeyB58 };
 }
 
-export function importWallet(privateKeyB58: string, chatId: string): { address: string; encryptedKey: string } | null {
+export function importWallet(rawInput: string, chatId: string): { address: string; encryptedKey: string } | null {
+  const attempts: Uint8Array[] = [];
+
+  // Try JSON array: [1,2,3,...,64]
   try {
-    const secretKey = bs58.decode(privateKeyB58);
-    const keypair = Keypair.fromSecretKey(secretKey);
-    const address = keypair.publicKey.toString();
-    const encryptedKey = encryptPrivateKey(privateKeyB58, chatId);
-    return { address, encryptedKey };
-  } catch {
-    return null;
+    const parsed = JSON.parse(rawInput.trim());
+    if (Array.isArray(parsed) && parsed.length === 64) {
+      attempts.push(new Uint8Array(parsed));
+    }
+  } catch {}
+
+  // Try base58
+  try {
+    const decoded = bs58.decode(rawInput.trim());
+    if (decoded.length === 64) attempts.push(decoded);
+  } catch {}
+
+  // Try base64
+  try {
+    const decoded = Buffer.from(rawInput.trim(), "base64");
+    if (decoded.length === 64) attempts.push(new Uint8Array(decoded));
+  } catch {}
+
+  for (const secretKey of attempts) {
+    try {
+      const keypair = Keypair.fromSecretKey(secretKey);
+      const address = keypair.publicKey.toString();
+      const privateKeyB58 = bs58.encode(secretKey);
+      const encryptedKey = encryptPrivateKey(privateKeyB58, chatId);
+      return { address, encryptedKey };
+    } catch {}
   }
+
+  return null;
 }
 
 export async function getWalletBalance(address: string): Promise<number> {

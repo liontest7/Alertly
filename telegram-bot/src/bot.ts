@@ -2,31 +2,21 @@ import TelegramBot from "node-telegram-bot-api";
 import dotenv from "dotenv";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { generateWallet, importWallet, getWalletBalance, decryptPrivateKey, shortAddr } from "./wallet.js";
+import { generateWallet, importWallet, getWalletBalance, decryptPrivateKey } from "./wallet.js";
 import { buyToken, getQuote } from "./trade.js";
 
 dotenv.config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-if (!token) {
-  throw new Error("Missing TELEGRAM_BOT_TOKEN for telegram bot");
-}
+if (!token) throw new Error("Missing TELEGRAM_BOT_TOKEN");
 
 const DATA_DIR = join(__dirname, "..", "data");
 const SUBSCRIBERS_FILE = join(DATA_DIR, "subscribers.json");
 
-if (!existsSync(DATA_DIR)) {
-  mkdirSync(DATA_DIR, { recursive: true });
-}
-if (!existsSync(SUBSCRIBERS_FILE)) {
-  writeFileSync(SUBSCRIBERS_FILE, "{}", "utf-8");
-}
+if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+if (!existsSync(SUBSCRIBERS_FILE)) writeFileSync(SUBSCRIBERS_FILE, "{}", "utf-8");
 
-type WalletData = {
-  address: string;
-  encryptedKey: string;
-  createdAt: string;
-};
+type WalletData = { address: string; encryptedKey: string; createdAt: string };
 
 type SubscriberSettings = {
   alertsEnabled: boolean;
@@ -69,16 +59,12 @@ const DEFAULT_SETTINGS: SubscriberSettings = {
   minHolders: 0,
 };
 
-const pendingBuys = new Map<string, { tokenAddress: string; tokenName: string; solAmount: number; slippageBps: number }>();
+const pendingBuys = new Map<string, { tokenAddress: string; solAmount: number; slippageBps: number }>();
 const pendingImports = new Set<string>();
 
 function loadStore(): SubscriberStore {
-  try {
-    const raw = readFileSync(SUBSCRIBERS_FILE, "utf-8");
-    return JSON.parse(raw) as SubscriberStore;
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(readFileSync(SUBSCRIBERS_FILE, "utf-8")) as SubscriberStore; }
+  catch { return {}; }
 }
 
 function saveStore(store: SubscriberStore): void {
@@ -86,19 +72,13 @@ function saveStore(store: SubscriberStore): void {
 }
 
 function getSubscriber(chatId: string): Subscriber | null {
-  const store = loadStore();
-  return store[chatId] ?? null;
+  return loadStore()[chatId] ?? null;
 }
 
 function upsertSubscriber(chatId: string, firstName?: string): Subscriber {
   const store = loadStore();
   if (!store[chatId]) {
-    store[chatId] = {
-      chatId,
-      firstName,
-      subscribedAt: new Date().toISOString(),
-      settings: { ...DEFAULT_SETTINGS },
-    };
+    store[chatId] = { chatId, firstName, subscribedAt: new Date().toISOString(), settings: { ...DEFAULT_SETTINGS } };
   } else if (firstName) {
     store[chatId].firstName = firstName;
   }
@@ -115,11 +95,7 @@ function removeSubscriber(chatId: string): void {
 function updateSettings(chatId: string, patch: Partial<SubscriberSettings>): SubscriberSettings {
   const store = loadStore();
   if (!store[chatId]) {
-    store[chatId] = {
-      chatId,
-      subscribedAt: new Date().toISOString(),
-      settings: { ...DEFAULT_SETTINGS },
-    };
+    store[chatId] = { chatId, subscribedAt: new Date().toISOString(), settings: { ...DEFAULT_SETTINGS } };
   }
   store[chatId].settings = { ...store[chatId].settings, ...patch };
   saveStore(store);
@@ -128,58 +104,51 @@ function updateSettings(chatId: string, patch: Partial<SubscriberSettings>): Sub
 
 function saveWallet(chatId: string, walletData: WalletData): void {
   const store = loadStore();
-  if (store[chatId]) {
-    store[chatId].wallet = walletData;
-    saveStore(store);
-  }
+  if (store[chatId]) { store[chatId].wallet = walletData; saveStore(store); }
 }
 
 function markOnboarded(chatId: string): void {
   const store = loadStore();
-  if (store[chatId]) {
-    store[chatId].onboarded = true;
-    saveStore(store);
-  }
+  if (store[chatId]) { store[chatId].onboarded = true; saveStore(store); }
 }
 
-function formatMc(val: number): string {
-  if (!val || val === 0) return "No limit";
+function fmtMc(val: number): string {
+  if (!val) return "No limit";
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
   if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
   return `$${val}`;
 }
 
-function formatBoostLevel(level: string): string {
+function fmtBoostLevel(level: string): string {
   if (!level || level === "all") return "All Levels";
   return level;
 }
 
-async function getSettingsText(chatId: string): Promise<string> {
+async function buildSettingsText(chatId: string): Promise<string> {
   const sub = getSubscriber(chatId);
   const s = sub?.settings ?? DEFAULT_SETTINGS;
+  const status = s.alertsEnabled ? "▶️ Active" : "⏸️ Paused";
 
-  const alertsStatus = s.alertsEnabled ? "▶️ Active" : "⏸️ Paused";
-
-  let walletSection = "*Wallet*\n❌ No wallet connected — tap 💼 My Wallet to create one";
+  let walletLine = "❌ No wallet — tap 💼 My Wallet to set one up";
   if (sub?.wallet) {
-    const balance = await getWalletBalance(sub.wallet.address).catch(() => 0);
-    walletSection = `*Wallet*\n💼 Address: \`${sub.wallet.address}\`\n💰 Balance: ${balance.toFixed(4)} SOL`;
+    const bal = await getWalletBalance(sub.wallet.address).catch(() => 0);
+    walletLine = `💼 ${sub.wallet.address.slice(0, 6)}...${sub.wallet.address.slice(-4)}  |  ${bal.toFixed(4)} SOL`;
   }
 
   return `⚙️ *Alertly Settings*
 
-*Alerts:* ${alertsStatus}
+*Alerts:* ${status}
 
 *Alert Monitors*
 ⚡ Dex Boost: ${s.dexBoostEnabled ? "✅" : "❌"}
-   └ Level: ${formatBoostLevel(s.selectedBoostLevel)}
+   └ Level: ${fmtBoostLevel(s.selectedBoostLevel)}
 🆕 Dex Listing: ${s.dexListingEnabled ? "✅" : "❌"}
 
 *Filters*
-📉 Min MC: ${formatMc(s.minMarketCap)}
-📈 Max MC: ${formatMc(s.maxMarketCap)}
+📉 Min MC: ${fmtMc(s.minMarketCap)}
+📈 Max MC: ${fmtMc(s.maxMarketCap)}
 💧 Min Liquidity: ${s.minLiquidity > 0 ? `$${(s.minLiquidity / 1000).toFixed(0)}K` : "No limit"}
-👥 Min Holders: ${s.minHolders > 0 ? s.minHolders : "No filter"}
+👥 Min Holders: ${s.minHolders > 0 ? String(s.minHolders) : "No filter"}
 
 *Trading*
 💰 Buy Amount: ${s.buyAmount} SOL
@@ -187,164 +156,77 @@ async function getSettingsText(chatId: string): Promise<string> {
 📈 Take Profit: +${s.takeProfit}%
 🛑 Stop Loss: -${s.stopLoss}%
 
-${walletSection}
+*Wallet*
+${walletLine}
 
 Stay sharp. Stay early. Stay Alertly. 🚀`;
 }
 
-function getMainMenu() {
+function mainMenu() {
   return {
     reply_markup: {
       inline_keyboard: [
         [{ text: "🔔 Pause / Resume Alerts", callback_data: "toggle_alerts" }],
-        [
-          { text: "⚡ Dex Boost", callback_data: "toggle_boost" },
-          { text: "🆕 Dex Listing", callback_data: "toggle_list" },
-        ],
+        [{ text: "⚡ Dex Boost", callback_data: "toggle_boost" }, { text: "🆕 Dex Listing", callback_data: "toggle_list" }],
         [{ text: "📦 Boost Level Filter", callback_data: "boost_levels" }],
-        [
-          { text: "📉 Min MC", callback_data: "set_min_mc" },
-          { text: "📈 Max MC", callback_data: "set_max_mc" },
-        ],
-        [
-          { text: "💧 Min Liquidity", callback_data: "set_min_liquidity" },
-          { text: "👥 Min Holders", callback_data: "set_min_holders" },
-        ],
-        [
-          { text: "💰 Buy Amount", callback_data: "set_buy" },
-          { text: "📊 Slippage", callback_data: "set_slippage" },
-        ],
-        [
-          { text: "📈 Take Profit", callback_data: "set_tp" },
-          { text: "🛑 Stop Loss", callback_data: "set_sl" },
-        ],
-        [
-          { text: "💼 My Wallet", callback_data: "wallet_menu" },
-          { text: "📤 Export Key", callback_data: "export_key" },
-        ],
+        [{ text: "📉 Min MC", callback_data: "set_min_mc" }, { text: "📈 Max MC", callback_data: "set_max_mc" }],
+        [{ text: "💧 Min Liquidity", callback_data: "set_min_liquidity" }, { text: "👥 Min Holders", callback_data: "set_min_holders" }],
+        [{ text: "💰 Buy Amount", callback_data: "set_buy" }, { text: "📊 Slippage", callback_data: "set_slippage" }],
+        [{ text: "📈 Take Profit", callback_data: "set_tp" }, { text: "🛑 Stop Loss", callback_data: "set_sl" }],
+        [{ text: "💼 My Wallet", callback_data: "wallet_menu" }, { text: "📤 Export Key", callback_data: "export_key" }],
       ],
     },
   };
 }
 
 const bot = new TelegramBot(token, { polling: { autoStart: false, params: { timeout: 10 } }, cancellation: true } as any);
-
 bot.on("polling_error", (err: any) => {
   if (err?.code === "ETELEGRAM" && err?.message?.includes("409")) return;
   console.error("[Bot] polling error:", err?.message || err);
 });
-
 (bot as any).startPolling({ restart: false });
 
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  const chatIdStr = String(chatId);
-  const firstName = msg.from?.first_name;
+async function sendSettings(chatId: number, chatIdStr: string) {
+  const text = await buildSettingsText(chatIdStr);
+  return bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...mainMenu() });
+}
 
-  const existing = getSubscriber(chatIdStr);
-  upsertSubscriber(chatIdStr, firstName);
+async function editSettings(chatId: number, chatIdStr: string, messageId: number) {
+  const text = await buildSettingsText(chatIdStr);
+  return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: "Markdown", ...mainMenu() });
+}
 
-  if (existing?.onboarded) {
-    const settingsText = await getSettingsText(chatIdStr);
-    await bot.sendMessage(
-      chatId,
-      `👋 *Welcome back${firstName ? ` ${firstName}` : ""}!*\n\nHere's your current setup:\n\n${settingsText}`,
-      { parse_mode: "Markdown", ...getMainMenu() },
-    );
-    return;
-  }
-
-  await bot.sendMessage(
-    chatId,
-    `👋 *Welcome${firstName ? ` ${firstName}` : ""} to Alertly!*\n\n` +
-    `Alertly monitors the Solana blockchain and sends you real\\-time alerts for:\n\n` +
-    `⚡ *DEX Boost Alerts* — when tokens are boosted on DexScreener\n` +
-    `🆕 *DEX Listing Alerts* — new Solana tokens getting listed\n\n` +
-    `You'll get instant Telegram messages with price, market cap, liquidity, social links, and a *Quick Buy* button to trade directly from here\\.\n\n` +
-    `Let's get you set up in 30 seconds 🚀`,
-    {
-      parse_mode: "MarkdownV2",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🚀 Set Me Up", callback_data: "onboard_step1" }],
-          [{ text: "⚙️ Skip to Settings", callback_data: "onboard_skip" }],
-        ],
-      },
-    },
-  );
-});
-
-bot.onText(/\/stop/, async (msg) => {
-  const chatId = msg.chat.id;
-  const chatIdStr = String(chatId);
-  removeSubscriber(chatIdStr);
-  await bot.sendMessage(chatId, "✅ You have been unsubscribed from Alertly.\n\nSend /start to re-subscribe anytime.");
-});
-
-bot.onText(/\/settings/, async (msg) => {
-  const chatId = msg.chat.id;
-  const chatIdStr = String(chatId);
-  upsertSubscriber(chatIdStr, msg.from?.first_name);
-  const text = await getSettingsText(chatIdStr);
-  bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...getMainMenu() });
-});
-
-bot.onText(/\/wallet/, async (msg) => {
-  const chatId = msg.chat.id;
-  const chatIdStr = String(chatId);
-  upsertSubscriber(chatIdStr, msg.from?.first_name);
-  await showWalletMenu(chatId, chatIdStr);
-});
-
-bot.onText(/\/status/, async (msg) => {
-  const chatId = msg.chat.id;
-  const chatIdStr = String(chatId);
-  const store = loadStore();
-  const count = Object.keys(store).length;
-  const sub = store[chatIdStr];
-  await bot.sendMessage(
-    chatId,
-    `📊 *Alertly Status*\n\n` +
-    `Total subscribers: ${count}\n` +
-    `Your status: ${sub ? "✅ Subscribed" : "❌ Not subscribed"}\n` +
-    (sub ? `Subscribed since: ${new Date(sub.subscribedAt).toLocaleDateString()}` : ""),
-    { parse_mode: "Markdown" },
-  );
-});
-
-async function showWalletMenu(chatId: number, chatIdStr: string) {
+async function showWalletPanel(chatId: number, chatIdStr: string, messageId?: number) {
   const sub = getSubscriber(chatIdStr);
 
+  let text: string;
+  let keyboard: any;
+
   if (!sub?.wallet) {
-    await bot.sendMessage(
-      chatId,
-      `💼 *Wallet*\n\nYou don't have a wallet connected yet\\.\n\nA wallet lets you trade directly from alert messages using the *Quick Buy* button\\.\n\n⚠️ *Note:* Your private key is stored encrypted on our server\\. Only use a dedicated trading wallet with small amounts\\!`,
-      {
-        parse_mode: "MarkdownV2",
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "✨ Create New Wallet", callback_data: "create_wallet" }],
-            [{ text: "📥 Import Existing Wallet", callback_data: "import_wallet" }],
-            [{ text: "← Back to Settings", callback_data: "back_menu" }],
-          ],
-        },
+    text =
+      "💼 *Wallet*\n\n" +
+      "You don't have a wallet connected yet.\n\n" +
+      "A wallet lets you buy tokens directly from alert messages using the *Quick Buy* button.\n\n" +
+      "⚠️ Your private key is stored encrypted. Use a dedicated trading wallet with small amounts only.";
+    keyboard = {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✨ Create New Wallet", callback_data: "create_wallet" }],
+          [{ text: "📥 Import Existing Wallet", callback_data: "import_wallet" }],
+          [{ text: "← Back to Settings", callback_data: "back_menu" }],
+        ],
       },
-    );
-    return;
-  }
-
-  const balance = await getWalletBalance(sub.wallet.address).catch(() => 0);
-  const createdDate = new Date(sub.wallet.createdAt).toLocaleDateString();
-
-  await bot.sendMessage(
-    chatId,
-    `💼 *Your Wallet*\n\n` +
-    `📍 *Address:*\n\`${sub.wallet.address}\`\n\n` +
-    `💰 *Balance:* ${balance.toFixed(4)} SOL\n` +
-    `📅 *Created:* ${createdDate}\n\n` +
-    `_To fund your wallet, send SOL to the address above\\._`,
-    {
-      parse_mode: "MarkdownV2",
+    };
+  } else {
+    const bal = await getWalletBalance(sub.wallet.address).catch(() => 0);
+    const created = new Date(sub.wallet.createdAt).toLocaleDateString();
+    text =
+      "💼 *Your Wallet*\n\n" +
+      `📍 *Address:*\n\`${sub.wallet.address}\`\n\n` +
+      `💰 *Balance:* ${bal.toFixed(4)} SOL\n` +
+      `📅 *Created:* ${created}\n\n` +
+      "_Send SOL to the address above to fund your wallet._";
+    keyboard = {
       reply_markup: {
         inline_keyboard: [
           [{ text: "🔄 Refresh Balance", callback_data: "wallet_menu" }],
@@ -353,14 +235,85 @@ async function showWalletMenu(chatId: number, chatIdStr: string) {
           [{ text: "← Back to Settings", callback_data: "back_menu" }],
         ],
       },
+    };
+  }
+
+  if (messageId) {
+    return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: "Markdown", ...keyboard });
+  } else {
+    return bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...keyboard });
+  }
+}
+
+bot.onText(/\/start/, async (msg) => {
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
+  const firstName = msg.from?.first_name;
+  const existing = getSubscriber(chatIdStr);
+  upsertSubscriber(chatIdStr, firstName);
+
+  if (existing?.onboarded) {
+    await sendSettings(chatId, chatIdStr);
+    return;
+  }
+
+  await bot.sendMessage(
+    chatId,
+    `👋 *Welcome${firstName ? ` ${firstName}` : ""} to Alertly!*\n\n` +
+    `Alertly monitors the Solana blockchain in real-time and sends you instant alerts:\n\n` +
+    `⚡ *DEX Boost Alerts* — tokens being promoted on DexScreener\n` +
+    `🆕 *DEX Listing Alerts* — brand new tokens getting listed\n\n` +
+    `Each alert includes price, market cap, liquidity, social links, and a *Quick Buy* button to trade instantly.\n\n` +
+    `Let's get you set up!`,
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🚀 Set Me Up", callback_data: "onboard_step1" }],
+          [{ text: "⚙️ Go to Settings", callback_data: "onboard_skip" }],
+        ],
+      },
     },
   );
-}
+});
+
+bot.onText(/\/stop/, async (msg) => {
+  removeSubscriber(String(msg.chat.id));
+  await bot.sendMessage(msg.chat.id, "✅ Unsubscribed from Alertly.\n\nSend /start to re-subscribe anytime.");
+});
+
+bot.onText(/\/settings/, async (msg) => {
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
+  upsertSubscriber(chatIdStr, msg.from?.first_name);
+  await sendSettings(chatId, chatIdStr);
+});
+
+bot.onText(/\/wallet/, async (msg) => {
+  const chatId = msg.chat.id;
+  const chatIdStr = String(chatId);
+  upsertSubscriber(chatIdStr, msg.from?.first_name);
+  await showWalletPanel(chatId, chatIdStr);
+});
+
+bot.onText(/\/status/, async (msg) => {
+  const chatId = msg.chat.id;
+  const store = loadStore();
+  const count = Object.keys(store).length;
+  const sub = store[String(chatId)];
+  await bot.sendMessage(
+    chatId,
+    `📊 *Alertly Status*\n\nTotal subscribers: ${count}\nYour status: ${sub ? "✅ Subscribed" : "❌ Not subscribed"}` +
+    (sub ? `\nSince: ${new Date(sub.subscribedAt).toLocaleDateString()}` : ""),
+    { parse_mode: "Markdown" },
+  );
+});
 
 bot.on("callback_query", async (query) => {
   const chatId = query.message?.chat.id;
   if (!chatId) return;
   const chatIdStr = String(chatId);
+  const msgId = query.message!.message_id;
   const data = query.data;
 
   if (data === "none") { bot.answerCallbackQuery(query.id); return; }
@@ -371,18 +324,13 @@ bot.on("callback_query", async (query) => {
     if (data === "onboard_step1") {
       bot.answerCallbackQuery(query.id);
       await bot.editMessageText(
-        `⚡ *What would you like to monitor?*\n\nChoose which alert types to enable\\. You can change these anytime in /settings\\.`,
+        "⚡ *What would you like to monitor?*\n\nBoth are enabled by default. You can change these anytime in /settings.",
         {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "MarkdownV2",
+          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [
-                { text: "⚡ DEX Boosts ✅", callback_data: "ob_toggle_boost" },
-                { text: "🆕 DEX Listings ✅", callback_data: "ob_toggle_listing" },
-              ],
-              [{ text: "→ Continue: Set Up Wallet", callback_data: "onboard_step2" }],
+              [{ text: "⚡ DEX Boosts ✅", callback_data: "none" }, { text: "🆕 DEX Listings ✅", callback_data: "none" }],
+              [{ text: "→ Next: Set Up Wallet", callback_data: "onboard_step2" }],
               [{ text: "✓ Done — Start Receiving Alerts", callback_data: "onboard_finish" }],
             ],
           },
@@ -391,17 +339,18 @@ bot.on("callback_query", async (query) => {
       return;
     }
 
-    if (data === "onboard_step2" || data === "onboard_wallet") {
+    if (data === "onboard_step2") {
       bot.answerCallbackQuery(query.id);
       await bot.editMessageText(
-        `💼 *Set Up Your Trading Wallet*\n\nWith a wallet you can buy tokens instantly from alert messages using the *Quick Buy* button\\.\n\nWant to create a free Solana wallet now?`,
+        "💼 *Set Up Your Trading Wallet*\n\n" +
+        "With a wallet you can buy tokens instantly from any alert using the *Quick Buy* button.\n\n" +
+        "Want to create a free Solana wallet now?",
         {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "MarkdownV2",
+          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
               [{ text: "✨ Yes, Create My Wallet", callback_data: "create_wallet_onboard" }],
+              [{ text: "📥 Import Existing Wallet", callback_data: "import_wallet_onboard" }],
               [{ text: "⏭ Skip for Now", callback_data: "onboard_finish" }],
             ],
           },
@@ -413,31 +362,16 @@ bot.on("callback_query", async (query) => {
     if (data === "onboard_skip") {
       markOnboarded(chatIdStr);
       bot.answerCallbackQuery(query.id);
-      const text = await getSettingsText(chatIdStr);
-      await bot.editMessageText(text, {
-        chat_id: chatId,
-        message_id: query.message!.message_id,
-        parse_mode: "Markdown",
-        ...getMainMenu(),
-      });
+      await editSettings(chatId, chatIdStr, msgId);
       return;
     }
 
     if (data === "onboard_finish") {
       markOnboarded(chatIdStr);
-      bot.answerCallbackQuery(query.id, { text: "✅ You're all set!" });
+      bot.answerCallbackQuery(query.id, { text: "You're all set!" });
       await bot.editMessageText(
-        `✅ *You're all set!*\n\n` +
-        `Alerts are now active\\. You'll receive messages as new tokens are boosted or listed on Solana\\.\\.\n\n` +
-        `💡 *Tip:* Use /settings anytime to customize filters, trading amounts, and manage your wallet\\.`,
-        {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "MarkdownV2",
-          reply_markup: {
-            inline_keyboard: [[{ text: "⚙️ Open Settings", callback_data: "back_menu" }]],
-          },
-        },
+        "✅ *All set!*\n\nAlerts are now active. You'll get a message every time a new token is boosted or listed.\n\n💡 Use /settings anytime to adjust filters, amounts, and your wallet.",
+        { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" },
       );
       return;
     }
@@ -445,50 +379,37 @@ bot.on("callback_query", async (query) => {
     if (data === "create_wallet" || data === "create_wallet_onboard") {
       const { address, encryptedKey, privateKeyB58 } = generateWallet(chatIdStr);
       saveWallet(chatIdStr, { address, encryptedKey, createdAt: new Date().toISOString() });
-
       if (data === "create_wallet_onboard") markOnboarded(chatIdStr);
-
-      bot.answerCallbackQuery(query.id, { text: "✅ Wallet created!" });
+      bot.answerCallbackQuery(query.id, { text: "Wallet created!" });
       await bot.editMessageText(
-        `✅ *Wallet Created!*\n\n` +
+        "✅ *Wallet Created!*\n\n" +
         `📍 *Address:*\n\`${address}\`\n\n` +
-        `⚠️ *Your private key \\(save this safely\\!\\)*\n\`${privateKeyB58}\`\n\n` +
-        `🚨 *IMPORTANT:* This is the only time your private key is shown\\. Copy and store it securely\\. Fund your wallet by sending SOL to the address above\\.`,
+        `🔑 *Private Key (save this now!):*\n\`${privateKeyB58}\`\n\n` +
+        "⚠️ *This is the only time your private key is shown.* Copy and store it somewhere safe.\n\n" +
+        "Fund your wallet by sending SOL to the address above.",
         {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "MarkdownV2",
+          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
           reply_markup: {
-            inline_keyboard: [
+            inline_keyboard: [[
               data === "create_wallet_onboard"
-                ? [{ text: "✓ Done — Start Receiving Alerts", callback_data: "onboard_finish_done" }]
-                : [{ text: "← Back to Settings", callback_data: "back_menu" }],
-            ],
+                ? { text: "✓ Done", callback_data: "onboard_finish" }
+                : { text: "← Back to Settings", callback_data: "back_menu" },
+            ]],
           },
         },
       );
       return;
     }
 
-    if (data === "onboard_finish_done") {
-      bot.answerCallbackQuery(query.id, { text: "✅ You're all set!" });
-      await bot.editMessageText(
-        `🚀 *You're fully set up!*\n\nYou'll now receive real\\-time alerts\\. When you see one you like, tap *💰 Quick Buy* to trade instantly\\.\n\nUse /settings to adjust anything at any time\\.`,
-        {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "MarkdownV2",
-        },
-      );
-      return;
-    }
-
-    if (data === "import_wallet") {
+    if (data === "import_wallet" || data === "import_wallet_onboard") {
       pendingImports.add(chatIdStr);
+      if (data === "import_wallet_onboard") pendingImports.add(chatIdStr + "_onboard");
       bot.answerCallbackQuery(query.id);
       await bot.sendMessage(
         chatId,
-        "📥 *Import Wallet*\n\nSend me your private key (base58 format).\n\n⚠️ Make sure you're in a private chat. Your key will be stored encrypted.",
+        "📥 *Import Wallet*\n\nSend your private key in any of these formats:\n" +
+        "• Base58 (Phantom/Solflare export)\n• Base64\n• JSON array [1,2,...,64]\n\n" +
+        "⚠️ Make sure you're in a private chat. Your key will be stored encrypted.",
         { parse_mode: "Markdown", reply_markup: { force_reply: true } },
       );
       return;
@@ -496,40 +417,30 @@ bot.on("callback_query", async (query) => {
 
     if (data === "export_key") {
       const sub = getSubscriber(chatIdStr);
-      if (!sub?.wallet) {
-        bot.answerCallbackQuery(query.id, { text: "No wallet found" });
-        return;
-      }
+      if (!sub?.wallet) { bot.answerCallbackQuery(query.id, { text: "No wallet found" }); return; }
       try {
-        const privateKey = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr);
+        const pk = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr);
         bot.answerCallbackQuery(query.id);
         await bot.sendMessage(
           chatId,
-          `🔑 *Private Key*\n\n\`${privateKey}\`\n\n⚠️ *Delete this message after copying\\!* Anyone with this key controls your wallet\\.`,
-          { parse_mode: "MarkdownV2" },
+          `🔑 *Private Key*\n\n\`${pk}\`\n\n⚠️ *Delete this message after copying!* Anyone with this key controls your wallet.`,
+          { parse_mode: "Markdown" },
         );
       } catch {
-        bot.answerCallbackQuery(query.id, { text: "❌ Failed to decrypt key" });
+        bot.answerCallbackQuery(query.id, { text: "Failed to decrypt key" });
       }
       return;
     }
 
     if (data === "remove_wallet") {
       const store = loadStore();
-      if (store[chatIdStr]) {
-        delete store[chatIdStr].wallet;
-        saveStore(store);
-      }
-      bot.answerCallbackQuery(query.id, { text: "✅ Wallet removed" });
+      if (store[chatIdStr]) { delete store[chatIdStr].wallet; saveStore(store); }
+      bot.answerCallbackQuery(query.id, { text: "Wallet removed" });
       await bot.editMessageText(
-        "✅ *Wallet removed.*\n\nYour wallet has been disconnected. You can always create or import a new one via /wallet.",
+        "✅ *Wallet removed.*\n\nYou can create or import a new one anytime via /wallet.",
         {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [[{ text: "← Back to Settings", callback_data: "back_menu" }]],
-          },
+          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
+          reply_markup: { inline_keyboard: [[{ text: "← Back to Settings", callback_data: "back_menu" }]] },
         },
       );
       return;
@@ -537,11 +448,13 @@ bot.on("callback_query", async (query) => {
 
     if (data === "wallet_menu") {
       bot.answerCallbackQuery(query.id);
-      await bot.editMessageText(
-        "Loading wallet info...",
-        { chat_id: chatId, message_id: query.message!.message_id },
-      );
-      await showWalletMenu(chatId, chatIdStr);
+      await showWalletPanel(chatId, chatIdStr, msgId);
+      return;
+    }
+
+    if (data === "back_menu") {
+      bot.answerCallbackQuery(query.id);
+      await editSettings(chatId, chatIdStr, msgId);
       return;
     }
 
@@ -549,51 +462,37 @@ bot.on("callback_query", async (query) => {
       const tokenAddress = data.slice(4);
       const sub = getSubscriber(chatIdStr);
       if (!sub?.wallet) {
-        bot.answerCallbackQuery(query.id, { text: "⚠️ No wallet — set one up first!", show_alert: true });
-        await bot.sendMessage(
-          chatId,
-          `💼 *No wallet connected*\n\nYou need a wallet to use Quick Buy\\. Create one in /wallet or /settings\\.`,
-          {
-            parse_mode: "MarkdownV2",
-            reply_markup: {
-              inline_keyboard: [[{ text: "💼 Set Up Wallet", callback_data: "wallet_menu" }]],
-            },
-          },
-        );
+        bot.answerCallbackQuery(query.id, { text: "No wallet — set one up first!", show_alert: true });
+        await bot.sendMessage(chatId, "💼 *No wallet connected*\n\nUse /wallet to create or import one.", {
+          parse_mode: "Markdown",
+          reply_markup: { inline_keyboard: [[{ text: "💼 Set Up Wallet", callback_data: "wallet_menu" }]] },
+        });
         return;
       }
-
       const solAmount = sub.settings.buyAmount || 0.5;
       const slippageBps = Math.round((sub.settings.slippage || 10) * 100);
-      const balance = await getWalletBalance(sub.wallet.address).catch(() => 0);
-
-      if (balance < solAmount) {
-        bot.answerCallbackQuery(query.id, { text: `Insufficient balance: ${balance.toFixed(4)} SOL`, show_alert: true });
+      const bal = await getWalletBalance(sub.wallet.address).catch(() => 0);
+      if (bal < solAmount) {
+        bot.answerCallbackQuery(query.id, { text: `Insufficient balance: ${bal.toFixed(4)} SOL`, show_alert: true });
         return;
       }
-
       const quote = await getQuote(tokenAddress, solAmount, slippageBps);
-      const priceImpact = quote ? `~${Number(quote.priceImpactPct).toFixed(2)}% price impact` : "";
-
-      pendingBuys.set(chatIdStr, { tokenAddress, tokenName: tokenAddress.slice(0, 8) + "...", solAmount, slippageBps });
-
+      const impact = quote ? ` (~${Number(quote.priceImpactPct).toFixed(2)}% price impact)` : "";
+      pendingBuys.set(chatIdStr, { tokenAddress, solAmount, slippageBps });
       bot.answerCallbackQuery(query.id);
-      await bot.sendMessage(
-        chatId,
-        `💰 *Confirm Trade*\n\n` +
-        `Buying *${solAmount} SOL* worth of\n\`${tokenAddress}\`\n\n` +
-        `📊 Slippage: ${sub.settings.slippage}%\n` +
-        (priceImpact ? `⚠️ ${priceImpact}\n` : "") +
-        `\nYour balance: ${balance.toFixed(4)} SOL`,
+      await bot.sendMessage(chatId,
+        `💰 *Confirm Buy*\n\n` +
+        `Amount: *${solAmount} SOL*${impact}\n` +
+        `Token: \`${tokenAddress.slice(0, 8)}...${tokenAddress.slice(-4)}\`\n` +
+        `Slippage: ${sub.settings.slippage}%\n` +
+        `Balance: ${bal.toFixed(4)} SOL`,
         {
           parse_mode: "Markdown",
           reply_markup: {
-            inline_keyboard: [
-              [
-                { text: "✅ Confirm Buy", callback_data: `cbuy_${tokenAddress}` },
-                { text: "❌ Cancel", callback_data: "cancel_buy" },
-              ],
-            ],
+            inline_keyboard: [[
+              { text: "✅ Confirm", callback_data: `cbuy_${tokenAddress}` },
+              { text: "❌ Cancel", callback_data: "cancel_buy" },
+            ]],
           },
         },
       );
@@ -604,52 +503,30 @@ bot.on("callback_query", async (query) => {
       const tokenAddress = data.slice(5);
       const pending = pendingBuys.get(chatIdStr);
       if (!pending || pending.tokenAddress !== tokenAddress) {
-        bot.answerCallbackQuery(query.id, { text: "Trade expired. Please try again from the alert." });
+        bot.answerCallbackQuery(query.id, { text: "Trade expired — try again from the alert." });
         return;
       }
       pendingBuys.delete(chatIdStr);
-
       const sub = getSubscriber(chatIdStr);
-      if (!sub?.wallet) {
-        bot.answerCallbackQuery(query.id, { text: "No wallet found" });
+      if (!sub?.wallet) { bot.answerCallbackQuery(query.id, { text: "No wallet" }); return; }
+      bot.answerCallbackQuery(query.id, { text: "Executing trade..." });
+      await bot.editMessageText(`⏳ *Buying ${pending.solAmount} SOL...*\n\nPlease wait.`, {
+        chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
+      });
+      let pk: string;
+      try { pk = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr); }
+      catch {
+        await bot.editMessageText("❌ Failed to decrypt wallet key.", { chat_id: chatId, message_id: msgId });
         return;
       }
-
-      bot.answerCallbackQuery(query.id, { text: "⏳ Executing trade..." });
-      await bot.editMessageText(
-        `⏳ *Buying ${pending.solAmount} SOL of \`${tokenAddress.slice(0, 8)}...\`*\n\nPlease wait...`,
-        { chat_id: chatId, message_id: query.message!.message_id, parse_mode: "Markdown" },
-      );
-
-      let privateKey: string;
-      try {
-        privateKey = decryptPrivateKey(sub.wallet.encryptedKey, chatIdStr);
-      } catch {
-        await bot.editMessageText("❌ Failed to decrypt wallet key. Please re-import your wallet.", {
-          chat_id: chatId, message_id: query.message!.message_id,
-        });
-        return;
-      }
-
-      const result = await buyToken(privateKey, tokenAddress, pending.solAmount, pending.slippageBps);
-
+      const result = await buyToken(pk, tokenAddress, pending.solAmount, pending.slippageBps);
       if (result.success) {
         await bot.editMessageText(
-          `✅ *Trade Successful!*\n\n` +
-          `Bought *${pending.solAmount} SOL* worth of\n\`${tokenAddress}\`\n\n` +
-          `[🔍 View Transaction](${result.explorerUrl})`,
-          {
-            chat_id: chatId,
-            message_id: query.message!.message_id,
-            parse_mode: "Markdown",
-            disable_web_page_preview: true,
-          },
+          `✅ *Trade Successful!*\n\nBought *${pending.solAmount} SOL* worth of\n\`${tokenAddress}\`\n\n[View Transaction](${result.explorerUrl})`,
+          { chat_id: chatId, message_id: msgId, parse_mode: "Markdown", disable_web_page_preview: true },
         );
       } else {
-        await bot.editMessageText(
-          `❌ *Trade Failed*\n\n${result.error}`,
-          { chat_id: chatId, message_id: query.message!.message_id, parse_mode: "Markdown" },
-        );
+        await bot.editMessageText(`❌ *Trade Failed*\n\n${result.error}`, { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" });
       }
       return;
     }
@@ -657,7 +534,7 @@ bot.on("callback_query", async (query) => {
     if (data === "cancel_buy") {
       pendingBuys.delete(chatIdStr);
       bot.answerCallbackQuery(query.id, { text: "Cancelled" });
-      await bot.editMessageText("❌ Trade cancelled.", { chat_id: chatId, message_id: query.message!.message_id });
+      await bot.editMessageText("❌ Trade cancelled.", { chat_id: chatId, message_id: msgId });
       return;
     }
 
@@ -675,89 +552,58 @@ bot.on("callback_query", async (query) => {
       patch = { dexListingEnabled: !s.dexListingEnabled };
       answer = `Dex Listing ${!s.dexListingEnabled ? "ON" : "OFF"}`;
     } else if (data === "boost_levels") {
-      const boostMenu = {
+      bot.answerCallbackQuery(query.id);
+      await bot.editMessageText("Select minimum boost level to track:", {
+        chat_id: chatId, message_id: msgId,
         reply_markup: {
           inline_keyboard: [
             [{ text: "✅ All Levels", callback_data: "boost_level_all" }],
-            [{ text: "Level 1 (≤10)", callback_data: "boost_level_1" }, { text: "Level 2 (≤50)", callback_data: "boost_level_2" }],
-            [{ text: "Level 3 (≤200)", callback_data: "boost_level_3" }, { text: "Level 4 (≤500)", callback_data: "boost_level_4" }],
-            [{ text: "Level 5 (500+)", callback_data: "boost_level_top" }],
+            [{ text: "⚡ Level 1 (1-10)", callback_data: "boost_level_1" }, { text: "⚡⚡ Level 2 (11-50)", callback_data: "boost_level_2" }],
+            [{ text: "⚡⚡⚡ Level 3 (51-200)", callback_data: "boost_level_3" }, { text: "⚡⚡⚡⚡ Level 4 (201-500)", callback_data: "boost_level_4" }],
+            [{ text: "⚡⚡⚡⚡⚡ Level 5 (500+)", callback_data: "boost_level_top" }],
             [{ text: "← Back", callback_data: "back_menu" }],
           ],
         },
-      };
-      bot.editMessageText("Select minimum boost level to track:", {
-        chat_id: chatId,
-        message_id: query.message!.message_id,
-        ...boostMenu,
       });
-      bot.answerCallbackQuery(query.id);
       return;
     } else if (data?.startsWith("boost_level_")) {
-      const levelMap: Record<string, string> = {
-        boost_level_all: "all",
-        boost_level_1: "Level 1",
-        boost_level_2: "Level 2",
-        boost_level_3: "Level 3",
-        boost_level_4: "Level 4",
-        boost_level_top: "Level 5",
+      const map: Record<string, string> = {
+        boost_level_all: "all", boost_level_1: "Level 1", boost_level_2: "Level 2",
+        boost_level_3: "Level 3", boost_level_4: "Level 4", boost_level_top: "Level 5",
       };
-      const level = levelMap[data];
+      const level = map[data];
       if (level) {
         updateSettings(chatIdStr, { selectedBoostLevel: level });
-        const text = await getSettingsText(chatIdStr);
-        bot.editMessageText(text, {
-          chat_id: chatId,
-          message_id: query.message!.message_id,
-          parse_mode: "Markdown",
-          ...getMainMenu(),
-        });
-        bot.answerCallbackQuery(query.id, { text: `Level: ${formatBoostLevel(level)}` });
+        await editSettings(chatId, chatIdStr, msgId);
+        bot.answerCallbackQuery(query.id, { text: `Level: ${fmtBoostLevel(level)}` });
       }
-      return;
-    } else if (data === "back_menu") {
-      const text = await getSettingsText(chatIdStr);
-      bot.editMessageText(text, {
-        chat_id: chatId,
-        message_id: query.message!.message_id,
-        parse_mode: "Markdown",
-        ...getMainMenu(),
-      });
-      bot.answerCallbackQuery(query.id);
       return;
     } else if (data?.startsWith("set_")) {
       const field = data.replace("set_", "");
-      const promptMap: Record<string, string> = {
-        buy: "Enter Buy Amount in SOL (e.g., 0.5):",
-        slippage: "Enter Slippage % (e.g., 10):",
-        tp: "Enter Take Profit % (e.g., 50):",
-        sl: "Enter Stop Loss % (e.g., 25):",
+      const prompts: Record<string, string> = {
+        buy: "Enter Buy Amount in SOL (e.g. 0.5):",
+        slippage: "Enter Slippage % (e.g. 10):",
+        tp: "Enter Take Profit % (e.g. 50):",
+        sl: "Enter Stop Loss % (e.g. 25):",
         min_holders: "Enter Min Holders (0 = no filter):",
-        min_liquidity: "Enter Min Liquidity in USD (0 = no filter, e.g., 5000):",
-        min_mc: "Enter Min Market Cap in USD (0 = no filter, e.g., 10000):",
-        max_mc: "Enter Max Market Cap in USD (0 = no filter, e.g., 1000000):",
+        min_liquidity: "Enter Min Liquidity in USD (0 = no filter):",
+        min_mc: "Enter Min Market Cap in USD (0 = no filter):",
+        max_mc: "Enter Max Market Cap in USD (0 = no filter):",
       };
-      const prompt = promptMap[field];
+      const prompt = prompts[field];
       if (prompt) {
         const sentMsg = await bot.sendMessage(chatId, prompt, { reply_markup: { force_reply: true } });
         bot.onReplyToMessage(chatId, sentMsg.message_id, async (reply) => {
           const val = parseFloat(reply.text || "0");
           if (!isNaN(val)) {
-            const fieldMap: Record<string, keyof SubscriberSettings> = {
-              buy: "buyAmount",
-              slippage: "slippage",
-              tp: "takeProfit",
-              sl: "stopLoss",
-              min_holders: "minHolders",
-              min_liquidity: "minLiquidity",
-              min_mc: "minMarketCap",
-              max_mc: "maxMarketCap",
+            const keys: Record<string, keyof SubscriberSettings> = {
+              buy: "buyAmount", slippage: "slippage", tp: "takeProfit", sl: "stopLoss",
+              min_holders: "minHolders", min_liquidity: "minLiquidity", min_mc: "minMarketCap", max_mc: "maxMarketCap",
             };
-            const key = fieldMap[field];
+            const key = keys[field];
             if (key) {
               updateSettings(chatIdStr, { [key]: val } as Partial<SubscriberSettings>);
-              const text = await getSettingsText(chatIdStr);
-              bot.sendMessage(chatId, "✅ Updated!\n\n" + text, { parse_mode: "Markdown", ...getMainMenu() });
+              await sendSettings(chatId, chatIdStr);
             }
           }
         });
@@ -768,42 +614,43 @@ bot.on("callback_query", async (query) => {
 
     if (Object.keys(patch).length > 0) {
       updateSettings(chatIdStr, patch);
-      const text = await getSettingsText(chatIdStr);
-      bot.editMessageText(text, {
-        chat_id: chatId,
-        message_id: query.message!.message_id,
-        parse_mode: "Markdown",
-        ...getMainMenu(),
-      });
+      await editSettings(chatId, chatIdStr, msgId);
       bot.answerCallbackQuery(query.id, { text: answer });
     }
-  } catch (e) {
-    console.error("[Bot] callback error:", e);
-    bot.answerCallbackQuery(query.id, { text: "❌ Error" });
+
+  } catch (e: any) {
+    console.error("[Bot] callback error:", e?.message || e);
+    bot.answerCallbackQuery(query.id, { text: "Error — please try again" }).catch(() => null);
   }
 });
 
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const chatIdStr = String(chatId);
-
   if (!msg.text || msg.text.startsWith("/")) return;
   if (!pendingImports.has(chatIdStr)) return;
 
+  const isOnboard = pendingImports.has(chatIdStr + "_onboard");
   pendingImports.delete(chatIdStr);
-  const privateKeyInput = msg.text.trim();
+  pendingImports.delete(chatIdStr + "_onboard");
 
-  const result = importWallet(privateKeyInput, chatIdStr);
+  const result = importWallet(msg.text.trim(), chatIdStr);
   if (!result) {
-    await bot.sendMessage(chatId, "❌ Invalid private key. Please check the format and try again.\n\nUse /wallet to try again.");
+    await bot.sendMessage(
+      chatId,
+      "❌ *Invalid private key.*\n\nSupported formats:\n• Base58 (Phantom/Solflare)\n• Base64\n• JSON array\n\nUse /wallet to try again.",
+      { parse_mode: "Markdown" },
+    );
     return;
   }
 
   saveWallet(chatIdStr, { address: result.address, encryptedKey: result.encryptedKey, createdAt: new Date().toISOString() });
+  if (isOnboard) markOnboarded(chatIdStr);
+
   await bot.sendMessage(
     chatId,
-    `✅ *Wallet imported successfully!*\n\n📍 Address:\n\`${result.address}\`\n\n_Fund your wallet by sending SOL to this address\\._`,
-    { parse_mode: "MarkdownV2" },
+    `✅ *Wallet Imported!*\n\n📍 *Address:*\n\`${result.address}\`\n\nFund your wallet by sending SOL to this address.`,
+    { parse_mode: "Markdown", reply_markup: { inline_keyboard: [[{ text: "⚙️ Open Settings", callback_data: "back_menu" }]] } },
   );
 });
 

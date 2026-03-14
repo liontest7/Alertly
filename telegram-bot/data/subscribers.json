@@ -16,6 +16,11 @@
       "maxMarketCap": 0,
       "minLiquidity": 0,
       "minHolders": 0
+    },
+    "wallet": {
+      "address": "E9wRYYyW482D9NXemFTeBjQEbThz1e5NsrFUSt34VHHp",
+      "encryptedKey": "c345e862d75cb04d56910fa6def59fcb:b293bc3d05eb6104917914d5be7950666cc08fb8e36e6891a6887ab8885ea7e80aabe1a27d677390ff505d82efdfd60f21fbfc33bdcef5c0b0717a95ae6c4cf4871bc9762240b966dd5c0502ca0020baaf165fcfbff165abd5dfd6e7e20af774",
+      "createdAt": "2026-03-14T11:16:00.563Z"
     }
   }
 }
