@@ -1,0 +1,56 @@
+אני מנסה לעלות את הקבצים לשרת ב RENDER ואני מקבל שגיאה 
+
+==> Downloading cache...
+==> Cloning from https://github.com/liontest7/Alertly
+Menu
+==> Checking out commit c10e21e96086e26ae1cd8a46e3c33d5eea38324b in branch main
+==> Downloaded 927MB in 8s. Extraction took 30s.
+==> Using Node.js version 22.22.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install; npm run build'...
+> alertly@0.1.0 postinstall
+> prisma generate
+Loaded Prisma config from prisma.config.ts.
+Error: Could not find Prisma Schema that is required for this command.
+You can either provide it with `--schema` argument,
+set it in your Prisma Config file (e.g., `prisma.config.ts`),
+set it as `prisma.schema` in your package.json,
+or put it into the default location (`./prisma/schema.prisma`, or `./schema.prisma`.
+Checked following paths:
+schema.prisma: file not found
+prisma/schema.prisma: file not found
+See also https://pris.ly/d/prisma-schema-location
+npm error code 1
+npm error path /opt/render/project/src
+npm error command failed
+npm error command sh -c prisma generate
+npm error A complete log of this run can be found in: /opt/render/.cache/_logs/2026-03-14T14_59_00_752Z-debug-0.log
+> alertly@0.1.0 build
+> prisma generate && next build
+Loaded Prisma config from prisma.config.ts.
+Error: Could not find Prisma Schema that is required for this command.
+You can either provide it with `--schema` argument,
+set it in your Prisma Config file (e.g., `prisma.config.ts`),
+set it as `prisma.schema` in your package.json,
+or put it into the default location (`./prisma/schema.prisma`, or `./schema.prisma`.
+Checked following paths:
+schema.prisma: file not found
+prisma/schema.prisma: file not found
+See also https://pris.ly/d/prisma-schema-location
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+
+בנוסף למה עכשיו בקונסול אני רואה 
+[Listener] Token profiles: 1 new listings
+[Telegram] DEX_LISTING broadcast: sent=1, skipped=0, token=me when
+[Listener] Token profiles: 1 new listings
+[Telegram] DEX_LISTING broadcast: sent=1, skipped=0, token=3.141592653589793238462643383279
+[Listener] Token profiles: 1 new listings
+[Telegram] DEX_LISTING broadcast: sent=1, skipped=0, token=The White Panda
+[Listener] Token profiles: 1 new listings
+[Telegram] DEX_LISTING broadcast: sent=1, skipped=0, token=The Aura Puma
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 779ms
+ GET /api/auth/telegram-link 200 in 76ms
+ זה לפעמיים מדלק או לא מפרסם מטבעות או משהו כזה ?
+ זה אמור לא לפרסם את ההיסטוריה שנשמרת במערכת אבל כל התראה חדשה צריכה לעלות לכל משתמש לפי ההגדרות שלו כמובן  מזה מה שראיתי בקונסול ?
