@@ -210,13 +210,7 @@ async function pollDexBoostsTop() {
     if (!boostTopBaselineReady) {
       boostTopBaselineReady = true;
       if (newBoosts.length > 0) {
-        console.log(`[Listener] Top boosts baseline: ${newBoosts.length} tokens seeded (silent fill)`);
-        const now = Date.now();
-        const toFill = newBoosts.slice(0, 20);
-        toFill.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
-          const alertedAt = new Date(now - j * 1000);
-          processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount, totalBoostAmount, true).catch(() => null);
-        });
+        console.log(`[Listener] Top boosts baseline: ${newBoosts.length} tokens tracked (no feed fill)`);
       }
     } else if (newBoosts.length > 0) {
       console.log(`[Listener] Top boosts: ${newBoosts.length} new/increased`);
