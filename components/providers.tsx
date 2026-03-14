@@ -110,43 +110,46 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    let lastAlertId: string | null = null;
+    let lastAlertFingerprint: string | null = null;
     let eventSource: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const handleAlert = (alertData: any[]) => {
-      const alert = alertData[0];
-      if (!alert || alert.id === lastAlertId) return;
-      lastAlertId = alert.id;
+    const handleAlert = (alert: any) => {
+      if (!alert || !alert.fingerprint) return;
+      if (alert.fingerprint === lastAlertFingerprint) return;
+      lastAlertFingerprint = alert.fingerprint;
 
       const audio = new Audio("/notification.mp3");
       audio.play().catch(() => {});
     };
 
     const connect = () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
       eventSource = new EventSource("/api/alerts/stream");
 
-      eventSource.onmessage = (event) => {
+      eventSource.addEventListener("alert", (event: any) => {
         try {
           const data = JSON.parse(event.data);
-          if (Array.isArray(data) && data.length > 0) handleAlert(data);
-        } catch {}
-      };
-
-      eventSource.addEventListener("alerts", (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (Array.isArray(data) && data.length > 0) handleAlert(data);
+          handleAlert(data);
         } catch {}
       });
 
       eventSource.onerror = () => {
         eventSource?.close();
-        setTimeout(connect, 5000);
+        eventSource = null;
+        reconnectTimer = setTimeout(connect, 5000);
       };
     };
 
     connect();
-    return () => eventSource?.close();
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      eventSource?.close();
+    };
   }, [user]);
 
   return (
