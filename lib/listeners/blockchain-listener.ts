@@ -55,6 +55,7 @@ async function processTokenAlert(
   alertedAt: Date,
   boostAmount?: number,
   totalBoostAmount?: number,
+  silent = false,
 ) {
   if (!isPotentialPublicKey(addr)) return;
 
@@ -104,18 +105,20 @@ async function processTokenAlert(
   getTokenMeta(addr)
     .then((meta) => {
       if (!meta) {
-        console.warn(`[Listener] No metadata for ${addr.slice(0, 8)}… — broadcasting with partial data`);
-        broadcastAlertToTelegram({
-          address: addr,
-          type,
-          name: `Token ${addr.slice(0, 8)}…`,
-          mc: "N/A",
-          liquidity: "N/A",
-          vol: "N/A",
-          alertedAt,
-          boostAmount,
-          totalBoostAmount,
-        }).catch(() => null);
+        if (!silent) {
+          console.warn(`[Listener] No metadata for ${addr.slice(0, 8)}… — broadcasting with partial data`);
+          broadcastAlertToTelegram({
+            address: addr,
+            type,
+            name: `Token ${addr.slice(0, 8)}…`,
+            mc: "N/A",
+            liquidity: "N/A",
+            vol: "N/A",
+            alertedAt,
+            boostAmount,
+            totalBoostAmount,
+          }).catch(() => null);
+        }
         return;
       }
 
@@ -139,25 +142,27 @@ async function processTokenAlert(
       };
       pushAlert(enriched);
 
-      broadcastAlertToTelegram({
-        address: addr,
-        pairAddress: meta.pairAddress || undefined,
-        type,
-        name: meta.name || "Unknown Token",
-        symbol: meta.symbol || undefined,
-        mc: meta.mc || "N/A",
-        liquidity: meta.liquidity || "N/A",
-        vol: meta.volume24h || "N/A",
-        alertedAt,
-        imageUrl: meta.imageUrl || undefined,
-        boostAmount,
-        totalBoostAmount,
-        priceUsd: meta.priceUsd || undefined,
-        website: meta.website || undefined,
-        twitter: meta.twitter || undefined,
-        telegram: meta.telegram || undefined,
-        dex,
-      }).catch(() => null);
+      if (!silent) {
+        broadcastAlertToTelegram({
+          address: addr,
+          pairAddress: meta.pairAddress || undefined,
+          type,
+          name: meta.name || "Unknown Token",
+          symbol: meta.symbol || undefined,
+          mc: meta.mc || "N/A",
+          liquidity: meta.liquidity || "N/A",
+          vol: meta.volume24h || "N/A",
+          alertedAt,
+          imageUrl: meta.imageUrl || undefined,
+          boostAmount,
+          totalBoostAmount,
+          priceUsd: meta.priceUsd || undefined,
+          website: meta.website || undefined,
+          twitter: meta.twitter || undefined,
+          telegram: meta.telegram || undefined,
+          dex,
+        }).catch(() => null);
+      }
     })
     .catch((err) => {
       console.error(`[Listener] Token metadata fetch failed for ${addr.slice(0, 8)}…:`, err instanceof Error ? err.message : err);
@@ -204,7 +209,15 @@ async function pollDexBoostsTop() {
 
     if (!boostTopBaselineReady) {
       boostTopBaselineReady = true;
-      if (newBoosts.length > 0) console.log(`[Listener] Top boosts baseline: ${newBoosts.length} tokens seeded (no broadcast)`);
+      if (newBoosts.length > 0) {
+        console.log(`[Listener] Top boosts baseline: ${newBoosts.length} tokens seeded (silent fill)`);
+        const now = Date.now();
+        const toFill = newBoosts.slice(0, 20);
+        toFill.forEach(({ addr, boostAmount, totalBoostAmount }, j) => {
+          const alertedAt = new Date(now - j * 1000);
+          processTokenAlert(addr, "DEX_BOOST", "DexScreener", alertedAt, boostAmount, totalBoostAmount, true).catch(() => null);
+        });
+      }
     } else if (newBoosts.length > 0) {
       console.log(`[Listener] Top boosts: ${newBoosts.length} new/increased`);
       const now = Date.now();

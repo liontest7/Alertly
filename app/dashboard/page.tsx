@@ -182,7 +182,7 @@ export default function DashboardPage() {
     return () => clearInterval(metricsInterval);
   }, []);
 
-  // Polling fallback: even if SSE drops, sync from REST every 30s
+  // Polling: fetch immediately on mount, then every 30s as fallback
   useEffect(() => {
     const poll = async () => {
       try {
@@ -190,8 +190,10 @@ export default function DashboardPage() {
         if (!res.ok) return;
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) mergeServerAlerts(data);
+        else setLoading(false);
       } catch {}
     };
+    poll();
     const pollInterval = setInterval(poll, 30000);
     return () => clearInterval(pollInterval);
   }, []);

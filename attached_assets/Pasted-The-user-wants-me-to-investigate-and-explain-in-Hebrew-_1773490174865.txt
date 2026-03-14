@@ -1,0 +1,145 @@
+The user wants me to investigate and explain (in Hebrew) the following issues, without making any changes yet:
+
+History storage (500 last alerts) - Was there history saved in localStorage (500 last items) for the website and browser extension? Is this still working or was it removed?
+
+Filtering on history - When settings are applied, history should also be filtered
+
+Real timestamps - Alerts should show real timestamps (when they happened), not just when the page was opened
+
+Auto-trade should ignore loaded history - When history loads, auto-trade should not trigger on old alerts, only on new ones
+
+Telegram bot - Should NOT send historical alerts when activated, only new real-time alerts
+
+Telegram bot menu issue - First-time setup menu has problems with filter settings/packages not showing/changing
+
+Duplicate Telegram messages - Getting 4-5 messages per alert (user runs both Replit and Render servers simultaneously)
+
+Now I need to examine the codebase to understand how these systems work - looking at the alert storage and history mechanism, the dashboard's SSE and localStorage implementation, the Telegram notification system, the bot itself, and the browser extension to see what's currently in place and what might be missing or broken.
+
+בסדר, אני אקרא את כל הקבצים הרלוונטיים ואסביר לך בלי לשנות כלום.
+
+עכשיו יש לי תמונה מלאה. הנה הסבר מפורט:
+
+1. היסטוריה של 500 ההתראות באתר ✅ קיים ועובד
+הקוד קיים ועובד תחת alertly_feed_v2 ב-localStorage. כשנכנסים לאתר — נטען מיד מ-localStorage ואז מתעדכן בזמן אמת. הזמן האמיתי נשמר — כל התראה כוללת את alertedAt שהוא הזמן שהיא קרתה באמת, לא זמן הכניסה. הסינון גם עובד על ההיסטוריה — הפיד מציג רק מה שמתאים להגדרות.
+
+2. מסחר אוטומטי על היסטוריה ✅ מוגן נכון
+בדקתי את הקוד לעומק — יש הגנה חכמה:
+
+כשהמערכת עולה, תחילה auto-trade = false → הקוד שומר את כל ההיסטוריה ב-prevAlertsRef ("כבר ראיתי אלה")
+רק אחרי שהגדרות נטענות ו-auto-trade הופך true — רק התראות שמגיעות לאחר מכן נחשבות "חדשות"
+אז לא יסחר על היסטוריה ישנה ✅
+3. תוסף הדפדפן ❌ אין היסטוריה פרסיסטנטית
+זה מה שכנראה השתנה ממה שהיה קודם. התוסף משתמש ב-chrome.storage.session שנמחק כשסוגרים את הדפדפן. אין שמירה של 500 התראות שמחזיקה בין פתיחות. כשפותחים שוב — ריק.
+
+4. 🔴 בעיית 4-5 הודעות כפולות בטלגרם — זו הבעיה הכי חמורה
+הסיבה המדויקת: יש שלוש שכבות שגורמות לכפולות:
+
+שכבה	כפולות
+Replit + Render — שני שרתים עצמאיים, כל אחד מריץ blockchain-listener בנפרד	× 2
+Hot reload של Turbopack ב-Replit — כש-Next.js טוען קוד מחדש (בזמן פיתוח), ה-listener הישן ממשיך לרוץ ב-background עם ה-setTimeout הישן, ואז נוצר listener חדש נוסף בו זמנית	× 2 נוספות
+שני loops של polling (top boosts + latest boosts) — אם totalAmount שונה מעט בין ה-API-ים	× 2 אפשריות
+הסיבה הטכנית: ב-blockchain-listener.ts, broadcastAlertToTelegram נקרא ישירות לאחר שליפת מטאדטה, ללא בדיקה אם כבר שלחנו הודעה לטלגרם על אותה התראה. יש seenFingerprints שמונע כפול ב-alert store אבל אין מנגנון כזה לטלגרם.
+
+5. 🟡 בעיית כפתורים בבוט טלגרם
+שתי בעיות נפרדות:
+
+בשלב ה-Onboarding (הפעם הראשונה): הכפתורים "⚡ DEX Boosts ✅" ו-"🆕 DEX Listings ✅" הם קישוטיים בלבד — ה-callback_data שלהם הוא "none". לא ניתן לשנות אותם שם. זו החלטת עיצוב אבל מבלבלת.
+
+בתפריט /settings הרגיל: הלחיצה כן עובדת ומשמרת — הטקסט מעל מתעדכן ומציג ✅/❌. אבל כותרת הכפתורים עצמם לא משתנה — הכפתור תמיד כתוב "⚡ Dex Boost" ללא אינדיקציה של on/off. זה גורם לתחושה שלא עשה כלום.
+
+6. האם נמחק קוד? לא.
+כל הקוד קיים. אם לא רואים היסטוריה — זה בגלל:
+
+ה-localStorage נמחק (ניקוי דפדפן / incognito)
+האתר פתוח בפעם הראשונה ועוד לא נצברו 500 התראות
+סיכום מה צריך לתקן:
+כפולות טלגרם — להוסיף Set של fingerprints שנשלחו לטלגרם (כמו ב-alert-store), כדי שכל fingerprint ישלח פעם אחת בלבד לטלגרם, גם אם Replit ו-Render שניהם פועלים
+תוסף דפדפן — לעבור מ-session storage לאחסון פרסיסטנטי (500 התראות בין פתיחות דפדפן)
+כפתורי בוט — לעדכן את mainMenu() כך שהכפתורים יציגו מצב נוכחי (✅/❌)
+Onboarding בבוט — להוסיף אפשרות אמיתית לשנות הגדרות בשלב ה-onboarding
+האם לאשר לי לתקן את הדברים האלה?
+
+אני נכנסתי עעכשיו למערכת ולא ראיתי את ההיסטוריה כמו פעם אני משתמש חדש באתר וזה מראה לי רק מה שזה מצא מאז שאני נכנסתי לאתר בלי ההיסטוריה שהיה נשמר בשרת לדעתי זה עבד ככה
+הקבצים הרלוונטיים
+
+lib/alert-store.ts — שמירת ההיסטוריה בזיכרון השרת
+זה ה"מסד נתונים" הזמני של ההתראות. הוא לא שומר בבסיס נתונים אמיתי אלא בזיכרון הרץ (in-memory):
+alertBuffer — מערך שמחזיק עד 200 ההתראות האחרונות (MAX_ALERTS = 200)
+pushAlert — הפונקציה שמוסיפה התראה חדשה לבאפר, כולל ניהול כפילויות (deduplication) דרך seenFingerprints
+getAlerts — מחזירה את כל ההיסטוריה השמורה כרגע
+
+app/api/alerts/stream/route.ts — שליחת היסטוריה למשתמש חדש שמתחבר
+זה הקובץ שמטפל בחיבור SSE (Server-Sent Events — הסטרים החי):
+שורות 127-130 — ברגע שמשתמש חדש מתחבר, הקוד קורא ל-getAlerts(), מסנן לפי הגדרות הסינון שלו, ושולח אירוע init עם כל ההיסטוריה
+alertMatchesFilters (שורות 36-60) — הפונקציה שמסננת לפי: Market Cap (מינימום/מקסימום), Liquidity, Holders, ולפי סוג (DEX Boost / DEX Listing)
+שורות 132-136 — גם התראות חדשות שמגיעות בזמן אמת עוברות דרך אותו פילטר לפני שנשלחות למשתמש
+
+lib/blockchain/solana.ts — לוגיקת סינון נוספת
+isAlertEnabledBySettings — סינון לפי סוג התראה ורמות Boost
+passesNumericFilters — סינון לפי ערכים מספריים כמו market cap ו-holders
+getLiveAlerts — שולף ומסנן את ההיסטוריה לשימוש כללי
+lib/guest-session.ts — ניהול הגדרות הסינון של המשתמש
+הקובץ שקורא את הגדרות הסינון של כל משתמש (מאוחסן ב-cookies/session) וממסר אותן לפונקציות הסינון.
+סיכום הזרימה
+משתמש חדש מתחבר
+↓
+stream/route.ts קורא את הגדרות הסינון שלו
+↓
+קורא ל-getAlerts() מ-alert-store.ts
+↓
+מסנן דרך alertMatchesFilters
+↓
+שולח init event עם ההיסטוריה המסוננת
+שים לב: ההיסטוריה נשמרת רק בזיכרון השרת — אם השרת נופל או מתאפס, ההיסטוריה נמחקת. אין שמירה לבסיס נתונים קבוע.
+היה גם בעיה שמתשמש חדש נכנס הוא היה רואה כאילו כל ההתראות מהיסטוריה קרה בשעה שהוא נכנס ולא בשעה האמיתי שזה קרה ואז הרשימה לפעמיים השתנה צריך לוודא שזה מוצג כמו שצריך לפני הסדר הנכון וימשיך להתעדכן נכון ולפי ההגדרות סינון של כל משתמש כמובן
+
+לגבי 2 תעשה מהשצריך
+לגבי 3
+תעשה מה שצריך וגם לדעתי אני לא רואה שם התראות בכלל וגם לא פופ אפ סאונד וכל מה שצריך
+לגבי 4
+זה שכרגע זה מריץ שתי שרתיים נתעלם מזה אני ככה עושה בדיקות תכף אני יפתח בוט חדש ויעשה בוט לבדיקות עם SECERT נפרד לשרת ופה ב REPLIT
+ושאר הדברים שצריכים לתקן גורמים לכפילות או כל בעיה גם סידור טקסט תפריטים וכל מה שצריך בצורה הכי מקצועתי וטובה שאפשר ושיהיה את כל ההגדרות וכל מה שקיים באתר שלנו בנוסף גם אני רוצה שיצירת ארנק ויבוא ארנק באתר ובטלגרם למרות שאי אפשר לסנכרן יהיה באותו פורמט כדי שאני יוכל ליצור ארנק באתר או בטלגרם ולעשות לו IMPORT ידני וזה יעבוד כרגע הם מצפינים או מוציאים מפתחות ארנק בפורמט אחר ואז זה לא עובד
+לגבי 5
+תעשה מה שצריך שהכל יהיה הכי מקצועי נוח ומובן שיש
+
+אני אקרא את כל הקבצים הרלוונטיים ואתחיל לעבוד. יש הרבה לעשות — אני מתחיל.
+
+עכשיו יש לי הבנה מלאה. אני מתחיל לתקן את הכל. העבודה גדולה — אני עושה הכל במקביל.
+
+Optimized Agent memory
+ממצאתי את כל הבעיות. עכשיו אני מתחיל לתקן הכל. יש 5 קבצים לשנות — אני עושה רובם במקביל.
+
+Now I can write browser-wallet.ts and simultaneously start working on the other files:
+
+Now fixing the Chrome extension and the Telegram bot at the same time:
+
+Now fixing the extension popup's SSE bug and loading cached alerts on open:
+
+The getCachedAlerts function has slightly off indentation. Let me fix it and also load cached alerts on popup open:
+
+Now updating the initialization to load cached alerts immediately when the popup opens:
+
+Good. Now the biggest change — the Telegram bot. Let me read what I need to update:
+
+Now I have everything I need. Let me rewrite the full Telegram bot with all improvements:
+
+First, adding the key conversion helper to wallet.ts:
+
+Now updating the bot.ts import and making all the targeted changes:
+
+Now updating mainMenu, sendSettings, and editSettings:
+
+Now updating sendSettings and editSettings to pass settings to mainMenu:
+
+Now fixing the onboarding step 1 handler and adding the real toggle handlers:
+
+Now fixing export_key to show both key formats (so wallet can be imported to website):
+
+Now fixing the wallet creation to show both key formats:
+
+Now let me also update the import wallet message to be clearer about formats, and then check for TypeScript errors:
+
+Good. Now let me check that TypeScript compiles correctly and look at the other things that may still need fixing - specifically checking if the website correctly shows the history when a new user connects:
+
+Main project has zero errors. One small bot error to fix:
