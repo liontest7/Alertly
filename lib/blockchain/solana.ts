@@ -73,6 +73,8 @@ export interface AlertFilterSettings {
   minHolders?: number;
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
+  selectedBoostLevel?: string;
+  sources?: string[];
 }
 
 const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
@@ -103,10 +105,26 @@ function getAgeLabel(alertedAt: Date): string {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
-function isAlertEnabledBySettings(type: TokenAlertType, filters?: AlertFilterSettings): boolean {
+function isAlertEnabledBySettings(alert: TokenAlert, filters?: AlertFilterSettings): boolean {
   if (!filters) return true;
-  if (type === "DEX BOOST" && filters.dexBoostEnabled === false) return false;
-  if (type === "DEX LISTING" && filters.dexListingEnabled === false) return false;
+  if (alert.type === "DEX BOOST" && filters.dexBoostEnabled === false) return false;
+  if (alert.type === "DEX LISTING" && filters.dexListingEnabled === false) return false;
+
+  if (
+    typeof filters.selectedBoostLevel === "string" &&
+    filters.selectedBoostLevel !== "all" &&
+    alert.type === "DEX BOOST"
+  ) {
+    const alertLevel = (alert as any).boostLevel as string | undefined;
+    if (alertLevel && alertLevel !== filters.selectedBoostLevel) return false;
+  }
+
+  if (Array.isArray(filters.sources) && filters.sources.length > 0 && alert.dex) {
+    const alertDex = alert.dex.toLowerCase();
+    const matched = filters.sources.some((s) => s.toLowerCase() === alertDex);
+    if (!matched) return false;
+  }
+
   return true;
 }
 
@@ -119,7 +137,7 @@ function passesNumericFilters(alert: TokenAlert, filters?: AlertFilterSettings):
   if (typeof filters.minMarketCap === "number" && filters.minMarketCap > 0 && mcValue !== null && mcValue < filters.minMarketCap) return false;
   if (typeof filters.maxMarketCap === "number" && filters.maxMarketCap > 0 && mcValue !== null && mcValue > filters.maxMarketCap) return false;
   if (typeof filters.minLiquidity === "number" && filters.minLiquidity > 0 && liquidityValue !== null && liquidityValue < filters.minLiquidity) return false;
-  if (typeof filters.minHolders === "number" && filters.minHolders > 0 && alert.holders > 0 && alert.holders < filters.minHolders) return false;
+  if (typeof filters.minHolders === "number" && filters.minHolders > 0 && alert.holders < filters.minHolders) return false;
 
   return true;
 }
@@ -165,7 +183,7 @@ export async function getLiveAlerts(filters?: AlertFilterSettings): Promise<Toke
     const mapped = stored.map(mapStoredAlert).filter((a): a is TokenAlert => a !== null);
 
     const filtered = mapped
-      .filter((alert) => isAlertEnabledBySettings(alert.type, filters))
+      .filter((alert) => isAlertEnabledBySettings(alert, filters))
       .filter((alert) => passesNumericFilters(alert, filters));
 
     const deduped = new Map<string, TokenAlert>();
