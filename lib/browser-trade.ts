@@ -77,9 +77,11 @@ export async function executeBrowserTrade(
     const txBuf = new Uint8Array(txBinary.length)
     for (let i = 0; i < txBinary.length; i++) txBuf[i] = txBinary.charCodeAt(i)
     const tx = VersionedTransaction.deserialize(txBuf)
-    tx.sign([keypair])
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+    const blockhash = tx.message.recentBlockhash
+    const { lastValidBlockHeight } = await connection.getLatestBlockhash()
+
+    tx.sign([keypair])
 
     const txSig = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: false,

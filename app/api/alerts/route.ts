@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
     const formattedAlerts = alerts.map((a) => ({
       ...a,
-      type: a.type.replace("_", " "),
+      type: a.type.replaceAll("_", " "),
       trend: a.trend || (parseFloat(a.change) > 0 ? "up" : "down"),
       mc: a.mc || "-",
       liquidity: a.liquidity || "-",

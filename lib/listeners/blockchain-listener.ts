@@ -9,7 +9,7 @@ export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 const holdersCache = new Map<string, { count: number; fetchedAt: number }>();
 const HOLDERS_CACHE_TTL = 300_000;
 
-function getHelixRpcUrl(): string | null {
+function getHeliusRpcUrl(): string | null {
   const url = getEnv("SOLANA_RPC_URL") || getEnv("NEXT_PUBLIC_SOLANA_RPC_URL") || "";
   return url.includes("helius") ? url : null;
 }
@@ -30,7 +30,7 @@ async function fetchHoldersFromPumpFun(address: string): Promise<number | null> 
 }
 
 async function fetchHoldersFromHelius(address: string): Promise<number | null> {
-  const rpcUrl = getHelixRpcUrl();
+  const rpcUrl = getHeliusRpcUrl();
   if (!rpcUrl) return null;
   try {
     const res = await fetch(rpcUrl, {
@@ -52,6 +52,7 @@ async function fetchHoldersFromHelius(address: string): Promise<number | null> {
     const data = await res.json();
     const accounts = data?.result?.token_accounts;
     if (!Array.isArray(accounts) || accounts.length === 0) return null;
+    if (accounts.length >= 1000) return 1000;
     return accounts.length;
   } catch {}
   return null;
