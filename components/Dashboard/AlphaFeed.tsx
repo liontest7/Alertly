@@ -79,6 +79,12 @@ export function AlphaFeed({
   const autoTradedRef = useRef<Set<string>>(new Set());
   const prevAlertsRef = useRef<any[]>([]);
 
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const showTradeToast = (message: string, success: boolean) => {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setTradeToast({ message, success });

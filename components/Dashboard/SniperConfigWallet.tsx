@@ -471,7 +471,7 @@ export function SniperConfigWallet({ settings, onToggle, user }: { settings: any
           ].map(p => (
             <div
               key={p.label}
-              onClick={() => router.push("/onboarding")}
+              onClick={() => router.push("/onboarding?page=trading")}
               className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 hover:border-[#5100fd]/50 transition-all cursor-pointer group flex flex-col items-center text-center"
             >
               <p className="text-[10px] text-white uppercase font-black mb-1.5 tracking-widest group-hover:text-[#5100fd] transition-colors">

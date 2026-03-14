@@ -79,12 +79,13 @@ export async function executeBrowserTrade(
     const tx = VersionedTransaction.deserialize(txBuf)
     tx.sign([keypair])
 
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+
     const txSig = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: false,
       maxRetries: 3,
     })
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
     const confirmation = await connection.confirmTransaction(
       { signature: txSig, blockhash, lastValidBlockHeight },
       "confirmed",
