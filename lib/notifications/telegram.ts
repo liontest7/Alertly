@@ -35,6 +35,14 @@ type SubscriberStore = Record<string, Subscriber>;
 
 const SUBSCRIBERS_FILE = join(process.cwd(), "telegram-bot", "data", "subscribers.json");
 
+const MIN_DELAY_MS = 100;
+const MAX_QUEUE_PER_CHAT = 50;
+const MAX_RETRIES = 3;
+
+const chatQueues = new Map<string, Array<string>>();
+const chatBusy = new Map<string, boolean>();
+const chatRateLimitedUntil = new Map<string, number>();
+
 function loadSubscribers(): SubscriberStore {
   try {
     if (!existsSync(SUBSCRIBERS_FILE)) return {};
@@ -93,7 +101,11 @@ function buildTelegramMessage(alert: AlertBroadcastPayload): string {
   return lines.join("\n");
 }
 
-async function sendTelegramMessage(chatId: string, text: string): Promise<boolean> {
+async function sendTelegramMessageDirect(
+  chatId: string,
+  text: string,
+  attempt = 1,
+): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     console.warn("[Telegram] TELEGRAM_BOT_TOKEN is not set — skipping notification");
@@ -113,6 +125,30 @@ async function sendTelegramMessage(chatId: string, text: string): Promise<boolea
       }),
     });
 
+    if (res.status === 429) {
+      const body = await res.text().catch(() => "{}");
+      let retryAfterMs = 5000;
+      try {
+        const parsed = JSON.parse(body);
+        const retryAfterSec = parsed?.parameters?.retry_after;
+        if (typeof retryAfterSec === "number" && retryAfterSec > 0) {
+          retryAfterMs = retryAfterSec * 1000 + 200;
+        }
+      } catch {}
+
+      if (attempt <= MAX_RETRIES) {
+        console.warn(
+          `[Telegram] 429 for ${chatId} — retrying in ${retryAfterMs}ms (attempt ${attempt}/${MAX_RETRIES})`,
+        );
+        chatRateLimitedUntil.set(chatId, Date.now() + retryAfterMs);
+        await new Promise((r) => setTimeout(r, retryAfterMs));
+        return sendTelegramMessageDirect(chatId, text, attempt + 1);
+      }
+
+      console.error(`[Telegram] Gave up on ${chatId} after ${MAX_RETRIES} retries (429)`);
+      return false;
+    }
+
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       console.error(`[Telegram] Failed to send to ${chatId}: HTTP ${res.status} — ${body}`);
@@ -121,9 +157,50 @@ async function sendTelegramMessage(chatId: string, text: string): Promise<boolea
 
     return true;
   } catch (err) {
-    console.error(`[Telegram] Network error sending to ${chatId}:`, err instanceof Error ? err.message : err);
+    console.error(
+      `[Telegram] Network error sending to ${chatId}:`,
+      err instanceof Error ? err.message : err,
+    );
     return false;
   }
+}
+
+async function drainQueue(chatId: string): Promise<void> {
+  if (chatBusy.get(chatId)) return;
+  chatBusy.set(chatId, true);
+
+  try {
+    while (true) {
+      const queue = chatQueues.get(chatId);
+      if (!queue || queue.length === 0) break;
+
+      const rateLimitedUntil = chatRateLimitedUntil.get(chatId) ?? 0;
+      const now = Date.now();
+      if (now < rateLimitedUntil) {
+        await new Promise((r) => setTimeout(r, rateLimitedUntil - now + 100));
+      }
+
+      const text = queue.shift();
+      if (!text) break;
+
+      await sendTelegramMessageDirect(chatId, text);
+      await new Promise((r) => setTimeout(r, MIN_DELAY_MS));
+    }
+  } finally {
+    chatBusy.set(chatId, false);
+  }
+}
+
+function enqueueMessage(chatId: string, text: string): void {
+  if (!chatQueues.has(chatId)) chatQueues.set(chatId, []);
+  const queue = chatQueues.get(chatId)!;
+
+  if (queue.length >= MAX_QUEUE_PER_CHAT) {
+    queue.shift();
+  }
+  queue.push(text);
+
+  drainQueue(chatId).catch(() => null);
 }
 
 export async function sendCurrentAlertsToNewUser(chatId: string) {
@@ -136,13 +213,10 @@ export async function sendCurrentAlertsToNewUser(chatId: string) {
 
   const toSend = dexAlerts.slice(0, 8);
 
-  await sendTelegramMessage(
-    chatId,
-    `✅ *Alertly activated!* Here are ${toSend.length} active DEX alerts right now:`,
-  );
+  enqueueMessage(chatId, `✅ *Alertly activated!* Here are ${toSend.length} active DEX alerts right now:`);
 
   for (const alert of toSend) {
-    await sendTelegramMessage(
+    enqueueMessage(
       chatId,
       buildTelegramMessage({
         address: alert.address,
@@ -158,7 +232,6 @@ export async function sendCurrentAlertsToNewUser(chatId: string) {
         totalBoostAmount: alert.totalBoostAmount,
       }),
     );
-    await new Promise((r) => setTimeout(r, 120));
   }
 }
 
@@ -178,8 +251,8 @@ export async function broadcastAlertToTelegram(alert: AlertBroadcastPayload) {
     if (settings.alertsEnabled === false) { skipped++; continue; }
     if (!isAlertTypeEnabled(alert.type, settings)) { skipped++; continue; }
 
-    const ok = await sendTelegramMessage(sub.chatId, message);
-    if (ok) sent++;
+    enqueueMessage(sub.chatId, message);
+    sent++;
   }
 
   if (sent > 0 || skipped > 0) {
