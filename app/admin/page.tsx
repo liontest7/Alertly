@@ -359,30 +359,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Telegram Subscribers (User Management) */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <SectionTitle>Telegram Subscribers</SectionTitle>
-            </div>
-            <span className="text-xs text-zinc-300 bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-700">
-              {overview.users.total} subscriber{overview.users.total !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 leading-relaxed">
-            <p>
-              User management is based on <span className="text-white font-semibold">Telegram subscribers</span> stored in{" "}
-              <code className="text-[#5100fd] bg-[#5100fd]/10 px-1.5 py-0.5 rounded text-xs">telegram-bot/data/subscribers.json</code>.
-              Since there is no central database, ban and freeze actions are not available in this version.
-            </p>
-            <p className="mt-3 text-zinc-300">
-              To restrict a subscriber, remove their entry from the JSON file or stop the Telegram bot. Full user management
-              (ban, freeze, notes, trade history) becomes available when a database is connected.
-            </p>
-          </div>
-        </div>
-
         {/* Test Runner */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
           <SectionTitle>Test Runner</SectionTitle>
