@@ -17,7 +17,14 @@ type AlertItem = {
   wallet?: string;
   walletBalance?: number;
   boostAmount?: number;
+  totalBoostAmount?: number;
   alertedAt?: string;
+  fingerprint?: string;
+  holders?: number;
+  priceUsd?: string;
+  riskScore?: number;
+  riskLevel?: string;
+  imageUrl?: string;
 };
 
 type FilterSettings = {

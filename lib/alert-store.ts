@@ -34,8 +34,8 @@ export interface StoredAlert {
   buyAmountSol?: number;
 }
 
-const MAX_ALERTS = 1000;
-const DATA_DIR = join(process.cwd(), "data");
+const MAX_ALERTS = 5000;
+const DATA_DIR = join("/tmp", "alertly-data");
 const ALERTS_FILE = join(DATA_DIR, "alerts.json");
 
 const alertBuffer: StoredAlert[] = [];
