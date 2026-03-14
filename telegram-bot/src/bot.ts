@@ -198,8 +198,9 @@ async function sendSettings(chatId: number, chatIdStr: string) {
   return bot.sendMessage(chatId, text, { parse_mode: "Markdown", ...mainMenu(sub?.settings) });
 }
 
-async function editSettings(chatId: number, chatIdStr: string, messageId: number) {
-  const text = await buildSettingsText(chatIdStr);
+async function editSettings(chatId: number, chatIdStr: string, messageId: number, headerMsg?: string) {
+  const baseText = await buildSettingsText(chatIdStr);
+  const text = headerMsg ? headerMsg + baseText : baseText;
   const sub = getSubscriber(chatIdStr);
   return bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: "Markdown", ...mainMenu(sub?.settings) });
 }
@@ -336,6 +337,26 @@ bot.onText(/\/status/, async (msg) => {
   );
 });
 
+bot.onText(/\/help/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendMessage(
+    chatId,
+    `📖 *Alertly Bot — Commands*\n\n` +
+    `*/start* — Welcome screen & quick setup\n` +
+    `*/settings* — View & manage all your settings\n` +
+    `*/wallet* — Manage your trading wallet\n` +
+    `*/status* — Check your subscription status\n` +
+    `*/stop* — Unsubscribe from alerts\n` +
+    `*/help* — Show this message\n\n` +
+    `*What Alertly monitors:*\n` +
+    `⚡ *DEX Boost Alerts* — tokens being promoted on DexScreener\n` +
+    `🆕 *DEX Listing Alerts* — new tokens getting their first DEX listing\n\n` +
+    `Each alert includes price, market cap, liquidity, social links, and a *Quick Buy* button.\n\n` +
+    `_Use /settings to configure filters, trading parameters, and your wallet._`,
+    { parse_mode: "Markdown" },
+  );
+});
+
 bot.on("callback_query", async (query) => {
   const chatId = query.message?.chat.id;
   if (!chatId) return;
@@ -402,11 +423,8 @@ bot.on("callback_query", async (query) => {
 
     if (data === "onboard_finish") {
       markOnboarded(chatIdStr);
-      bot.answerCallbackQuery(query.id, { text: "You're all set!" });
-      await bot.editMessageText(
-        "✅ *All set!*\n\nAlerts are now active. You'll get a message every time a new token is boosted or listed.\n\n💡 Use /settings anytime to adjust filters, amounts, and your wallet.",
-        { chat_id: chatId, message_id: msgId, parse_mode: "Markdown" },
-      );
+      bot.answerCallbackQuery(query.id, { text: "✅ You're all set!" });
+      await editSettings(chatId, chatIdStr, msgId, "🎉 *Setup complete!* Alerts are now active.\n\n");
       return;
     }
 
@@ -597,18 +615,30 @@ bot.on("callback_query", async (query) => {
       answer = `Dex Listing ${!s.dexListingEnabled ? "ON" : "OFF"}`;
     } else if (data === "boost_levels") {
       bot.answerCallbackQuery(query.id);
-      await bot.editMessageText("Select minimum boost level to track:", {
-        chat_id: chatId, message_id: msgId,
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "✅ All Levels", callback_data: "boost_level_all" }],
-            [{ text: "⚡ Level 1 (1-10)", callback_data: "boost_level_1" }, { text: "⚡⚡ Level 2 (11-50)", callback_data: "boost_level_2" }],
-            [{ text: "⚡⚡⚡ Level 3 (51-200)", callback_data: "boost_level_3" }, { text: "⚡⚡⚡⚡ Level 4 (201-500)", callback_data: "boost_level_4" }],
-            [{ text: "⚡⚡⚡⚡⚡ Level 5 (500+)", callback_data: "boost_level_top" }],
-            [{ text: "← Back", callback_data: "back_menu" }],
-          ],
+      const s = getSubscriber(chatIdStr)?.settings ?? DEFAULT_SETTINGS;
+      const cur = s.selectedBoostLevel || "all";
+      const sel = (level: string) => cur === level ? "✅ " : "";
+      await bot.editMessageText(
+        `📦 *Boost Level Filter*\n\nOnly receive alerts for boosts at or above a minimum level.\nCurrently set to: *${fmtBoostLevel(cur)}*`,
+        {
+          chat_id: chatId, message_id: msgId, parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `${sel("all")}All Levels`, callback_data: "boost_level_all" }],
+              [
+                { text: `${sel("Level 1")}⚡ Level 1 (1–10)`, callback_data: "boost_level_1" },
+                { text: `${sel("Level 2")}⚡⚡ Level 2 (11–50)`, callback_data: "boost_level_2" },
+              ],
+              [
+                { text: `${sel("Level 3")}⚡⚡⚡ Level 3 (51–200)`, callback_data: "boost_level_3" },
+                { text: `${sel("Level 4")}⚡⚡⚡⚡ Level 4 (201–500)`, callback_data: "boost_level_4" },
+              ],
+              [{ text: `${sel("Level 5")}⚡⚡⚡⚡⚡ Level 5 (500+)`, callback_data: "boost_level_top" }],
+              [{ text: "← Back to Settings", callback_data: "back_menu" }],
+            ],
+          },
         },
-      });
+      );
       return;
     } else if (data?.startsWith("boost_level_")) {
       const map: Record<string, string> = {
@@ -624,31 +654,34 @@ bot.on("callback_query", async (query) => {
       return;
     } else if (data?.startsWith("set_")) {
       const field = data.replace("set_", "");
-      const prompts: Record<string, string> = {
-        buy: "Enter Buy Amount in SOL (e.g. 0.5):",
-        slippage: "Enter Slippage % (e.g. 10):",
-        tp: "Enter Take Profit % (e.g. 50):",
-        sl: "Enter Stop Loss % (e.g. 25):",
-        min_holders: "Enter Min Holders (0 = no filter):",
-        min_liquidity: "Enter Min Liquidity in USD (0 = no filter):",
-        min_mc: "Enter Min Market Cap in USD (0 = no filter):",
-        max_mc: "Enter Max Market Cap in USD (0 = no filter):",
+      const s = getSubscriber(chatIdStr)?.settings ?? DEFAULT_SETTINGS;
+      const prompts: Record<string, { label: string; example: string; unit: string; key: keyof SubscriberSettings }> = {
+        buy:          { label: "Buy Amount",      example: "e.g. 0.5",          unit: "SOL",     key: "buyAmount" },
+        slippage:     { label: "Slippage",        example: "e.g. 10",           unit: "%",       key: "slippage" },
+        tp:           { label: "Take Profit",     example: "e.g. 50",           unit: "%",       key: "takeProfit" },
+        sl:           { label: "Stop Loss",       example: "e.g. 25",           unit: "%",       key: "stopLoss" },
+        min_holders:  { label: "Min Holders",     example: "0 = no filter",     unit: "holders", key: "minHolders" },
+        min_liquidity:{ label: "Min Liquidity",   example: "0 = no filter",     unit: "USD",     key: "minLiquidity" },
+        min_mc:       { label: "Min Market Cap",  example: "0 = no filter",     unit: "USD",     key: "minMarketCap" },
+        max_mc:       { label: "Max Market Cap",  example: "0 = no limit",      unit: "USD",     key: "maxMarketCap" },
       };
-      const prompt = prompts[field];
-      if (prompt) {
-        const sentMsg = await bot.sendMessage(chatId, prompt, { reply_markup: { force_reply: true } });
+      const pDef = prompts[field];
+      if (pDef) {
+        const currentVal = s[pDef.key] ?? 0;
+        const promptText =
+          `✏️ *Set ${pDef.label}*\n\n` +
+          `Current value: *${currentVal} ${pDef.unit}*\n\n` +
+          `Reply with a number (${pDef.example}):\n` +
+          `_Send 0 to remove the filter_`;
+        const sentMsg = await bot.sendMessage(chatId, promptText, {
+          parse_mode: "Markdown",
+          reply_markup: { force_reply: true },
+        });
         bot.onReplyToMessage(chatId, sentMsg.message_id, async (reply) => {
           const val = parseFloat(reply.text || "0");
           if (!isNaN(val)) {
-            const keys: Record<string, keyof SubscriberSettings> = {
-              buy: "buyAmount", slippage: "slippage", tp: "takeProfit", sl: "stopLoss",
-              min_holders: "minHolders", min_liquidity: "minLiquidity", min_mc: "minMarketCap", max_mc: "maxMarketCap",
-            };
-            const key = keys[field];
-            if (key) {
-              updateSettings(chatIdStr, { [key]: val } as Partial<SubscriberSettings>);
-              await sendSettings(chatId, chatIdStr);
-            }
+            updateSettings(chatIdStr, { [pDef.key]: val } as Partial<SubscriberSettings>);
+            await sendSettings(chatId, chatIdStr);
           }
         });
         bot.answerCallbackQuery(query.id);

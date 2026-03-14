@@ -56,6 +56,16 @@ const chatQueues = new Map<string, QueueItem[]>();
 const chatBusy = new Map<string, boolean>();
 const chatRateLimitedUntil = new Map<string, number>();
 
+const sentTelegramFingerprints = new Set<string>();
+const MAX_TELEGRAM_FP = 2000;
+
+function buildTelegramFingerprint(alert: AlertBroadcastPayload): string {
+  if (alert.type === "DEX_BOOST") {
+    return `${alert.address}|DEX_BOOST|${alert.totalBoostAmount ?? alert.boostAmount ?? ""}`;
+  }
+  return `${alert.address}|${alert.type}`;
+}
+
 function loadSubscribers(): SubscriberStore {
   try {
     if (!existsSync(SUBSCRIBERS_FILE)) return {};
@@ -320,6 +330,18 @@ function enqueueMessage(chatId: string, item: QueueItem): void {
 }
 
 export async function broadcastAlertToTelegram(alert: AlertBroadcastPayload) {
+  if (!alert.name || alert.name === "Loading...") return;
+
+  const fp = buildTelegramFingerprint(alert);
+  if (sentTelegramFingerprints.has(fp)) {
+    return;
+  }
+  sentTelegramFingerprints.add(fp);
+  if (sentTelegramFingerprints.size > MAX_TELEGRAM_FP) {
+    const first = sentTelegramFingerprints.values().next().value;
+    if (first) sentTelegramFingerprints.delete(first);
+  }
+
   const subscribers = loadSubscribers();
   const entries = Object.values(subscribers);
 

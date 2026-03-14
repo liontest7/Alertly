@@ -16,6 +16,8 @@ type AlertItem = {
   liquidity?: string;
   change?: string;
   boostAmount?: number;
+  fingerprint?: string;
+  alertedAt?: string;
 };
 
 type TradingWalletInfo = {
@@ -827,14 +829,16 @@ const Popup = () => {
         const serverAlerts: AlertItem[] = JSON.parse(e.data);
         if (Array.isArray(serverAlerts) && serverAlerts.length > 0) {
           setAlerts((prev) => {
-            const merged = [...serverAlerts];
-            for (const old of prev) {
-              const dup = merged.some(
-                (a) => a.address === old.address && a.type === old.type,
-              );
-              if (!dup) merged.push(old);
+            const fpMap = new Map<string, AlertItem>();
+            for (const a of serverAlerts) {
+              const key = a.fingerprint || `${a.address}|${a.type}|${a.alertedAt || ""}`;
+              fpMap.set(key, a);
             }
-            return merged.slice(0, 500);
+            for (const old of prev) {
+              const key = old.fingerprint || `${old.address}|${old.type}|${old.alertedAt || ""}`;
+              if (!fpMap.has(key)) fpMap.set(key, old);
+            }
+            return Array.from(fpMap.values()).slice(0, 500);
           });
           setStreamStatus("live");
         }
@@ -846,9 +850,17 @@ const Popup = () => {
         const payload = JSON.parse(e.data);
         const alert: AlertItem = payload.alert || payload;
         if (!alert.address) return;
+        const incomingKey = alert.fingerprint || `${alert.address}|${alert.type}|${alert.alertedAt || ""}`;
         setAlerts((prev) => {
-          const exists = prev.some((a) => a.address === alert.address && a.type === alert.type);
-          if (exists) return prev;
+          const idx = prev.findIndex((a) => {
+            const k = a.fingerprint || `${a.address}|${a.type}|${a.alertedAt || ""}`;
+            return k === incomingKey;
+          });
+          if (idx !== -1) {
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], ...alert };
+            return updated;
+          }
           return [alert, ...prev].slice(0, 500);
         });
       } catch {}
