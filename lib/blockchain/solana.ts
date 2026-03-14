@@ -74,7 +74,6 @@ export interface AlertFilterSettings {
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
   selectedBoostLevel?: string;
-  sources?: string[];
 }
 
 const TYPE_TO_LABEL: Record<string, TokenAlertType> = {
@@ -117,12 +116,6 @@ function isAlertEnabledBySettings(alert: TokenAlert, filters?: AlertFilterSettin
   ) {
     const alertLevel = (alert as any).boostLevel as string | undefined;
     if (alertLevel && alertLevel !== filters.selectedBoostLevel) return false;
-  }
-
-  if (Array.isArray(filters.sources) && filters.sources.length > 0 && alert.dex) {
-    const alertDex = alert.dex.toLowerCase();
-    const matched = filters.sources.some((s) => s.toLowerCase() === alertDex);
-    if (!matched) return false;
   }
 
   return true;

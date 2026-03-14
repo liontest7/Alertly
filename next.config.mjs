@@ -7,7 +7,6 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'pg', 'pg-native', 'bcryptjs'],
     turbo: {
       resolveAlias: {
         pg: { browser: './lib/browser-empty.js' },

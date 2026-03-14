@@ -15,7 +15,6 @@ export const DEFAULT_USER_SETTINGS = {
   autoSellMinutes: 0,
   dexBoostEnabled: true,
   dexListingEnabled: true,
-  sources: ["Raydium", "Jupiter", "Pump.fun", "Meteora", "Orca"],
   selectedBoostLevel: "all",
   alertsEnabled: true,
   isPremium: false,

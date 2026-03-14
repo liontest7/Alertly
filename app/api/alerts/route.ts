@@ -32,7 +32,6 @@ export async function GET(req: Request) {
       dexBoostEnabled: userSettings.dexBoostEnabled,
       dexListingEnabled: userSettings.dexListingEnabled,
       selectedBoostLevel: userSettings.selectedBoostLevel,
-      sources: userSettings.sources,
     });
 
     const formattedAlerts = alerts.map((a) => ({

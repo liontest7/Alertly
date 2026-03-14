@@ -48,7 +48,6 @@ function pickAllowedSettings(input: GuestSettings, authenticated: boolean = fals
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) out.minLiquidity = input.minLiquidity;
   if (typeof input.dexBoostEnabled === "boolean") out.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") out.dexListingEnabled = input.dexListingEnabled;
-  if (Array.isArray(input.sources)) out.sources = input.sources.filter((v): v is string => typeof v === "string");
   if (typeof input.selectedBoostLevel === "string") out.selectedBoostLevel = input.selectedBoostLevel;
   if (typeof input.alertsEnabled === "boolean") out.alertsEnabled = input.alertsEnabled;
   if (authenticated && typeof input.autoTrade === "boolean") out.autoTrade = input.autoTrade;

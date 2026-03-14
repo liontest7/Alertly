@@ -21,7 +21,6 @@ type SettingsPayload = {
   minLiquidity?: number;
   dexBoostEnabled?: boolean;
   dexListingEnabled?: boolean;
-  sources?: string[];
   selectedBoostLevel?: string;
   alertsEnabled?: boolean;
 };
@@ -42,7 +41,6 @@ function sanitizeSettings(input: SettingsPayload): GuestSettings {
   if (typeof input.minLiquidity === "number" && input.minLiquidity >= 0) output.minLiquidity = input.minLiquidity;
   if (typeof input.dexBoostEnabled === "boolean") output.dexBoostEnabled = input.dexBoostEnabled;
   if (typeof input.dexListingEnabled === "boolean") output.dexListingEnabled = input.dexListingEnabled;
-  if (Array.isArray(input.sources)) output.sources = input.sources.filter((v) => typeof v === "string");
   if (typeof input.selectedBoostLevel === "string") output.selectedBoostLevel = input.selectedBoostLevel;
   if (typeof input.alertsEnabled === "boolean") output.alertsEnabled = input.alertsEnabled;
   return output;
