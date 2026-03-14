@@ -6,6 +6,32 @@ import { getTokenMeta } from "@/lib/token-metadata";
 
 export type AlertKind = "DEX_BOOST" | "DEX_LISTING";
 
+const holdersCache = new Map<string, { count: number; fetchedAt: number }>();
+const HOLDERS_CACHE_TTL = 300_000;
+
+async function fetchTokenHolders(address: string): Promise<number | null> {
+  const cached = holdersCache.get(address);
+  if (cached && Date.now() - cached.fetchedAt < HOLDERS_CACHE_TTL) {
+    return cached.count;
+  }
+  if (!address.toLowerCase().endsWith("pump")) return null;
+  try {
+    const res = await fetch(`https://frontend-api.pump.fun/coins/${address}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const count: number = data?.holder_count;
+    if (typeof count === "number" && count > 0) {
+      holdersCache.set(address, { count, fetchedAt: Date.now() });
+      return count;
+    }
+  } catch {
+  }
+  return null;
+}
+
 let listenerRunning = false;
 let listenerStartedAt: number | null = null;
 
@@ -102,8 +128,11 @@ async function processTokenAlert(
 
   pushAlert(alertData);
 
-  getTokenMeta(addr)
-    .then((meta) => {
+  Promise.all([
+    getTokenMeta(addr),
+    fetchTokenHolders(addr),
+  ])
+    .then(([meta, holders]) => {
       if (!meta) {
         if (!silent) {
           console.warn(`[Listener] No metadata for ${addr.slice(0, 8)}… — broadcasting with partial data`);
@@ -139,6 +168,7 @@ async function processTokenAlert(
         website: meta.website || null,
         twitter: meta.twitter || null,
         telegram: meta.telegram || null,
+        holders: holders ?? 0,
       };
       pushAlert(enriched);
 
@@ -160,6 +190,7 @@ async function processTokenAlert(
           website: meta.website || undefined,
           twitter: meta.twitter || undefined,
           telegram: meta.telegram || undefined,
+          holders: holders ?? undefined,
           dex,
         }).catch(() => null);
       }

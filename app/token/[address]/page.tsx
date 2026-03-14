@@ -16,6 +16,7 @@ export default function TokenProfilePage({ params }: { params: { address: string
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<TokenProfileResponse | null>(null);
   const [events, setEvents] = useState<any[]>([]);
+  const [holders, setHolders] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -35,10 +36,19 @@ export default function TokenProfilePage({ params }: { params: { address: string
           setProfile(data);
         }
 
-        const eventsRes = await fetch(`/api/alerts/events?address=${params.address}&limit=20`, { cache: "no-store" });
+        const [eventsRes, pumpRes] = await Promise.all([
+          fetch(`/api/alerts/events?address=${params.address}&limit=20`, { cache: "no-store" }),
+          params.address.toLowerCase().endsWith("pump")
+            ? fetch(`https://frontend-api.pump.fun/coins/${params.address}`, { signal: AbortSignal.timeout(4000) }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
         const eventsData = await eventsRes.json().catch(() => ({ events: [] }));
         if (alive) {
           setEvents(Array.isArray(eventsData?.events) ? eventsData.events : []);
+        }
+        if (alive && pumpRes?.ok) {
+          const pumpData = await pumpRes.json().catch(() => null);
+          if (pumpData?.holder_count > 0) setHolders(pumpData.holder_count);
         }
       } catch (e) {
         if (alive) {
@@ -112,7 +122,11 @@ export default function TokenProfilePage({ params }: { params: { address: string
                 <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">MC: <b>{pair.fdv ? `$${Number(pair.fdv).toLocaleString()}` : "N/A"}</b></div>
                 <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">Liquidity: <b>{pair?.liquidity?.usd ? `$${Number(pair.liquidity.usd).toLocaleString()}` : "N/A"}</b></div>
                 <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">Volume 24h: <b>{pair?.volume?.h24 ? `$${Number(pair.volume.h24).toLocaleString()}` : "N/A"}</b></div>
-                <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">Pairs found: <b>{profile?.pairsCount || 0}</b></div>
+                {holders != null && holders > 0 ? (
+                  <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">Holders: <b className="text-purple-400">{holders.toLocaleString()}</b></div>
+                ) : (
+                  <div className="bg-black/40 border border-zinc-800 rounded-xl p-3">Pairs found: <b>{profile?.pairsCount || 0}</b></div>
+                )}
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3">

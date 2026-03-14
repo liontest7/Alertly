@@ -18,6 +18,7 @@ export type AlertBroadcastPayload = {
   website?: string | null;
   twitter?: string | null;
   telegram?: string | null;
+  holders?: number;
   dex?: string;
 };
 
@@ -161,6 +162,9 @@ function buildMessageText(alert: AlertBroadcastPayload): string {
   lines.push(`💎 *MC:* ${safe(alert.mc)}`);
   lines.push(`💧 *Liquidity:* ${safe(alert.liquidity)}`);
   lines.push(`📊 *Vol 24h:* ${safe(alert.vol)}`);
+  if (alert.holders && alert.holders > 0) {
+    lines.push(`👥 *Holders:* ${alert.holders.toLocaleString()}`);
+  }
 
   if (isBoost) {
     if (alert.boostAmount != null && alert.boostAmount > 0) {

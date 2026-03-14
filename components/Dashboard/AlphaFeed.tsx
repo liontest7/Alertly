@@ -429,6 +429,12 @@ export function AlphaFeed({
                         <span className="text-sm text-zinc-300 font-black">{token.priceUsd}</span>
                       </div>
                     )}
+                    {token.holders != null && token.holders > 0 && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Holders</span>
+                        <span className="text-sm text-purple-400 font-black">{token.holders.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">CA</span>
                       <span className="text-xs text-zinc-500 font-mono">{shortAddr(token.address)}</span>
