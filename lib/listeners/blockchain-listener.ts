@@ -74,9 +74,9 @@ async function fetchTokenHolders(address: string): Promise<number | null> {
 let listenerRunning = false;
 let listenerStartedAt: number | null = null;
 
-const BOOST_TOP_POLL_MS = 2_000;
-const BOOST_LATEST_POLL_MS = 4_000;
-const LISTING_POLL_MS = 5_000;
+const BOOST_TOP_POLL_MS = 3_000;
+const BOOST_LATEST_POLL_MS = 3_000;
+const LISTING_POLL_MS = 3_500;
 const RATE_LIMIT_BACKOFF_MS = 15_000;
 
 const lastBoostTotalAmounts = new Map<string, number>();
@@ -431,7 +431,7 @@ export async function startBlockchainListener() {
 
     seedHistoricalState();
 
-    console.log("[Listener] Starting DEX monitors (Top boosts 2s + Latest boosts 4s + Listings 5s, staggered)");
+    console.log("[Listener] Starting DEX monitors (Top boosts 3s + Latest boosts 3s + Listings 3.5s, staggered)");
 
     pollDexBoostsTop().catch(() => null);
     setTimeout(() => { if (listenerRunning) pollDexBoostsLatest().catch(() => null); }, 2_000);
